@@ -12,6 +12,7 @@ from collections import OrderedDict
 import functools
 import time
 import logging
+import string
 
 import typing
 from typing import (
@@ -789,6 +790,23 @@ class TopotatoClass(_pytest.python.Class):
         self.starting_ts = time.time()
 
         self.netinst = netinst = startitem.instance
+
+        tcname = self.nodeid
+        tcname = "".join(
+            ch if ch in string.ascii_letters + string.digits else "_" for ch in tcname
+        )
+        netinst.lcov_args.extend(
+            [
+                "-t",
+                tcname,
+                "--exclude",
+                "/usr/include/*",
+                "--exclude",
+                "*_clippy.c",
+                "--exclude",
+                "*.yang.c",
+            ]
+        )
 
         netinst.start()
         netinst.timeline.sleep(0.2)

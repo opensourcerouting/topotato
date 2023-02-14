@@ -315,15 +315,30 @@ class NetworkInstance(topobase.NetworkInstance):
     routers: Dict[str, RouterNS]
     bridges: List[str]
     scapys: Dict[str, scapy.config.conf.L2socket]
+    gcov_dir: str
+    lcov_args: List[str]
+
+    _covdatafile: Optional[str] = None
+    """
+    filename of lcov coverage data from daemons in this namespace
+    """
+
+    _lcov: Optional[subprocess.Popen] = None
+    """
+    lcov process running asynchronously to extract coverage data
+    """
 
     def __init__(self, network: Network):
         super().__init__(network)
         self.bridges = []
+        self.lcov_args = []
 
         # pylint: disable=consider-using-with
         self.tempdir = tempfile.TemporaryDirectory()
         os.chmod(self.tempdir.name, 0o755)
         _logger.debug("%r tempdir created: %s", self, self.tempdir.name)
+
+        self.environ["GCOV_PREFIX"] = self.gcov_dir = self.tempfile("gcov")
 
     def tempfile(self, name):
         return os.path.join(self.tempdir.name, name)
@@ -434,12 +449,46 @@ class NetworkInstance(topobase.NetworkInstance):
                 self.scapys[br] = scapy.config.conf.L2socket(iface=br)
                 os.set_blocking(self.scapys[br].fileno(), False)
 
+    def _gcov_collect(self):
+        have_gcov = False
+        for dirname, _, filenames in os.walk(self.gcov_dir):
+            for filename in filenames:
+                if filename.endswith(".gcda"):
+                    have_gcov = True
+
+                    gcno = filename[:-5] + ".gcno"
+                    target = os.path.join(dirname[len(self.gcov_dir) :], gcno)
+                    os.symlink(target, os.path.join(dirname, gcno))
+
+        if have_gcov:
+            self._covdatafile = self.tempfile("lcov-data")
+            # pylint: disable=consider-using-with
+            self._lcov = subprocess.Popen(
+                [
+                    "lcov",
+                    *self.lcov_args,
+                    "-c",
+                    "-q",
+                    "-d",
+                    self.gcov_dir,
+                    "-o",
+                    self._covdatafile,
+                ]
+            )
+
+    def coverage_wait(self) -> Optional[str]:
+        if self._lcov is not None:
+            self._lcov.wait()
+            self._lcov = None
+        return self._covdatafile
+
     def stop(self):
         for rns in self.routers.values():
             rns.end_prep()
         for rns in self.routers.values():
             rns.end()
         self.switch_ns.end()
+        self._gcov_collect()
 
     def status(self):
         self.switch_ns.status()

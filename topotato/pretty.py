@@ -10,6 +10,7 @@ import re
 import time
 import os
 import json
+import lzma
 import zlib
 import tempfile
 import logging
@@ -115,6 +116,13 @@ class PrettySession:
 
     # pylint: disable=unused-argument
     def finish(self, exitstatus):
+        basedir = os.path.dirname(os.path.abspath(__file__))
+
+        for filename in ["gcov.js", "gcov.css"]:
+            with open(os.path.join(self.outdir, filename), "wb") as wrfd:
+                with open(os.path.join(basedir, "html", filename), "rb") as rdfd:
+                    wrfd.write(rdfd.read())
+
         for prettyitem in self.prettyitems:
             prettyitem.finish()
 
@@ -180,16 +188,18 @@ class PrettySession:
 
 class PrettyInstance(list):
     template = jenv.get_template("instance.html.j2")
+    extrafiles: Dict[str, "PrettyExtraFile"]
 
     def __init__(self, prettysession, instance):
         super().__init__()
         self.prettysession = prettysession
         self.instance = instance
         self.timed = []
+        self.extrafiles = {}
 
     _filename_sub = re.compile(r"[^a-zA-Z0-9]")
 
-    # pylint: disable=too-many-locals,protected-access,possibly-unused-variable
+    # pylint: disable=too-many-locals,protected-access,possibly-unused-variable,too-many-statements
     def report(self):
         topotatocls = self[0].item.getparent(base.TopotatoClass)
         nodeid = topotatocls.nodeid
@@ -251,9 +261,52 @@ class PrettyInstance(list):
         data_json = json.dumps(data, ensure_ascii=True).encode("ASCII")
         data_bz = base64.b64encode(zlib.compress(data_json, level=6)).decode("ASCII")
 
-        extrafiles = {}
+        extrafiles = self.extrafiles
         for item in self:
             extrafiles.update(item.extrafiles)
+
+        covdata = None
+        covdatafile = topotatocls.netinst.coverage_wait()
+        if covdatafile:
+            try:
+                with open(covdatafile, "rb") as fd:
+                    covdata = fd.read()
+            except FileNotFoundError:
+                # TODO: do something useful...
+                pass
+
+        if covdata:
+            covdata = lzma.compress(covdata, preset=9)
+
+            lcov = PrettyExtraFile(
+                self, "lcov", ".lcov.xz", "application/octet-stream", covdata
+            )
+            lcov.output(self.prettysession.outdir, basename)
+
+            basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+            genhtml_cmd = [
+                os.path.join(basedir, "vendor/genhtml"),
+                "-q",
+                "--html-prolog",
+                os.path.join(basedir, "topotato/html/lcov-prolog.html"),
+                "-t",
+                topotatocls.nodeid,
+                "--header-title",
+                "topotato coverage report",
+                #    "-s",
+                #    "-k",
+                #    "-d", "desc",
+                "-o",
+                basepath + ".lcovhtml",
+                os.path.join(self.prettysession.outdir, lcov.filename),
+            ]
+
+            subprocess.check_call(genhtml_cmd)
+
+            coverage_loc = repr(basename + ".lcovhtml")
+        else:
+            coverage_loc = "null"
 
         output = self.template.render(locals())
 

@@ -37,6 +37,9 @@
           {%- else %}
             packet capture not available (test run without wireshark installed?)
           {%- endif %}
+          {%- if extrafiles['lcov'] %}
+            <li><a href="{{ extrafiles['lcov'].filename }}">Coverage data (LCOV, raw)</a></li>
+          {%- endif %}
         </ul>
         <dl>
           {%- for item in items %}
@@ -61,5 +64,6 @@
   </body>
   <script type="text/javascript" defer="defer">
     const data = "{{ data_bz | safe }}";
+    const coverage_loc = {{ coverage_loc | safe }};
   </script>
 </html>
