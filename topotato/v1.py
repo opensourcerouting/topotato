@@ -19,6 +19,7 @@ from .fixtures import (
 )
 from .frr import (
     FRRConfigs,
+    RouterFRR,
 )
 from .utils import (
     JSONCompareIgnoreContent,

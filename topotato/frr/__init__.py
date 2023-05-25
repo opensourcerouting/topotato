@@ -11,4 +11,5 @@ from .core import (
     FRRRouterNS,
     TimedVtysh,
     VtyshPoll,
+    RouterFRR,
 )

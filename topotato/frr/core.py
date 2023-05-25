@@ -21,6 +21,7 @@ import typing
 from typing import (
     Any,
     ClassVar,
+    Collection,
     Dict,
     FrozenSet,
     Generator,
@@ -29,6 +30,7 @@ from typing import (
     Optional,
     Tuple,
 )
+from typing_extensions import Protocol
 
 import pytest
 
@@ -44,7 +46,7 @@ from ..defer import subprocess
 from ..utils import deindent, get_dir, EnvcheckResult
 from ..timeline import Timeline, MiniPollee, TimedElement
 from .livelog import LiveLog
-from ..exceptions import TopotatoDaemonCrash
+from ..exceptions import TopotatoDaemonCrash, TopotatoSkipped
 from ..pcapng import Context
 from ..network import TopotatoNetwork
 from ..topobase import CallableNS
@@ -259,6 +261,14 @@ class FRRSetup:
         if os.path.exists(xrefpath):
             with open(xrefpath, "r", encoding="utf-8") as fd:
                 self.xrefs = json.load(fd)
+
+
+class _FRRConfigProtocol(Protocol):
+    frr: FRRSetup
+    daemons: Collection[str]
+
+    def want_daemon(self, rtr: str, daemon: str) -> bool:
+        ...
 
 
 class FRRConfigs(dict):
@@ -490,6 +500,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
     Add a bunch of FRR daemons on top of an (OS-dependent) RouterNS
     """
 
+    _configs: _FRRConfigProtocol
     instance: TopotatoNetwork
     frr: FRRSetup
     logfiles: Dict[str, str]
@@ -498,7 +509,9 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
     rtrcfg: Dict[str, str]
     livelogs: Dict[str, LiveLog]
 
-    def __init__(self, instance: TopotatoNetwork, name: str, configs: FRRConfigs):
+    def __init__(
+        self, instance: TopotatoNetwork, name: str, configs: _FRRConfigProtocol
+    ):
         super().__init__(instance, name)
         self._configs = configs
         self.frr = configs.frr
@@ -739,3 +752,135 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
                     break
 
         return (pid, output, retcode)
+
+
+class FRRRequirementNotMet(TopotatoSkipped):
+    """
+    FRR is missing some feature necessary for this test.
+    """
+
+
+# pylint: disable=too-many-ancestors
+class RouterFRR(FRRRouterNS, dict):
+    """
+    WIP - RouterNS + FRR binding for role-based setup.
+
+    This is currently duplicating a lot of code from :py:class:`FRRConfigs`.
+    The long term goal is to remove FRRConfigs.  For now the more important
+    thing is to have things working in all combinations.
+    """
+
+    templates: ClassVar[Dict[str, Any]]
+    daemon_rtrs: ClassVar[Dict[Any, Any]]
+    daemons: Collection[str]
+
+    def __init__(self, instance: TopotatoNetwork, name: str, frr: FRRSetup):
+        self.frr = frr
+        self.topology = instance.network
+        super().__init__(instance, name, self)
+
+        self.requirements()
+
+        topo = instance.network
+
+        routers = list(topo.routers.keys())
+        rtrmap = {rname: topo.router(rname) for rname in routers}
+
+        for rname in routers:
+            router = topo.router(rname)
+            ritem = self.setdefault(router.name, {})
+
+            for daemon, template in self.templates.items():
+                if (
+                    self.daemon_rtrs[daemon] is None
+                    or rname in self.daemon_rtrs[daemon]
+                ):
+                    ritem[daemon] = template.render(
+                        daemon=daemon,
+                        router=router,
+                        routers=rtrmap,
+                        topo=topo,
+                        frr=TemplateUtils(router, daemon),
+                    )
+
+    def require_defun(self, cmd: str, contains: Optional[str] = None) -> None:
+        """
+        Check that a particular CLI command exists in this FRR version, for
+        use in :py:meth:`requirements`.  Commands are looked up in FRR's
+        ``frr.xref`` build output.
+
+        :param cmd: Name of the command as defined in the C source, i.e.
+            second argument to `DEFUN` macro.  Generally ends in ``_cmd``.
+        :param contains: String that must appear in the command's syntax
+            definition (use if some new option is added to an existing
+            command.)
+        :raises FRRRequirementNotMet: if the command is not found or does not
+            contain the string.  This causes the test to be skipped, but can
+            be caught (e.g. if there are multiple alternatives to check.)
+        """
+        defun = (self.frr.xrefs or {}).get("cli", {}).get(cmd)
+        if defun is None:
+            raise FRRRequirementNotMet(f"missing DEFUN {cmd!r}")
+        if contains is not None:
+            for on_daemon in defun.values():
+                if contains not in on_daemon["string"]:
+                    raise FRRRequirementNotMet(
+                        f"DEFUN {cmd!r} does not contain {contains!r}"
+                    )
+
+    def require_logmsg(self, msgid: str) -> None:
+        """
+        Check that a log message exists in this FRR version by looking up its
+        unique ID in ``frr.xref``.
+
+        :param msgid: ID (``XXXXX-XXXXX``) of the log message to look for.
+        :raises FRRRequirementNotMet: if the log message is not found.  This
+            causes the test to be skipped, but can be caught (e.g. if there
+            are multiple alternatives to check.)
+        """
+        if msgid not in (self.frr.xrefs or {}).get("refs", {}):
+            raise FRRRequirementNotMet(f"missing log message {msgid!r}")
+
+    def requirements(self) -> None:
+        """
+        Override this method to perform FRR requirements checks.  Should
+        primarily call :py:meth:`require_logmsg` and :py:meth:`require_defun`.
+        """
+
+    def want_daemon(self, rtr: str, daemon: str) -> bool:
+        if rtr not in self:
+            return False
+        return daemon in self[rtr]
+
+    def eval(self, rtr: str, text: str):
+        """
+        Helper used for the "compare" text for vtysh to fill in bits
+
+        TBD: Replace with straight-up jinja2?
+        """
+        expr = jenv.compile_expression(text)
+        return expr(router=self.topology.routers[rtr])
+
+    # pylint: disable=arguments-differ
+    @classmethod
+    def __init_subclass__(cls, /, **kwargs):
+        """
+        Prepare / parse the templates
+
+        (Modifies the class itself, not much point in doing anything else)
+        """
+        super().__init_subclass__(**kwargs)
+
+        cls.templates = {}
+        cls.daemon_rtrs = {}
+        cls.daemons = FRRSetup.daemons_all
+
+        for daemon in cls.daemons:
+            if not hasattr(cls, daemon):
+                continue
+            text = deindent(getattr(cls, daemon))
+
+            cls.templates[daemon] = jenv.from_string(text)
+            cls.daemon_rtrs[daemon] = getattr(cls, "%s_routers" % daemon, None)
+
+        return cls
