@@ -19,7 +19,7 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
+class Configs(RouterFRR):
     zebra = """
     #% extends "boilerplate.conf"
     #% block main
@@ -58,8 +58,18 @@ class Configs(FRRConfigs):
     #% endblock
     """
 
+    def requirements(self):
+        self.require_defun("ipv6_ospf6_network_cmd", "point-to-multipoint")
 
-class PtMPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
+
+class Setup(TopotatoNetwork, topo=topology):
+    r1: Configs
+    r2: Configs
+    r3: Configs
+    lsdb: Configs
+
+
+class PtMPBasic(TestBase, AutoFixture, setup=Setup):
     # intra_64 = connected-prefix include/exclude
     def lsdb_reference(self, routers, intra_64=set()):
         lsas = [

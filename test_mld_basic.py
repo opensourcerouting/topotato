@@ -29,7 +29,7 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
+class FRRConfigured(RouterFRR):
     routers = ["dut"]
 
     zebra = """
@@ -57,6 +57,16 @@ class Configs(FRRConfigs):
     #% endblock
     """
 
+    def requirements(self):
+        self.require_defun("interface_ipv6_mld_cmd")
+
+
+class Setup(TopotatoNetwork, topo=topology):
+    dut: FRRConfigured
+    h1: Host
+    h2: Host
+    src: Host
+
 
 def iter_mld_records(report):
     for record in report.records:
@@ -64,7 +74,7 @@ def iter_mld_records(report):
             yield record
             record = record.payload
 
-class MLDBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
+class MLDBasic(TestBase, AutoFixture, setup=Setup):
     @topotatofunc(include_startup=True)
     def prepare(self, topo, dut, h1, h2, src):
         self.receiver = MulticastReceiver(h1, h1.iface_to('dut'))
