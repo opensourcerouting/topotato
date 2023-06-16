@@ -30,8 +30,6 @@ def topology(topo):
 
 
 class FRRConfigured(RouterFRR):
-    routers = ["dut"]
-
     zebra = """
     #% extends "boilerplate.conf"
     #% block main
