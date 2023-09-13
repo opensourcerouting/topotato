@@ -163,6 +163,7 @@ var anchor_current = {};
 const anchor_defaults = {
 	"log": "ewni",
 	"cli": null,
+	"mark": null,
 };
 
 const log_keys = {
@@ -373,10 +374,82 @@ function cli_show(key, sel) {
 	document.getElementById("cf-cli-repeat").checked = show_repeat;
 }
 
+var anchor_idx = new Set();
+var mark_ui = null;
+
+function mark_show(key, sel, all_opts) {
+	const idx_new = new Set((sel || "").split(";").map((v) => parseInt(v)).filter((i) => !isNaN(i)));
+	const to_set = idx_new.difference(anchor_idx);
+	const to_clear = anchor_idx.difference(idx_new);
+
+	console.log("idx_new", idx_new, mark_ui);
+	if (idx_new.size > 0 && mark_ui === null) {
+		let filters = document.getElementById("filters");
+
+		mark_ui = create(filters, "div", "fblock");
+		create(mark_ui, "div", "ftitle", "markers");
+
+		let mark_clear_all = create(mark_ui, "a", "f-mark-clearall", "clear");
+		mark_clear_all.onclick = function(event) {
+			event.stopPropagation();
+
+			let opts = {...anchor_current};
+			delete opts["mark"];
+			anchor_export(opts);
+		};
+	} else if (idx_new.size == 0 && mark_ui !== null) {
+		mark_ui.parentElement.removeChild(mark_ui);
+		mark_ui = null;
+	}
+
+	for (const idx of to_set) {
+		let row = idx2row[idx];
+		if (row === undefined)
+			continue;
+
+		row.classList.add("mark");
+		anchor_idx.add(idx);
+		row.mark_ui_item = create(mark_ui, "a", "f-mark-item", idx);
+		row.mark_ui_item.onclick = function() {
+			let main = document.getElementById("main");
+			let row = idx2row[idx];
+
+			row.children[0].style.cssText = "--mark-anim-name: none";
+			row.children[0].offsetHeight;
+			row.children[0].style.cssText = "--mark-anim-name: bounce";
+
+			let e_y = row.offsetTop + 0.5 * row.offsetHeight;
+			console.log("scroll", row, e_y);
+			if (e_y > main.scrollTop + main.clientHeight * 0.15 &&
+				e_y <  main.scrollTop + main.clientHeight * 0.85)
+				return;
+			main.scrollTo(main.scrollLeft, e_y - 0.33 * main.clientHeight);
+		};
+	}
+
+	for (const idx of to_clear) {
+		let row = idx2row[idx];
+		if (row === undefined)
+			continue;
+
+		row.classList.remove("mark");
+		anchor_idx.delete(idx);
+		if (row.mark_ui_item) {
+			row.mark_ui_item.parentElement.removeChild(row.mark_ui_item);
+			row.mark_ui_item = null;
+		}
+	}
+}
+
 const anchor_funcs = {
 	"log": log_show,
 	"cli": cli_show,
+	"mark": mark_show,
+	"ref": function() {},
 };
+
+var invalid_ref_warn = null;
+const ref_warn_text =  "The URL to this report includes markers for specific line items.  Unfortunately, these markers cannot be displayed since they refer to a different test run.";
 
 function anchor_apply(opts) {
 	let main = document.getElementById("main");
@@ -401,12 +474,29 @@ function anchor_apply(opts) {
 		}
 	}
 
+	if ("ref" in opts) {
+		console.log("ref", opts.ref);
+		if (parseInt(opts.ref) != parseInt(jsdata.ts_start)) {
+			if (invalid_ref_warn === null) {
+				invalid_ref_warn = document.createElement("div");
+				invalid_ref_warn.classList.add("ref-warn");
+				invalid_ref_warn.innerText = ref_warn_text;
+				main.insertBefore(invalid_ref_warn, main.children[0]);
+			}
+			invalid_ref_warn.style.display = "block";
+			delete opts.mark;
+		} else if (invalid_ref_warn !== null) {
+			invalid_ref_warn.style.display = "none";
+		}
+		delete opts.ref;
+	}
+
 	for (const [key, val] of Object.entries(opts)) {
 		console.log("apply", key, val, anchor_current[key]);
 		if ((key in anchor_current) && (anchor_current[key] === val))
 			continue;
 
-		anchor_funcs[key](key, val);
+		anchor_funcs[key](key, val, opts);
 		anchor_current[key] = val;
 	}
 
@@ -786,8 +876,38 @@ function create(parent_, tagname, clsname, text = undefined) {
 	return element;
 }
 
+function onclickmark(event, idx) {
+	console.log("onclickmark", event.target, event.currentTarget, idx);
+	for (let target = event.target; target; target = target.parentElement)
+		if (target.classList.contains("hover"))
+			return;
+
+	event.stopPropagation();
+
+	var new_idx = new Set(anchor_idx);
+
+	if (anchor_idx.has(idx)) {
+		new_idx.delete(idx);
+	} else {
+		new_idx.add(idx);
+		idx2row[idx].children[0].style.cssText = "--mark-anim-name: none";
+		idx2row[idx].children[0].offsetHeight;
+		idx2row[idx].children[0].style.cssText = "--mark-anim-name: bounce";
+	}
+	let opts = {...anchor_current};
+	if (new_idx.size) {
+		opts["mark"] = Array.from(new_idx).sort().join(";");
+		opts["ref"] = parseInt(jsdata.ts_start);
+	} else
+		delete opts["mark"];
+	anchor_export(opts);
+}
+
 function create_tstamp(row, obj) {
-	return create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
+	let tstamp = create(row, "span", "tstamp");
+	create(tstamp, "span", "tsval", (obj.ts - ts_start).toFixed(3));
+	create(tstamp, "span", "tsidx", obj.idx);
+	return tstamp;
 }
 
 const mono_xrefs = new Set(["VDSXN-XE88Y", "SH01T-57BR4", "TCYNJ-TRV01", "TRN9Y-VYTR4",
@@ -1948,6 +2068,9 @@ async function real_init() {
 		else
 			row = load_other(timetable, obj);
 
+		row.children[0].onclick = function(event) {
+			onclickmark(event, idx);
+		};
 		idx2row[idx] = row;
 	}
 

@@ -42,6 +42,11 @@
 --font-mono-narrower: "Inconsolata Condensed", monospace;
 
 --xwarn-crosshatch: #DDD;
+
+--item-bg: #eee;
+--item-unmark-decor: #f7f7f7;
+--item-mark-decor: #139;
+--item-mark-bg: #13c;
 }
 
 /* --- */
@@ -120,6 +125,16 @@ body:has(div#vsplit) {
 	font-family: var(--font-plain-narrow);
 }
 
+.ref-warn {
+	float: right;
+	font-style: italic;
+	max-width: 20em;
+	padding:6pt;
+	color:#a32;
+	background-color:#fdc;
+	border:1px solid #c65;
+}
+
 #topomap,
 svg {
 	scale:80%;
@@ -152,6 +167,16 @@ svg {
 	color:#372;
 	background-color:#bf9;
 	border:1px solid #594;
+}
+
+.f-mark-clearall {
+	color:#a32;
+	margin:2pt;
+}
+.f-mark-item {
+	font-family: var(--font-mono-narrow);
+	margin:2pt;
+	color:#237;
 }
 
 .e_raw {
@@ -328,7 +353,7 @@ svg {
 	grid-template-columns: subgrid;
 
 	border-bottom: 1px solid #aaa;
-	background-color:#eee;
+	background-color: var(--item-bg);
 }
 .pktcol,
 .logmsg > span,
@@ -393,11 +418,23 @@ svg {
 	text-decoration:underline dashed #777;
 }
 
-.logmsg.prio-crit {
-	background-color: #fbc;
-	border-bottom:1px solid #f04;
-	font-weight:500;
+.logmsg.prio-crit  { --item-bg: #fbc; }
+.logmsg.prio-warn  { --item-bg: #fca; }
+.logmsg.prio-error { --item-bg: #fba; }
+.logmsg.prio-notif { --item-bg: #e0e6d6; }
+.logmsg.prio-info  { --item-bg: #d4ddd4; }
+.logmsg.prio-debug { --item-bg: #d0d7dd; }
+
+.logmsg.prio-crit,
+.logmsg.prio-error,
+.logmsg.prio-warn {
+	font-weight: 500;
 }
+
+.logmsg.prio-crit > span {
+	border-bottom:1px solid #f04;
+}
+
 .logmsg.prio-crit .logtext,
 .logmsg.mono .logtext {
 	font-family:var(--font-mono-narrow);
@@ -417,12 +454,6 @@ svg {
 	content:"(known)";
 	font-size:9pt;
 }
-.logmsg.prio-error {
-	background-color: #fba;
-	font-weight: 500;
-}
-.logmsg.prio-error .logtext {
-}
 .logmsg.prio-warn.xwarn {
 	background:
 		repeating-linear-gradient( 135deg, transparent, transparent 15px, var(--xwarn-crosshatch) 15px, var(--xwarn-crosshatch) 17px ),
@@ -436,18 +467,7 @@ svg {
 	content:"(known)";
 	font-size:9pt;
 }
-.logmsg.prio-warn {
-	background-color: #fca;
-	font-weight: 500;
-}
-.logmsg.prio-notif {
-	background-color: #e0e6d6;
-}
-.logmsg.prio-info {
-	background-color: #d4ddd4;
-}
 .logmsg.prio-debug {
-	background-color: #d0d7dd;
 	font-weight: 300;
 }
 
@@ -600,14 +620,102 @@ svg {
 .filtered {
 	display:none;
 }
+.filtered.mark,
 .assert-match.mark {
 	display:grid;
 }
+
+.mark.pkt,
+.mark.event,
+.mark.clicmd,
+.mark.pylog,
+.mark.logmsg {
+	display: grid;
+	border-bottom:1px solid var(--item-mark-decor);
+}
+
 .tstamp {
+	border-left:5px solid var(--item-unmark-decor);
+	margin-left:-5px;
 	grid-column-start: 1;
 	font-family: var(--font-plain-narrow);
-	text-align: right;
+	cursor: pointer;
+	--mark-anim-name: none;
 }
+.tstamp .tsval,
+.tstamp .tsidx {
+	display: inline-block;
+	width: 100%;
+	text-align: right;
+	font-feature-settings: "tnum";
+}
+.tstamp .tsidx {
+	text-align: center;
+	display: none;
+	overflow: clip;
+}
+.tstamp:hover .tsval {
+	display: none;
+}
+.tstamp:hover .tsidx {
+	display: inline-block;
+}
+div.mark > .tstamp {
+	border-left:5px solid var(--item-mark-decor);
+	margin-left:-5px;
+}
+div.mark > *,
+div.mark > .tstamp {
+	background-image:linear-gradient(to top,
+		color-mix(in hsl, var(--item-mark-bg) 45%, var(--item-bg)),
+		color-mix(in hsl, var(--item-mark-bg) 20%, var(--item-bg)),
+		color-mix(in hsl, var(--item-mark-bg) 10%, var(--item-bg)),
+		color-mix(in hsl, var(--item-mark-bg)  5%, var(--item-bg)),
+		var(--item-bg)
+	);
+}
+.tstamp::before {
+	content:"→";
+	color: var(--item-unmark-decor);
+	font-size:14pt;
+	font-weight:bold;
+	font-style:normal;
+
+	display:inline-block;
+	position:relative;
+	right:calc(100% - 15px);
+	width:0;
+	line-height:0;
+	animation-name: var(--mark-anim-name);
+	animation-duration: 0.5s;
+	animation-iteration-count: 5;
+}
+div.mark > .tstamp::before {
+	color:var(--item-mark-decor);
+}
+
+@keyframes bounce {
+	0% {
+		transform: translateX(0px) scale(100%);
+	}
+	50% {
+		transform: translateX(-23px) scale(250%);
+	}
+	100% {
+		transform: translateX(0px) scale(100%);
+	}
+}
+
+div > .tstamp {
+	background-image:linear-gradient(to right,
+		color-mix(in srgb, #4af 30%,  var(--item-bg)),
+		color-mix(in srgb, #4af 15%,  var(--item-bg)),
+		color-mix(in srgb, #4af  8%,  var(--item-bg)),
+		color-mix(in srgb, #4af  3%,  var(--item-bg)),
+		var(--item-bg)
+	);
+}
+
 .assert-match .tstamp {
 	margin-left:-1em;
 	border-left:1em solid #0c2;
@@ -870,7 +978,7 @@ div.config .cfg-buttons a {
 
 .pylog {
 	color:#333;
-	background-color:var(--pylog-color);
+	--item-bg: var(--pylog-color);
 
 	/* #3776ab python color lightened up */
 	--pylog-color: rgb(89.1% 97.2% 100%);
