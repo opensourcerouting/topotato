@@ -904,6 +904,25 @@ function load_pylog(timetable, obj) {
 	textspan.append(`${obj.data.msg}`);
 }
 
+function load_syslog(timetable, obj) {
+	var row;
+
+	row = create(timetable, "div", "logmsg");
+	row.classList.add("prio-" + obj.data.prio);
+	row.classList.add("mono");
+	row.obj = obj;
+
+	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
+	create(row, "span", "rtrname", obj.data.router);
+	create(row, "span", "dmnname", "×");
+
+	create(row, "span", "logmeta");
+
+	create(row, "span", "logprio", obj.data.prio);
+	create(row, "span", "logtext", obj.data.text);
+	return row;
+}
+
 function load_other(timetable, obj, xrefs) {
 	let row = create(timetable, "div", "event");
 	row.obj = obj;
@@ -1785,6 +1804,8 @@ async function real_init() {
 			load_packet(timetable, obj, pdmltree, pdmlindex);
 		else if (obj.data.type == "log")
 			load_log(timetable, obj, xrefs);
+		else if (obj.data.type == "syslog")
+			load_syslog(timetable, obj);
 		else if (obj.data.type == "vtysh")
 			load_vtysh(timetable, obj);
 		else if (obj.data.type == "pylog")
