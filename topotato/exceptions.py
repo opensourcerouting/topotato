@@ -79,11 +79,10 @@ class TopotatoDaemonCrash(TopotatoFail):
         excinfo: ExceptionInfo
 
         @property
-        def reprcrash(self) -> "ReprFileLocation":
-            exconly = self.excinfo.exconly(tryshort=True)
-            entry = self.excinfo.traceback.getcrashentry()
-            path, lineno = entry.frame.code.raw.co_filename, entry.lineno
-            return ReprFileLocation(path, lineno + 1, exconly)
+        def reprcrash(self) -> Optional["ReprFileLocation"]:
+            # FIXME: figure out proper API?
+            # pylint: disable=protected-access
+            return self.excinfo._getreprcrash()
 
         def toterminal(self, tw: TerminalWriter) -> None:
             exc = self.excinfo.value
