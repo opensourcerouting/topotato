@@ -145,7 +145,7 @@ def pytest_collection(session):
             name = item.parent.nodeid
 
             cfgsetup = item._obj.instancefn.configs
-            cfgs = cfgsetup.cfgclass(cfgsetup.net)
+            cfgs = cfgsetup.cfgclass(cfgsetup.net, session.frr)
             routers = cfgs.generate()
 
             for rtr, configs in routers.items():
@@ -167,7 +167,7 @@ def pytest_collection(session):
                 continue
 
             cfgsetup = item._obj.instancefn.configs
-            cfgs = cfgsetup.cfgclass(cfgsetup.net)
+            cfgs = cfgsetup.cfgclass(cfgsetup.net, session.frr)
             routers = cfgs.generate()
 
             for rtr, configs in routers.items():
