@@ -350,7 +350,10 @@ class TopotatoItem(nodes.Item):
             if entry._rawentry.tb_frame.f_code in skiptrace:
                 continue
             if newtb:
-                entry.set_repr_style("short")
+                if hasattr(entry, "with_repr_style"):
+                    entry = entry.with_repr_style("short")
+                elif hasattr(entry, "set_repr_style"):
+                    entry.set_repr_style("short")
             newtb.insert(0, entry)
 
         excinfo.traceback = type(excinfo.traceback)(newtb)
