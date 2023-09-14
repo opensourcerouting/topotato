@@ -19,6 +19,7 @@ import sys
 import time
 import typing
 from typing import (
+    cast,
     Any,
     ClassVar,
     Collection,
@@ -45,11 +46,12 @@ except ImportError:
 from ..defer import subprocess
 from ..utils import deindent, get_dir, EnvcheckResult
 from ..timeline import Timeline, MiniPollee, TimedElement
-from .livelog import LiveLog
+from .livelog import LiveLog, LogMessage
 from ..exceptions import (
     TopotatoDaemonCrash,
     TopotatoDaemonStopFail,
     TopotatoSkipped,
+    TopotatoFail,
 )
 from ..pcapng import Context
 from ..network import TopotatoNetwork
@@ -499,6 +501,18 @@ class VtyshPoll(MiniPollee):
                 self.send_cmd()
 
 
+class FRRInvalidConfigFail(TopotatoFail):
+    def __init__(self, router: str, daemon: str, errmsg: str):
+        self.router = router
+        self.daemon = daemon
+        self.errmsg = errmsg
+        super().__init__()
+
+    def __str__(self):
+        return f"{self.router}/{self.daemon}: {self.errmsg}"
+
+
+# pylint: disable=too-many-ancestors
 class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
     """
     Add a bunch of FRR daemons on top of an (OS-dependent) RouterNS
@@ -534,7 +548,16 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
         if daemon not in self.livelogs:
             self.livelogs[daemon] = LiveLog(self, daemon)
             self.instance.timeline.install(self.livelogs[daemon])
+            self.instance.timeline.observe(self.livelogs[daemon], self._logwatch)
         return self.livelogs[daemon].wrfd
+
+    def _logwatch(self, evt: TimedElement):
+        if not isinstance(evt, LogMessage):
+            return
+
+        logmsg = cast(LogMessage, evt)
+        if logmsg.uid == "SHWNK-NWT5S":
+            raise FRRInvalidConfigFail(logmsg.router.name, logmsg.daemon, logmsg.text)
 
     def interactive_state(self) -> Dict[str, Any]:
         return {
