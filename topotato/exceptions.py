@@ -96,6 +96,17 @@ class TopotatoDaemonCrash(TopotatoFail):
                 tw.line(f"cause: {exc.__cause__!r}")
 
 
+class TopotatoDaemonStopFail(TopotatoFail):
+    """
+    Daemon did not stop when requested.
+    """
+
+    def __init__(self, daemon: str, router: str):
+        self.daemon = daemon
+        self.router = router
+        super().__init__()
+
+
 # hard testrun aborts
 
 

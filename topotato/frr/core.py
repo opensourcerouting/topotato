@@ -46,7 +46,11 @@ from ..defer import subprocess
 from ..utils import deindent, get_dir, EnvcheckResult
 from ..timeline import Timeline, MiniPollee, TimedElement
 from .livelog import LiveLog
-from ..exceptions import TopotatoDaemonCrash, TopotatoSkipped
+from ..exceptions import (
+    TopotatoDaemonCrash,
+    TopotatoDaemonStopFail,
+    TopotatoSkipped,
+)
 from ..pcapng import Context
 from ..network import TopotatoNetwork
 from ..topobase import CallableNS
@@ -650,18 +654,29 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
             if rc != 0:
                 failed.append((self.name, daemon))
 
-    def restart(self, daemon: str):
-        pidfile = "%s/%s.pid" % (self.rundir, daemon)
-        with open(pidfile, "r", encoding="utf-8") as fd:
-            pid = int(fd.read())
-        self.check_call(["kill", "-TERM", str(pid)])
-        for _ in range(0, 5):
-            try:
-                self.check_call(["kill", "-TERM", str(pid)])
-            except subprocess.CalledProcessError:
-                break
-            self.instance.timeline.sleep(0.1)
+    def stop_daemon(self, daemon: str):
+        if daemon not in self.pids:
+            return
 
+        pid = self.pids[daemon]
+        del self.pids[daemon]
+
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError as e:
+            raise TopotatoDaemonCrash(daemon=daemon, router=self.name) from e
+
+        for i in range(0, 5):
+            self.instance.timeline.sleep(i * 0.1)
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                return
+
+        raise TopotatoDaemonStopFail(daemon=daemon, router=self.name)
+
+    def restart_daemon(self, daemon: str):
+        self.stop_daemon(daemon)
         self.start_daemon(daemon)
 
     def end_prep(self):

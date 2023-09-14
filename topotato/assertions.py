@@ -53,6 +53,7 @@ __all__ = [
     "AssertVtysh",
     "AssertPacket",
     "AssertLog",
+    "DaemonStop",
     "DaemonRestart",
     "Delay",
     "ModifyLinkStatus",
@@ -468,30 +469,51 @@ class Delay(TopotatoAssertion, TimedMixin):
             pass
 
 
-class DaemonRestart(TopotatoModifier):
+class _DaemonControl(TopotatoModifier):
     # pylint does not understand that from_parent is our __init__
     _rtr: str
     _daemon: str
 
+    op_name: ClassVar[str]
+
     # pylint: disable=arguments-differ,protected-access
     @classmethod
-    def from_parent(cls, parent, name, rtr, daemon, **kwargs) -> "DaemonRestart":  # type: ignore
+    def from_parent(cls, parent, name, rtr, daemon, **kwargs) -> "DaemonControl":  # type: ignore
         self = cast(
-            DaemonRestart,
+            _DaemonControl,
             super().from_parent(
-                parent, name="%s:%s/%s/restart" % (name, rtr.name, daemon), **kwargs
+                parent,
+                name="%s:%s/%s/%s" % (name, rtr.name, daemon, cls.op_name),
+                **kwargs,
             ),
         )
         self._rtr = rtr
         self._daemon = daemon
         return self
 
+    def do(self, router):
+        pass
+
     def runtest(self):
         if self.skipall:
             pytest.skip(self.skipall)
 
         router = self.instance.routers[self._rtr.name]
-        router.restart(self._daemon)
+        self.do(router)
+
+
+class DaemonRestart(_DaemonControl):
+    op_name = "restart"
+
+    def do(self, router):
+        router.restart_daemon(self._daemon)
+
+
+class DaemonStop(_DaemonControl):
+    op_name = "stop"
+
+    def do(self, router):
+        router.stop_daemon(self._daemon)
 
 
 class ModifyLinkStatus(TopotatoModifier):
