@@ -1,17 +1,16 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright (C) 2022 Nathan Mangar
-
-
+# Copyright (C) 2022-2023  David Lamparter, Nathan Mangar
 """
-Test if RIP `allow-ecmp` command works correctly.
+Test RIP ECMP support, including multipath limit.
 """
 
-__topotests_file__ = "rip_allow_ecmp/test_rip_allow_ecmp.py"
-__topotests_gitrev__ = "4953ca977f3a5de8109ee6353ad07f816ca1774c"
+__topotests_replaces__ = {
+    "rip_allow_ecmp/": "66e0f6c456cb2380f932c8f0dfef8897218359d7",
+}
 
 # pylint: disable=invalid-name, missing-class-docstring, missing-function-docstring, line-too-long, consider-using-f-string, wildcard-import, unused-wildcard-import, f-string-without-interpolation
 
-from topotato import *
+from topotato.v1 import *
 
 
 @topology_fixture()
@@ -19,111 +18,117 @@ def topology(topo):
     """
     [ r1 ]
       |
-    { s1 }--[ r3 ]
-      |
-    [ r2 ]
+    { s1 }--[ r2 ]--{ s2 }
+    {    }          {    }
+    {    }--[ r3 ]--{    }
+    {    }          {    }
+    {    }--[ r4 ]--{    }
+    {    }          {    }
+    {    }--[ r5 ]--{    }
     """
-
-    topo.router("r2").lo_ip4.append("10.10.10.1/32")
-    topo.router("r3").lo_ip4.append("10.10.10.1/32")
-    topo.router("r1").iface_to("s1").ip4.append("192.168.1.1/24")
-    topo.router("r2").iface_to("s1").ip4.append("192.168.1.2/24")
-    topo.router("r3").iface_to("s1").ip4.append("192.168.1.3/24")
 
 
 class Configs(FRRConfigs):
-    routers = ["r1", "r2", "r3"]
-
     zebra = """
     #% extends "boilerplate.conf"
-    #% block main
-    #%   for iface in router.ifaces
-    interface {{ iface.ifname }}
-     ip address {{ iface.ip4[0] }}
-    !
-    #%   endfor
-    #% endblock
+    ## nothing needed
     """
 
-    ripd_rtrs = ["r1", "r2", "r3"]
+    ripd_rtrs = ["r1", "r2", "r3", "r4", "r5"]
     ripd = """
     #% extends "boilerplate.conf"
     #% block main
     router rip
-    ##
+     timers basic 5 15 10
     #%   if router.name == 'r1'
      allow-ecmp
-     network 192.168.1.0/24
-     timers basic 5 15 10
-    ##
-    #%   elif router.name == 'r2'
-     network 192.168.1.0/24
-     network 10.10.10.1/32
-     timers basic 5 15 10
-    ##
-    #%   elif router.name == 'r3'
-     network 192.168.1.0/24
-     network 10.10.10.1/32
-     timers basic 5 15 10
     #%   endif
+    #%   for iface in router.ifaces
+     network {{ iface.ip4[0].network }}
+    #%   endfor
     #% endblock
     """
 
 
 class RIPAllowECMP(TestBase, AutoFixture, topo=topology, configs=Configs):
-    @topotatofunc
-    def show_rip_routes(self, _, r1, r2):
-        expected = {
-            "route": [
+    def ecmp_nexthops(self, *routers):
+        """
+        Helper function that returns the list of nexthops for yang + zebra
+        """
+
+        yang = [
+            JSONCompareListKeyedDict("from"),
+        ]
+        ip = [
+            JSONCompareListKeyedDict("ip"),
+        ]
+        for rtr in routers:
+            yang.append(
                 {
-                    "prefix": "10.10.10.1/32",
-                    "nexthops": {
-                        "nexthop": [
-                            {
-                                "nh-type": "ip4",
-                                "protocol": "rip",
-                                "rip-type": "normal",
-                                "gateway": "192.168.1.2",
-                                "from": "192.168.1.2",
-                                "tag": 0,
+                    "nh-type": "ip4",
+                    "protocol": "rip",
+                    "rip-type": "normal",
+                    "gateway": str(rtr.iface_to("s1").ip4[0].ip),
+                    "from": str(rtr.iface_to("s1").ip4[0].ip),
+                    "tag": 0,
+                }
+            )
+            ip.append(
+                {
+                    "ip": str(rtr.iface_to("s1").ip4[0].ip),
+                    "active": True,
+                }
+            )
+        return yang, ip
+
+    def check_ecmp(self, topo, r1, *routers):
+        """
+        Put together test items, expected active routers is parametrized in
+        *routers input.
+        """
+
+        test_net = str(topo.lans["s2"].ip4[0])
+        nhs_yang, nhs_ip = self.ecmp_nexthops(*routers)
+
+        expected = {
+            "frr-ripd:ripd": {
+                "instance": [
+                    JSONCompareListKeyedDict("vrf"),
+                    {
+                        "vrf": "default",
+                        "state": {
+                            "routes": {
+                                "route": [
+                                    {
+                                        "prefix": test_net,
+                                        "nexthops": {
+                                            "nexthop": nhs_yang,
+                                        },
+                                        "metric": 2,
+                                    },
+                                ],
                             },
-                            {
-                                "nh-type": "ip4",
-                                "protocol": "rip",
-                                "rip-type": "normal",
-                                "gateway": "192.168.1.3",
-                                "from": "192.168.1.3",
-                                "tag": 0,
-                            },
-                        ]
+                        },
                     },
-                    "metric": 2,
-                },
-            ]
+                ],
+            },
         }
+        xpath = (
+            "/frr-ripd:ripd/instance[vrf='default']"
+            f"/state/routes/route[prefix='{test_net}']"
+        )
         yield from AssertVtysh.make(
             r1,
-            "zebra",
-            f"show ip route json",
+            "vtysh",
+            f"show yang operational-data {xpath} ripd",
             maxwait=5.0,
             compare=expected,
         )
 
-    @topotatofunc
-    def show_routes(self, _, r1, r2):
         expected = {
-            "10.10.10.1/32": [
+            test_net: [
                 {
-                    "nexthops": [
-                        {
-                            "ip": "192.168.1.2",
-                            "active": True,
-                        },
-                        {
-                            "ip": "192.168.1.3",
-                            "active": True,
-                        },
-                    ]
+                    "nexthops": nhs_ip,
                 }
             ]
         }
@@ -134,3 +139,34 @@ class RIPAllowECMP(TestBase, AutoFixture, topo=topology, configs=Configs):
             maxwait=5.0,
             compare=expected,
         )
+
+    @topotatofunc
+    def test_full_ecmp(self, topo, r1, r2, r3, r4, r5):
+        """
+        Check that all 4 ECMP paths are active
+        """
+
+        yield from self.check_ecmp(topo, r1, r2, r3, r4, r5)
+
+    @topotatofunc
+    def test_limited_ecmp(self, topo, r1, r2, r3, r4, r5):
+        """
+        Restrict ECMP to 2 paths and check that lowest IPs win
+        """
+
+        yield from ReconfigureFRR.make(
+            r1,
+            "vtysh",
+            "\n".join(
+                [
+                    "router rip",
+                    "allow-ecmp 2",
+                ]
+            ),
+        )
+
+        routers = [r2, r3, r4, r5]
+        routers.sort(key=lambda rtr: rtr.iface_to("s1").ip4[0])
+        routers = routers[:2]
+
+        yield from self.check_ecmp(topo, r1, *routers)
