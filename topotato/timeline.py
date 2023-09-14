@@ -102,6 +102,9 @@ class MiniPollee(ABC):
         yield from []
 
 
+ObserverCallback = Callable[["TimedElement"], None]
+
+
 class MiniPoller:
     """
     Event loop for topotato.  Used when sleeping or doing I/O in tests.
@@ -112,9 +115,12 @@ class MiniPoller:
     Poll items, e.g. Log message readers and Packet receivers.
     """
 
+    observers: Dict[Optional[MiniPollee], List[ObserverCallback]]
+
     def __init__(self):
         super().__init__()
         self.pollees = []
+        self.observers = {}
 
     def __repr__(self):
         return "<%s %r>" % (self.__class__.__name__, self.pollees)
@@ -144,9 +150,10 @@ class MiniPoller:
             yield i
             # caller will use break when check was sucessful
 
-    def record(self, element: "TimedElement"):
-        pass
+    def observe(self, origin: Optional[MiniPollee], observer: ObserverCallback):
+        self.observers.setdefault(origin, []).append(observer)
 
+    # pylint: disable=too-many-branches
     def run_iter(
         self, deadline=float("inf"), final: Union[bool, Iterable[MiniPollee]] = False
     ) -> Generator["TimedElement", None, None]:
@@ -194,7 +201,9 @@ class MiniPoller:
             for fd in ready:
                 assert fd in fdmap
                 for i in fdmap[fd].readable():
-                    self.record(i)
+                    for pollee in [fdmap[fd], None]:
+                        for obs in self.observers.get(pollee, []):
+                            obs(i)
                     yield i
 
             first = False
@@ -276,6 +285,10 @@ class Timeline(MiniPoller, List[TimedElement]):
     """
     Sorted list of TimedElement|s
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.observe(None, self.record)
 
     def record(self, element: TimedElement):
         bisect.insort(self, element)
