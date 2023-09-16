@@ -70,7 +70,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} timers connect 5
      address-family ipv4 unicast
       neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} disable-addpath-rx
-     exit-address-family
     !
     #%   elif router.name == 'r2'
     router bgp 65002
@@ -84,7 +83,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r4.iface_to('s2').ip4[0].ip }} timers connect 5
      address-family ipv4 unicast
       neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} addpath-tx-all-paths
-     exit-address-family
     !
     #%   elif router.name == 'r3'
     router bgp 65003
@@ -94,7 +92,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r2.iface_to('s2').ip4[0].ip }} timers connect 5
      address-family ipv4 unicast
       redistribute connected
-     exit-address-family
     !
     #%   elif router.name == 'r4'
     router bgp 65004
@@ -104,7 +101,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r2.iface_to('s2').ip4[0].ip }} timers connect 5
      address-family ipv4 unicast
       redistribute connected
-     exit-address-family
     !
     #%   endif
     #% endblock

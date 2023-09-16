@@ -62,7 +62,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} timers 3 10
      address-family ipv4 unicast
       redistribute connected
-     exit-address-family
     !
     #%   elif router.name == 'r1'
     router bgp 65000
@@ -73,7 +72,6 @@ class Configs(FRRConfigs):
       redistribute connected
       network 192.168.13.0/24 route-map internal
       neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} default-originate route-map default
-     exit-address-family
     !
     bgp community-list standard default seq 5 permit 65000:1
     !

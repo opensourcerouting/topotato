@@ -64,7 +64,6 @@ class Configs(FRRConfigs):
      no bgp ebgp-requires-policy
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} remote-as 65000
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} timers 3 10
-     exit-address-family
     !
     #%   elif router.name == 'r1'
     router bgp 65000
@@ -74,7 +73,6 @@ class Configs(FRRConfigs):
      address-family ipv4 unicast
       redistribute connected
       aggregate-address 172.16.255.0/24 route-map aggr-rmap
-     exit-address-family
     !
     route-map aggr-rmap permit 10
      set metric 123

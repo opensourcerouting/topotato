@@ -61,7 +61,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} timers 3 10
      address-family ipv4
       redistribute connected
-     exit-address-family
     #%   elif router.name == 'r1'
     router bgp 65000
      no bgp ebgp-requires-policy

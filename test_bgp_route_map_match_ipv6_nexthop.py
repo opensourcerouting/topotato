@@ -73,7 +73,6 @@ class Configs(FRRConfigs):
       redistribute connected
       neighbor 2001:db8::1 activate
       neighbor 2001:db8::1 route-map r1 out
-     exit-address-family
     !
     ipv6 prefix-list p1 permit 2001:db8:1::1/128
     ipv6 prefix-list p2 permit 2001:db8:2::1/128
@@ -114,7 +113,6 @@ class Configs(FRRConfigs):
      address-family ipv6 unicast
       neighbor 2001:db8::2 activate
       neighbor 2001:db8::2 route-map r2 in
-     exit-address-family
     !
     route-map r2 permit 10
      match ipv6 next-hop nh1

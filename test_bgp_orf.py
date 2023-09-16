@@ -44,7 +44,6 @@ class Configs(FRRConfigs):
      address-family ipv4 unicast
       redistribute connected
       neighbor {{ router.iface_to('r2').other.ip4[0].ip }} capability orf prefix-list both
-     exit-address-family
     !
     #%   elif router.name == 'r2'
     router bgp 65002
@@ -53,7 +52,6 @@ class Configs(FRRConfigs):
      address-family ipv4 unicast
       neighbor {{ router.iface_to('r1').other.ip4[0].ip }} capability orf prefix-list both
       neighbor {{ router.iface_to('r1').other.ip4[0].ip }} prefix-list r1 in
-     exit-address-family
     !
     ip prefix-list r1 seq 5 permit {{ topo.lans["ini_permit"].ip4[0] }}
     #%   endif

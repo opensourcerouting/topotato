@@ -55,7 +55,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} remote-as external
      address-family ipv4 unicast
       redistribute connected
-     exit-address-family
     !
     #%   elif router.name == 'r1'
     router bgp 65001

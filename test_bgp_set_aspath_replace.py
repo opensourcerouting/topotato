@@ -60,7 +60,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} timers 3 10
      address-family ipv4 unicast
       neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} route-map r2 in
-     exit-address-family
     !
     ip prefix-list p1 seq 5 permit {{ routers.r3.lo_ip4[0] }}
     !
@@ -85,7 +84,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r2.iface_to('s2').ip4[0].ip }} timers 3 10
      address-family ipv4 unicast
       redistribute connected
-     exit-address-family
     !
     #%   endif
     #% endblock

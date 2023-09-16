@@ -43,7 +43,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r2.iface_to('r1').ip4[0].ip }} timers connect 1
      address-family ipv4
       redistribute connected
-     exit-address-family
     !
     #%   elif router.name == 'r2'
     router bgp 65002

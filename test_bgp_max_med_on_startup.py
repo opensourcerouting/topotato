@@ -52,7 +52,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} timers 3 10
      address-family ipv4 unicast
       redistribute connected
-     exit-address-family
     !
     #%   elif router.name == 'r2'
     router bgp 65002

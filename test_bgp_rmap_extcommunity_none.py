@@ -62,7 +62,6 @@ class Configs(FRRConfigs):
      address-family ipv4 unicast
       redistribute connected
       neighbor 192.168.1.1 route-map r1 out
-     exit-address-family
     !
     route-map r1 permit 10
      set community 123:123

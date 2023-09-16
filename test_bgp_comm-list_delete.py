@@ -59,7 +59,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} timers 3 10
      address-family ipv4 unicast
       redistribute connected route-map r2-out
-     exit-address-family
     !
     route-map r2-out permit 10
      set community 111:111 222:222 333:333 444:444
@@ -71,7 +70,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} timers 3 10
      address-family ipv4
       neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} route-map r1-in in
-     exit-address-family
     !
     bgp community-list standard r1 permit 333:333
     !

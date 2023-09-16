@@ -58,7 +58,6 @@ class Configs(FRRConfigs):
      address-family ipv4 unicast
       neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} route-map prepend out
       redistribute connected
-     exit-address-family
     !
     route-map prepend permit 10
      set as-path prepend 65003

@@ -60,7 +60,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} timers 3 10
      neighbor {{ routers.r3.iface_to('s1').ip4[0].ip }} remote-as 65000
      neighbor {{ routers.r3.iface_to('s1').ip4[0].ip }} timers 3 10
-     exit-address-family
     !
     #%   elif router.name == 'r2'
     router bgp 65000
@@ -72,7 +71,6 @@ class Configs(FRRConfigs):
      address-family ipv4
       redistribute connected
       neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} route-map r1-out out
-     exit-address-family
     !
     route-map r1-out permit 10
      set local-preference +50
@@ -89,7 +87,6 @@ class Configs(FRRConfigs):
      address-family ipv4
       redistribute connected
       neighbor{{ routers.r1.iface_to('s1').ip4[0].ip }} route-map r1-out out
-     exit-address-family
     !
     route-map r1-out permit 10
      set local-preference -50

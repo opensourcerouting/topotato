@@ -52,7 +52,6 @@ class Configs(FRRConfigs):
       address-family ipv4 unicast
         redistribute connected
         neighbor {{ router.iface_to('r2').other.ip4[0].ip }} route-map r2 out
-      exit-address-family
     !
     ip prefix-list blackhole-prefix seq 10 permit {{ blackhole_prefix }}
     ip prefix-list blackhole-prefix seq 20 deny any
