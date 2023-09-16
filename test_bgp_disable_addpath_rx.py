@@ -64,7 +64,7 @@ class Configs(FRRConfigs):
     #% block main
     #%   if router.name == 'r1'
     router bgp 65001
-     timers 3 10
+     timers bgp 3 10
      no bgp ebgp-requires-policy
      neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} remote-as external
      neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} timers connect 5
@@ -73,7 +73,7 @@ class Configs(FRRConfigs):
     !
     #%   elif router.name == 'r2'
     router bgp 65002
-     timers 3 10
+     timers bgp 3 10
      no bgp ebgp-requires-policy
      neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} remote-as external
      neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} timers connect 5
@@ -86,7 +86,7 @@ class Configs(FRRConfigs):
     !
     #%   elif router.name == 'r3'
     router bgp 65003
-     timers 3 10
+     timers bgp 3 10
      no bgp ebgp-requires-policy
      neighbor {{ routers.r2.iface_to('s2').ip4[0].ip }} remote-as external
      neighbor {{ routers.r2.iface_to('s2').ip4[0].ip }} timers connect 5
@@ -95,7 +95,7 @@ class Configs(FRRConfigs):
     !
     #%   elif router.name == 'r4'
     router bgp 65004
-     timers 3 10
+     timers bgp 3 10
      no bgp ebgp-requires-policy
      neighbor {{ routers.r2.iface_to('s2').ip4[0].ip }} remote-as external
      neighbor {{ routers.r2.iface_to('s2').ip4[0].ip }} timers connect 5
