@@ -8,7 +8,7 @@ And verify if set operations work as well.
 """
 
 __topotests_file__ = "bgp_default_route_route_map_match_set/test_bgp_default-originate_route-map_match_set.py"
-__topotests_gitrev__ = "68d4b72ff37eb2d6d851b0dcd9e69e7a248b6cec"
+__topotests_gitrev__ = "acddc0ed3ce0833490b7ef38ed000d54388ebea4"
 
 # pylint: disable=invalid-name, missing-class-docstring, missing-function-docstring, line-too-long, consider-using-f-string, wildcard-import, unused-wildcard-import, f-string-without-interpolation
 
@@ -40,8 +40,6 @@ class Configs(FRRConfigs):
     interface lo
      ip address {{ routers.r1.lo_ip4[0] }}
     !
-    ip route 192.168.13.0./24 Null0
-        !
     #%   endif
     #%   for iface in router.ifaces
     interface {{ iface.ifname }}
