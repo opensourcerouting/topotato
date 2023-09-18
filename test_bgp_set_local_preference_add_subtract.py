@@ -25,6 +25,7 @@ def topology(topo):
       |
     [ r2 ]
 
+    { unconnected }
     """
     topo.router("r2").lo_ip4.append("172.16.255.254/32")
     topo.router("r3").lo_ip4.append("172.16.255.254/32")
@@ -32,9 +33,6 @@ def topology(topo):
     topo.router("r1").iface_to("s1").ip4.append("192.168.255.1/24")
     topo.router("r2").iface_to("s1").ip4.append("192.168.255.2/24")
     topo.router("r3").iface_to("s1").ip4.append("192.168.255.3/24")
-
-    topo.router("r2").lo_ip4.append("10.10.10.2/32")
-    topo.router("r3").lo_ip4.append("10.10.10.3/32")
 
 
 class Configs(FRRConfigs):
@@ -65,7 +63,7 @@ class Configs(FRRConfigs):
     router bgp 65000
      no bgp ebgp-requires-policy
      no bgp network import-check
-     network {{ routers.r2.lo_ip4[1].ip }} route-map l2
+     network {{ topo.lans["unconnected"].ip4[0][2] }}/32 route-map l2
      neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} remote-as 65000
      neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} timers 3 10
      address-family ipv4
@@ -83,10 +81,10 @@ class Configs(FRRConfigs):
      no bgp network import-check
      neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} remote-as 65000
      neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} timers 3 10
-     network {{ routers.r3.lo_ip4[1].ip }} route-map l3
+     network {{ topo.lans["unconnected"].ip4[0][3] }}/32 route-map l3
      address-family ipv4
       redistribute connected
-      neighbor{{ routers.r1.iface_to('s1').ip4[0].ip }} route-map r1-out out
+      neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} route-map r1-out out
     !
     route-map r1-out permit 10
      set local-preference -50
@@ -106,11 +104,11 @@ class TestBGPSetLocalPreferenceAddSubtract(
         expected = {
             str(r2.iface_to("s1").ip4[0].ip): {
                 "bgpState": "Established",
-                "addressFamilyInfo": {"ipv4Unicast": {"acceptedPrefixCounter": 4}},
+                "addressFamilyInfo": {"ipv4Unicast": {"acceptedPrefixCounter": 3}},
             },
             str(r3.iface_to("s1").ip4[0].ip): {
                 "bgpState": "Established",
-                "addressFamilyInfo": {"ipv4Unicast": {"acceptedPrefixCounter": 4}},
+                "addressFamilyInfo": {"ipv4Unicast": {"acceptedPrefixCounter": 3}},
             },
         }
 
@@ -123,14 +121,14 @@ class TestBGPSetLocalPreferenceAddSubtract(
         )
 
     @topotatofunc
-    def bgp_check_local_preference(self, r1, r2, r3):
+    def bgp_check_local_preference(self, topo, r1, r2, r3):
         expected = {
             "routes": {
-                "10.10.10.2/32": [{"locPrf": 150}],
-                "10.10.10.3/32": [{"locPrf": 100}],
+                f"{topo.lans['unconnected'].ip4[0][2]}/32": [{"locPrf": 160}],
+                f"{topo.lans['unconnected'].ip4[0][3]}/32": [{"locPrf": 40}],
                 "172.16.255.254/32": [
                     {
-                        "locPrf": 100,
+                        "locPrf": 50,
                         "nexthops": [{"ip": str(r3.iface_to("s1").ip4[0].ip)}],
                     },
                     {
