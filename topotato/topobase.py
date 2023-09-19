@@ -11,8 +11,10 @@ and attributes defined here should be used outside OS-specific code.
 """
 
 from abc import ABC, abstractmethod
+import os
 import typing
 from typing import (
+    cast,
     Any,
     Dict,
     List,
@@ -152,6 +154,43 @@ class CallableNS(Protocol):
         ...
 
 
+class CallableEnvMixin(ABC):
+    """
+    Mixin to apply env= from router/instance on subprocess creation.
+    """
+
+    environ: Dict[str, str]
+    """
+    OS environment variables for processes created on this virtual router
+    """
+    instance: "NetworkInstance"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.environ = {}
+
+    def _modify_env(self, kwargs):
+        # don't modify caller's env dict (or os.environ)
+        kwargs["env"] = dict(kwargs.get("env", os.environ))
+        kwargs["env"].update(self.instance.environ)
+        kwargs["env"].update(self.environ)
+
+    def popen(self, cmdline: List[str], *args, **kwargs):
+        self._modify_env(kwargs)
+        _super: CallableNS = cast(CallableNS, super())
+        return _super.popen(cmdline, *args, **kwargs)
+
+    def check_call(self, cmdline: List[str], *args, **kwargs):
+        self._modify_env(kwargs)
+        _super: CallableNS = cast(CallableNS, super())
+        return _super.check_call(cmdline, *args, **kwargs)
+
+    def check_output(self, cmdline: List[str], *args, **kwargs):
+        self._modify_env(kwargs)
+        _super: CallableNS = cast(CallableNS, super())
+        return _super.check_output(cmdline, *args, **kwargs)
+
+
 class NetworkInstance(ABC):
     """
     A possibly-running virtual network for a test.
@@ -170,12 +209,17 @@ class NetworkInstance(ABC):
     """
     To be overridden by concrete implementations.
     """
+    environ: Dict[str, str]
+    """
+    OS environment variables for processes created on this instance
+    """
 
     def __init__(self, network: "toponom.Network") -> None:
         super().__init__()
         self.network = network
         self.switch_ns = None
         self.routers = {}
+        self.environ = {}
 
     def make(self, name: str) -> RouterNS:
         """

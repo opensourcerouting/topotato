@@ -93,7 +93,7 @@ class NetworkInstance(topobase.NetworkInstance):
             if cur is None:
                 result.error("%s is required to run on Linux systems", name)
 
-    class BaseNS(LinuxNamespace, topobase.BaseNS):
+    class BaseNS(topobase.CallableEnvMixin, LinuxNamespace, topobase.BaseNS):
         """
         a netns with some extra functions for topotato
         """

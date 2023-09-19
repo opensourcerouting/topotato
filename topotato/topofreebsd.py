@@ -40,7 +40,7 @@ class NetworkInstance(topobase.NetworkInstance):
     represent a test setup with all its routers & switches
     """
 
-    class BaseNS(FreeBSDJail, topobase.BaseNS):
+    class BaseNS(topobase.CallableEnvMixin, FreeBSDJail, topobase.BaseNS):
         """
         a netns with some extra functions for topotato
         """
