@@ -9,6 +9,7 @@ aspects of this are defined in this module (:py:mod:`topotato.base`).
 import os
 import inspect
 from collections import OrderedDict
+import functools
 import time
 import logging
 
@@ -481,7 +482,8 @@ class InstanceShutdown(TopotatoItem):
         return fspath, float("inf"), "shutdown"
 
     def runtest(self):
-        self.parent.do_stop(self)
+        testfunc = functools.partial(self.parent.do_stop, self)
+        self.session.config.hook.pytest_topotato_run(item=self, testfunc=testfunc)
 
 
 class TestBase:
