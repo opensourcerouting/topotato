@@ -9,12 +9,19 @@ Extensions for interactive topotato runs (pausing & potatool)
 import sys
 import os
 import code
+import functools
 import json
 import pickle
 import binascii
+import re
 
 import typing
-from typing import Any, Callable, Dict
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+)
 
 import pytest
 from . import toponom
@@ -38,8 +45,10 @@ class Interactive:
     session: pytest.Session
 
     pause_on_fail: bool = False
+    pause_before: List[re.Pattern]
 
     def __init__(self):
+        self.pause_before = []
         try:
             os.mkdir(taskbasedir)
             os.chmod(taskbasedir, 0o1777)
@@ -59,6 +68,12 @@ class Interactive:
             const=True,
             default=None,
             help="pause test execution on failure",
+        )
+        parser.addoption(
+            "--pause-before",
+            action="append",
+            default=[],
+            help="pause test execution before test item (substring or regular expression on node item ID)",
         )
         parser.addoption(
             "--id",
@@ -104,6 +119,8 @@ class Interactive:
         self.session = session
 
         self.pause_on_fail = bool(session.config.getoption("--pause-on-fail"))
+        for arg in session.config.getoption("--pause-before"):
+            self.pause_before.append(re.compile(arg))
 
         taskid_opt = session.config.getoption("--id")
         if taskid_opt:
@@ -170,6 +187,23 @@ class Interactive:
                 state["routers"][name] = rtr.interactive_state()
 
         self._post(state)
+
+        for pause_re in self.pause_before:
+            if pause_re.search(item.nodeid):
+
+                def _show_context(_pause_re):
+                    tw = item.session.config.get_terminal_writer()
+                    tw.line("")
+                    tw.sep(
+                        "═",
+                        f"paused (--pause-before {_pause_re.pattern!r})",
+                        bold=True,
+                        purple=True,
+                    )
+
+                show_context = functools.partial(_show_context, pause_re)
+                self._topotato_stop(item, show_context=show_context)
+                break
 
     @staticmethod
     @pytest.hookimpl(hookwrapper=True, tryfirst=True)
