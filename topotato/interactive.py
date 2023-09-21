@@ -179,12 +179,14 @@ class Interactive:
 
         _ = yield
         if item.session.config.getoption("--run-topology"):
-            tw = item.session.config.get_terminal_writer()
-            tw.line("")
-            tw.sep("═", "paused (--run-topology)", bold=True, purple=True)
+
+            def show_context():
+                tw = item.session.config.get_terminal_writer()
+                tw.line("")
+                tw.sep("═", "paused (--run-topology)", bold=True, purple=True)
 
             # pylint: disable=protected-access
-            self._topotato_stop(item)
+            self._topotato_stop(item, show_context=show_context)
 
     @staticmethod
     def show_diagram(net: toponom.Network, out):
@@ -276,12 +278,13 @@ To modify & run a test item, replace "yield from X.make(...)" with
         if not self.pause_on_fail:
             return
 
-        tw = item.session.config.get_terminal_writer()
-        tw.line("")
-        tw.sep("═", "paused on failure", bold=True, purple=True)
-        excrepr.toterminal(tw)
-        tw.line("")
-        tw.sep("^", "paused on failure", bold=True, purple=True)
+        def show_context():
+            tw = item.session.config.get_terminal_writer()
+            tw.line("")
+            tw.sep("═", "paused on failure", bold=True, purple=True)
+            excrepr.toterminal(tw)
+            tw.line("")
+            tw.sep("^", "paused on failure", bold=True, purple=True)
 
         context = {}
         if codeloc is not None:
@@ -298,9 +301,9 @@ To modify & run a test item, replace "yield from X.make(...)" with
                 "__excinfo__": excinfo,
             }
         )
-        self._topotato_stop(item, context)
+        self._topotato_stop(item, context, show_context=show_context)
 
-    def _topotato_stop(self, item: "nodes.Item", context=None):
+    def _topotato_stop(self, item: "nodes.Item", context=None, show_context=None):
         capman = item.config.pluginmanager.getplugin("capturemanager")
         if capman:
             capwhat = capman.is_capturing()
@@ -310,6 +313,8 @@ To modify & run a test item, replace "yield from X.make(...)" with
         context = context or {}
         context["__item__"] = item
 
+        if show_context:
+            show_context()
         if hasattr(item, "instance"):
             context["_instance"] = item.instance
             self.show_instance_for_stop(item.instance)
