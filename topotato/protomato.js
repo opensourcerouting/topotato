@@ -51,7 +51,7 @@ const log_keys = {
 };
 
 function log_show(key, sel) {
-	enabled = {}
+	enabled = {};
 	if (sel == "-") {
 		cbox = document.getElementById("cf-log");
 		cbox.checked = false;
@@ -376,7 +376,7 @@ function pdml_add_proto(htmlparent, proto) {
 			pdml_raw.style.display = "block";
 		else
 			pdml_raw.style.display = "none";
-	}
+	};
 
 
 	for (const field of proto.children)
@@ -417,7 +417,7 @@ function onclick_pkt(evt) {
 }
 
 function b64_inflate_json(b64data) {
-	var bytearr = Uint8Array.from(atob(b64data), i => i.charCodeAt(0))
+	var bytearr = Uint8Array.from(atob(b64data), i => i.charCodeAt(0));
 	var text = new TextDecoder().decode(pako.inflate(bytearr));
 	return JSON.parse(text);
 }
@@ -514,10 +514,10 @@ function load_other(timetable, obj, xrefs) {
 
 	if (obj.data.type == "log_closed") {
 		row.classList.add("event-log-closed");
-		textspan.append("log connection closed")
+		textspan.append("log connection closed");
 	} else {
 		row.classList.add("event-unknown");
-		textspan.append(`unknown event: ${obj.data.type}`)
+		textspan.append(`unknown event: ${obj.data.type}`);
 	}
 }
 
@@ -589,22 +589,22 @@ function json_to_tree(textrow, text) {
 				collapse.style.display = "none";
 				unshorten.style.display = "none";
 				shorten.style.display = "inline";
-			}
+			};
 			cur_flex.do_uncollapse = function() {
 				new_nest.style.maxHeight = "fit-content";
 				shorten.style.display = "none";
 				unshorten.style.display = "inline";
 				collapse.style.display = "inline";
-			}
+			};
 
 			shorten.onclick = function() {
 				event.stopPropagation();
 				cur_flex.do_uncollapse();
-			}
+			};
 			unshorten.onclick = function() {
 				event.stopPropagation();
 				cur_flex.do_collapse();
-			}
+			};
 			cur_flex.onclick = function() {
 				event.stopPropagation();
 				if (!getSelection().isCollapsed ||
@@ -615,14 +615,14 @@ function json_to_tree(textrow, text) {
 				} else {
 					cur_flex.do_collapse();
 				}
-			}
+			};
 			collapse.onclick = function() {
 				event.stopPropagation();
 				for (const child of new_nest.children) {
 					if ("do_collapse" in child)
 						child.do_collapse();
 				}
-			}
+			};
 		}
 	}
 }
@@ -979,8 +979,8 @@ function pullup(arr, item) {
 	var pos = arr.indexOf(item);
 	if (pos < 0)
 		return;
-	arr.splice(pos, 1)
-	arr.unshift(item)
+	arr.splice(pos, 1);
+	arr.unshift(item);
 }
 
 var cfg_selected = null;
@@ -1037,8 +1037,8 @@ function load_configs(configs) {
 
 	daemons = new Array(...new Set(daemons));
 	daemons.sort();
-	pullup(daemons, 'staticd');
-	pullup(daemons, 'zebra');
+	pullup(daemons, "staticd");
+	pullup(daemons, "zebra");
 
 	cfg_root.style.gridTemplateColumns = `repeat(${daemons.length + 1}, max-content)`;
 
@@ -1054,7 +1054,7 @@ function load_configs(configs) {
 				item._config = configs[rtr][daemon];
 				item.onclick = cfg_click;
 			} else
-				create(cfg_root, "dd", "cfg-absent", ``);
+				create(cfg_root, "dd", "cfg-absent", "");
 		}
 	}
 }
@@ -1076,7 +1076,7 @@ function init() {
 	pdmltree = parser.parseFromString(jsdata.pdml, "application/xml");
 
 	var timetable;
-	var ts_end = parseFloat('-Infinity');
+	var ts_end = parseFloat("-Infinity");
 	var item_idx = -1;
 	var xrefs = ("xrefs" in jsdata) ? jsdata["xrefs"] : new Object();
 
