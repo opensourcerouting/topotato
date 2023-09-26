@@ -34,34 +34,6 @@ function raw_expand(obj, ev) {
 	ev.stopPropagation();
 }
 
-function expandall(obj, evt) {
-	obj = container_class(obj, "e_cont");
-
-	for (target of obj.getElementsByClassName("e_hide")) {
-		if (!target.classList.contains("e_show")) {
-			target.classList.add("e_show");
-		}
-	}
-	ev.stopPropagation();
-}
-
-var mx, my;
-
-function bmdown(evt) {
-	mx = evt.x;
-	my = evt.y;
-}
-
-function hideall(evt) {
-	var moved = Math.abs(evt.x - mx) + Math.abs(evt.y - my);
-	if (moved > 15)
-		return;
-
-	for (target of Array.from(document.getElementsByClassName("e_show"))) {
-		target.classList.remove("e_show");
-	}
-}
-
 var anchor_active = null;
 var anchor_current = {};
 const anchor_defaults = {
