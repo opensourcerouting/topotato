@@ -498,7 +498,12 @@ function load_log(timetable, obj, xrefs) {
 
 			var uidspan = create(logmeta, "a", "uid", obj.data.uid);
 			uidspan.title = `${xref_file} line ${xref_line}`;
-			/* TODO: uidspan.href = `${xref_file}#L${xref_line}`; */
+
+			try {
+				if (coverage_loc)
+					uidspan.href = `${coverage_loc}/${xref_file}.gcov.html#L${xref_line}`;
+			} catch (e) {
+			}
 		}
 	} else {
 		var uidspan = create(logmeta, "span", "uid uid-unknown", obj.data.uid);
