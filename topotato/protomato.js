@@ -484,17 +484,17 @@ function load_log(timetable, obj, xrefs) {
 
 	if (obj.data.uid in xrefs) {
 		var srclocs = new Set();
+		var srcloc;
 
 		for (srcloc of xrefs[obj.data.uid]) {
-			srclocs.add([srcloc["file"], srcloc["line"]]);
+			srclocs.add(srcloc["file"] + srcloc["line"]);
 		}
 		if (srclocs.size != 1) {
 			var uidspan = create(logmeta, "span", "uid uid-ambiguous", obj.data.uid);
 			uidspan.title = "xref uid is ambiguous";
 		} else {
-			[xref_file, xref_line] = Array.from(srclocs)[0];
-			row.xref_file = xref_file;
-			row.xref_line = xref_line;
+			row.xref_file = xref_file = srcloc["file"];
+			row.xref_line = xref_line = srcloc["line"];
 
 			var uidspan = create(logmeta, "a", "uid", obj.data.uid);
 			uidspan.title = `${xref_file} line ${xref_line}`;
