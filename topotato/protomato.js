@@ -461,6 +461,8 @@ function create(parent_, tagname, clsname, text = undefined) {
 	if (text !== undefined)
 		element.appendChild(document.createTextNode(text));
 	parent_.appendChild(element);
+	if (parent_.tagName.toLowerCase() == "div" && tagname == "span")
+		parent_.append("\t");
 	return element;
 }
 
@@ -508,6 +510,7 @@ function load_log(timetable, obj, xrefs) {
 	} else {
 		var uidspan = create(logmeta, "span", "uid uid-unknown", obj.data.uid);
 		uidspan.title = "xref uid not found";
+		row.classList.add("mono");
 	}
 
 	create(row, "span", "logprio", obj.data.prio);

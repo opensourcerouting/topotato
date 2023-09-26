@@ -283,13 +283,12 @@ svg {
 
 .logmsg {
 	display: contents;
+	white-space:pre-wrap;
 }
 .logmsg > span.logmeta {
 	grid-column-start: 4;
 	font-family: var(--font-mono-narrow);
 	font-size:9.5pt;
-	align-items: start;
-	display: flex;
 	padding-top:4pt;
 }
 .logmeta a,
@@ -307,10 +306,12 @@ svg {
 .logmeta .uid-unknown:after {
 	content:" ⍰";
 	color: #e00;
+	white-space: normal;
 }
 .logmeta .uid-ambiguous:after {
 	content:" ⌹";
 	color: #c60;
+	white-space: normal;
 }
 
 .logprio {
