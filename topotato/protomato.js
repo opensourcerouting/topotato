@@ -1,3 +1,5 @@
+/* eslint no-unused-vars: ["error", { "args": "none" }] */
+
 function container_class(obj, classname) {
 	while (obj.parentElement && !obj.classList.contains(classname))
 		obj = obj.parentElement;
@@ -10,6 +12,7 @@ function container_tag(obj, tagname) {
 	return obj;
 }
 
+/* exported raw_expand */
 function raw_expand(obj, ev) {
 	obj = container_class(obj, "e_cont");
 
@@ -185,6 +188,7 @@ function anchor_export(opts) {
 	location.hash = "#".concat(out.join(","));
 }
 
+/* exported onclicklog */
 function onclicklog(evt) {
 	const srcid = evt.target.id;
 	const checked = evt.target.checked;
@@ -205,6 +209,7 @@ function onclicklog(evt) {
 	anchor_export(opts);
 }
 
+/* exported onclickcli */
 function onclickcli(evt) {
 	const srcid = evt.target.id;
 	const checked = evt.target.checked;
@@ -415,6 +420,8 @@ function onclick_pkt(evt) {
 	pdml_decode.replaceChildren(htmlpacket);
 	pdml_decode.style.display = "contents";
 }
+
+/* global pako:readonly */
 
 function b64_inflate_json(b64data) {
 	var bytearr = Uint8Array.from(atob(b64data), i => i.charCodeAt(0));
@@ -1059,6 +1066,8 @@ function load_configs(configs) {
 	}
 }
 
+/* global data:readonly */
+/* exported init */
 function init() {
 	document.getElementsByTagName("body")[0].onhashchange = onhashchange;
 	document.onmousedown = onmousedown_selstate;
@@ -1103,6 +1112,7 @@ function init() {
 	anchor_update();
 }
 
+/* exported anchorclick */
 function anchorclick(evt) {
 	evt.stopPropagation();
 
