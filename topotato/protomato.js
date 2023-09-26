@@ -705,9 +705,15 @@ function load_vtysh(timetable, obj) {
 		var textrow = create(timetable, "div", "cliout");
 		textrow.obj = obj;
 
-		if (obj.data.text[0] == "{")
-			json_to_tree(textrow, obj.data.text);
-		else
+		var jsonp = null;
+		try {
+			jsonp = JSON.parse(obj.data.text);
+		} catch (e) {
+		}
+		if (jsonp !== null) {
+			text = JSON.stringify(jsonp, null, "  ");
+			json_to_tree(textrow, text);
+		} else
 			create(textrow, "span", "cliouttext", obj.data.text);
 
 		if (prev_cmds.length > 0) {
