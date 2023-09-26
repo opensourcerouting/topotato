@@ -267,6 +267,12 @@ function onhashchange(evt) {
 	anchor_update();
 }
 
+var sel_collapsed_on_mousedown = false;
+
+function onmousedown_selstate(evt) {
+	sel_collapsed_on_mousedown = getSelection().isCollapsed;
+}
+
 var svg_hilight = null;
 
 function onmouseenter_eth(evt) {
@@ -612,13 +618,28 @@ function json_to_tree(textrow, text) {
 				unshorten.style.display = "none";
 				shorten.style.display = "inline";
 			}
+			cur_flex.do_uncollapse = function() {
+				new_nest.style.maxHeight = "fit-content";
+				shorten.style.display = "none";
+				unshorten.style.display = "inline";
+				collapse.style.display = "inline";
+			}
+
+			shorten.onclick = function() {
+				event.stopPropagation();
+				cur_flex.do_uncollapse();
+			}
+			unshorten.onclick = function() {
+				event.stopPropagation();
+				cur_flex.do_collapse();
+			}
 			cur_flex.onclick = function() {
 				event.stopPropagation();
+				if (!getSelection().isCollapsed ||
+				    !sel_collapsed_on_mousedown)
+					return;
 				if (new_nest.style.maxHeight != "fit-content") {
-					new_nest.style.maxHeight = "fit-content";
-					shorten.style.display = "none";
-					unshorten.style.display = "inline";
-					collapse.style.display = "inline";
+					cur_flex.do_uncollapse();
 				} else {
 					cur_flex.do_collapse();
 				}
@@ -1062,6 +1083,7 @@ function load_configs(configs) {
 
 function init() {
 	document.getElementsByTagName("body")[0].onhashchange = onhashchange;
+	document.onmousedown = onmousedown_selstate;
 
 	const infopane = document.getElementById("infopane");
 	pdml_decode = create(infopane, "div", "pdml_decode");
