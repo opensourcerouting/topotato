@@ -23,7 +23,7 @@ import jinja2
 import markupsafe
 
 from . import base, assertions
-from .defer import subprocess
+from .defer import subprocess, spawn
 from .utils import exec_find, deindent, get_dir
 from .scapy import ScapySend
 from .pcapng import Sink, SectionHeader
@@ -388,10 +388,18 @@ class PrettyShutdown(PrettyTopotato, matches=base.InstanceShutdown):
     _pdml: str
     _jsdata: List
     _jstoplevel: Dict
+    _report_task = None
 
     def when_call(self, call, result):
         super().when_call(call, result)
+        self._report_task = spawn(self._report)
 
+    def finish(self):
+        if self._report_task is not None:
+            self._report_task.join()
+            self._report_task = None
+
+    def _report(self):
         # FIXME: flush scapy sockets / timeline(final=True)!
 
         # TODO: move this to TopotatoClass?
