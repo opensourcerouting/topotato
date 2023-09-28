@@ -315,6 +315,9 @@ class NetworkInstance(topobase.NetworkInstance):
     routers: Dict[str, RouterNS]
     bridges: List[str]
     scapys: Dict[str, scapy.config.conf.L2socket]
+
+    # TODO: none of the coverage stuff belongs in here.  but it works, and
+    # right now (2023-09-28) that matters more than getting it to "perfect".
     gcov_dir: str
     lcov_args: List[str]
 
