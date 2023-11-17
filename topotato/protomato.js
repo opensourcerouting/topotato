@@ -308,6 +308,8 @@ function eth_pretty(htmlparent, csscls, macaddr) {
 		name = "v4mcast";
 	else if (macaddr.startsWith("33:33:"))
 		name = "v6mcast";
+	else if (macaddr === "01:80:c2:00:00:14")
+		name = "isis-mc";
 	else
 		name = macaddr;
 
@@ -763,6 +765,20 @@ const mld_short_recordtypes = {
 	5: "+S",
 	6: "-S",
 };
+const isis_types = {
+	15: "IIH L1",
+	16: "IIH L2",
+	17: "IIH PtP",
+
+	10: "LSP FS",
+	18: "LSP L1",
+	20: "LSP L2",
+
+	24: "CSNP L1",
+	25: "CSNP L2",
+	26: "PSNP L1",
+	27: "PSNP L2",
+};
 
 const protocols = {
 	"geninfo": null,
@@ -783,6 +799,9 @@ const protocols = {
 		eth_pretty(col, "pktsub p-eth-src", pdml_get_attr(proto, "eth.src"));
 		create(col, "span", "pktsub p-eth-arr", "→");
 		eth_pretty(col, "pktsub p-eth-dst", pdml_get_attr(proto, "eth.dst"));
+		return true;
+	},
+	"llc": function (obj, row, proto, protos) {
 		return true;
 	},
 
@@ -972,6 +991,55 @@ const protocols = {
 		}
 		create(row, "span", "pktcol l-4 p-bgp", "BGP");
 		create(row, "span", "pktcol l-5 p-bgp detail last", items.join(", "));
+		return false;
+	},
+	"isis": function (obj, row, proto, protos) {
+		let pkttype = pdml_get_value(proto, "isis.type");
+
+		create(row, "span", "pktcol l-3 p-isis", isis_types[pkttype] || "??");
+		return true;
+	},
+	"isis.hello": function (obj, row, proto, protos) {
+		var text;
+		let sysid = pdml_get_attr(proto, "isis.hello.source_id", "show");
+
+		text = `${sysid}`;
+		var nbrs = new Array;
+		for (const neighbor of proto.querySelectorAll("field[name='isis.hello.is_neighbor']"))
+			nbrs.push(neighbor.getAttribute("show"));
+		if (nbrs.length > 0)
+			text = text + ` [nbrs: ${nbrs.join(", ")}]`;
+
+		create(row, "span", "pktcol l-4 p-isis-hello last", text);
+		return false;
+	},
+	"isis.lsp": function (obj, row, proto, protos) {
+		let lspid = pdml_get_attr(proto, "isis.lsp.lsp_id", "show");
+		let seqno = pdml_get_value(proto, "isis.lsp.sequence_number");
+
+		var text = `${lspid} seq#${seqno}`;
+		var prefixes = new Array;
+
+		for (const tlv of proto.children) {
+			if (tlv.getAttribute("name") !== "")
+				continue;
+
+			let type = pdml_get_value(tlv, "isis.lsp.clv.type");
+			if (type !== 135 && type !== 235 && type !== 236 && type !== 237)
+				continue;
+			for (const subtlv of tlv.children) {
+				if (subtlv.getAttribute("name") !== "")
+					continue;
+
+				const prefix = strip_colon(subtlv.getAttribute("show"));
+				if (prefixes.indexOf(prefix) == -1)
+					prefixes.push(prefix);
+			}
+		}
+		if (prefixes.length > 0)
+			text = `${text} [${prefixes.join(", ")}]`;
+
+		create(row, "span", "pktcol l-4 p-isis-lsp last", text);
 		return false;
 	},
 };
