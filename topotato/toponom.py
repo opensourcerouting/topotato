@@ -488,14 +488,22 @@ class LinkIface(NOMNode):
         if isinstance(self.endpoint, LAN):
             return
         if isinstance(self.other.endpoint, LAN):
+            lan = self.other.endpoint
             if self.ip4.noauto or len(self.ip4) > 0:
                 return
-            for net in self.other.endpoint.ip4:
+            for net in lan.ip4:
+                if net.prefixlen != 31:
+                    epnum = self.endpoint.num
+                else:
+                    epnum = lan.ifaces.index(self.other)
+                    if epnum >= 2:
+                        raise ValueError(
+                            "/31 with more than 2 hosts on %r: %r" % (lan, lan.ifaces)
+                        )
+
                 self.ip4.append(
                     addr2iface(
-                        net.network_address
-                        + self.link.parallel_num * 256
-                        + self.endpoint.num,
+                        net.network_address + self.link.parallel_num * 256 + epnum,
                         net.prefixlen,
                     )
                 )
