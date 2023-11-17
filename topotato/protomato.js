@@ -822,22 +822,23 @@ const protocols = {
 	},
 
 	"icmpv6": function (obj, row, proto, protos) {
-		pname = "ICMPv6";
-		type_num = pdml_get_attr(proto, "icmpv6.type");
+		let text;
+		let pname = "ICMPv6";
+		let type_num = pdml_get_value(proto, "icmpv6.type");
 
-		if (["130", "131", "132", "143"].includes(type_num))
+		if ([130, 131, 132, 143].includes(type_num))
 			pname = "MLD";
 
 		if (type_num == 143) {
-			items = new Array;
-			for (record of proto.querySelectorAll("field[name='icmpv6.mldr.mar']")) {
-				raddr = pdml_get_attr(record, "icmpv6.mldr.mar.multicast_address");
-				rtype = pdml_get_attr(record, "icmpv6.mldr.mar.record_type");
+			let items = new Array;
+			for (const record of proto.querySelectorAll("field[name='icmpv6.mldr.mar']")) {
+				let raddr = pdml_get_attr(record, "icmpv6.mldr.mar.multicast_address");
+				let rtype = pdml_get_attr(record, "icmpv6.mldr.mar.record_type");
 				items.push(mld_short_recordtypes[rtype] + "(" + raddr + ")");
 			}
 			text = "v2 report: " + items.join(", ");
 		} else {
-			type = pdml_get_attr(proto, "icmpv6.type", "showname");
+			let type = pdml_get_attr(proto, "icmpv6.type", "showname");
 			text = type.split(": ").slice(1).join(": ");
 		}
 		create(row, "span", "pktcol l-4 p-icmpv6", pname);
@@ -845,8 +846,8 @@ const protocols = {
 		return false;
 	},
 	"igmp": function (obj, row, proto, protos) {
-		type = pdml_get_attr(proto, "igmp.type", "showname");
-		text = type.split(": ").slice(1).join(": ");
+		let type = pdml_get_attr(proto, "igmp.type", "showname");
+		let text = type.split(": ").slice(1).join(": ");
 
 		create(row, "span", "pktcol l-4 p-igmp", `IGMPv${pdml_get_attr(proto, "igmp.version")}`);
 		create(row, "span", "pktcol l-5 detail last", text);
@@ -860,7 +861,7 @@ const protocols = {
 		if (proto.nextElementSibling)
 			return true;
 
-		elem = create(row, "span", "pktcol l-4 p-tcp last", `TCP ${pdml_get_attr(proto, "tcp.srcport")} → ${pdml_get_attr(proto, "tcp.dstport")}`);
+		let elem = create(row, "span", "pktcol l-4 p-tcp last", `TCP ${pdml_get_attr(proto, "tcp.srcport")} → ${pdml_get_attr(proto, "tcp.dstport")}`);
 
 		let flags = pdml_get(proto, "tcp.flags");
 		let flag_arr = new Array();
@@ -883,14 +884,14 @@ const protocols = {
 	},
 
 	"pim": function (obj, row, proto, protos) {
-		type = pdml_get_attr(proto, "pim.type", "showname").split(": ").slice(1).join(": ");
-		type_num = pdml_get_attr(proto, "pim.type", "show");
+		let text;
+		let type = pdml_get_attr(proto, "pim.type", "showname").split(": ").slice(1).join(": ");
+		let type_num = pdml_get_value(proto, "pim.type");
 
 		if (type_num == 3) {
-			items = new Array;
-			for (group of proto.querySelectorAll("field[name='pim.group_set']")) {
-				grptext = pdml_get_attr(group, "pim.group_ip6") || pdml_get_attr(group, "pim.group");
-				items.push(grptext);
+			let items = new Array;
+			for (const group of proto.querySelectorAll("field[name='pim.group_set']")) {
+				items.push(pdml_get_attr(group, "pim.group_ip6") || pdml_get_attr(group, "pim.group"));
 			}
 			text = "J/P: " + items.join(", ");
 		} else {
@@ -901,29 +902,30 @@ const protocols = {
 		return false;
 	},
 	"ospf": function (obj, row, proto, protos) {
-		header = pdml_get(proto, "ospf.header");
+		let text;
+		let header = pdml_get(proto, "ospf.header");
 
-		type = pdml_get_attr(header, "ospf.msg", "showname").split(": ").slice(1).join(": ");
-		type_num = pdml_get_attr(header, "ospf.msg", "show");
-		area = pdml_get_attr(header, "ospf.area_id", "show");
+		let type = pdml_get_attr(header, "ospf.msg", "showname").split(": ").slice(1).join(": ");
+		let type_num = pdml_get_value(header, "ospf.msg");
+		let area = pdml_get_attr(header, "ospf.area_id", "show");
 
 		if (type_num == 1) {
-			hello = pdml_get(proto, "ospf.hello");
-			prio = pdml_get_attr(hello, "ospf.hello.router_priority", "show");
-			dr = pdml_get_attr(hello, "ospf.hello.designated_router", "show");
+			let hello = pdml_get(proto, "ospf.hello");
+			let prio = pdml_get_attr(hello, "ospf.hello.router_priority", "show");
+			let dr = pdml_get_attr(hello, "ospf.hello.designated_router", "show");
 			text = `Hello (prio=${prio}, DR=${dr})`;
 		} else if (type_num == 4) {
 			const braces = /\((.*)\)/;
 			const maxitems = 3;
 
-			lsupd = pdml_get(proto, "");
-			items = new Array;
-			for (lsa of lsupd.querySelectorAll("field[name='']")) {
+			const lsupd = pdml_get(proto, "");
+			let items = new Array;
+			for (const lsa of lsupd.querySelectorAll("field[name='']")) {
 				if (lsa.parentElement != lsupd)
 					continue;
 
-				name = lsa.getAttribute("show");
-				match = braces.exec(name);
+				let name = lsa.getAttribute("show");
+				let match = braces.exec(name);
 				if (match)
 					name = match[1];
 				name = name.replace("Inter-Area-Prefix", "IAP");
@@ -959,7 +961,7 @@ const protocols = {
 			let msgtype = pdml_get_attr(proto, "bgp.type", "showname");
 			let msglen = pdml_get_value(proto, "bgp.length");
 
-			m = msgtype.match(rex);
+			let m = msgtype.match(rex);
 			if (!m) {
 				items.push(msgtype);
 				proto = proto.nextElementSibling;
@@ -968,19 +970,19 @@ const protocols = {
 
 			msgtype = m[1];
 			if (msgtype == "NOTIFICATION") {
-				major = strip_colon(pdml_get_attr(proto, "bgp.notify.major_error", "showname"));
-				minor = strip_colon(proto.lastElementChild.getAttribute("showname"));
+				let major = strip_colon(pdml_get_attr(proto, "bgp.notify.major_error", "showname"));
+				let minor = strip_colon(proto.lastElementChild.getAttribute("showname"));
 				msgtype = `NOTIFY ${major}/${minor}`;
 			} else if (msgtype == "UPDATE" && msglen == 23) {
 				msgtype = "EOR";
 			} else if (msgtype == "UPDATE") {
-				subitems = new Array;
+				let subitems = new Array;
 
-				for (nlri of proto.querySelectorAll("field[name='bgp.update.nlri']")) {
+				for (const nlri of proto.querySelectorAll("field[name='bgp.update.nlri']")) {
 					subitems.push(pdml_get_attr(nlri, ""));
 				}
-				for (nlri of proto.querySelectorAll("field[name='bgp.update.path_attribute.mp_reach_nlri']")) {
-					for (item of nlri.querySelectorAll("field[name='']")) {
+				for (const nlri of proto.querySelectorAll("field[name='bgp.update.path_attribute.mp_reach_nlri']")) {
+					for (const item of nlri.querySelectorAll("field[name='']")) {
 						subitems.push(item.getAttribute("show"));
 					}
 				}
