@@ -123,6 +123,8 @@ function anchor_apply(opts) {
 	}
 }
 
+var prev_anchor;
+
 function anchor_update() {
 	var loc = decodeURIComponent(location.hash);
 
@@ -1126,7 +1128,7 @@ function load_configs(configs) {
 
 	var daemons = new Array();
 
-	for (var rtr of Object.keys(configs))
+	for (let rtr of Object.keys(configs))
 		daemons = daemons.concat(Object.keys(configs[rtr]));
 
 	daemons = new Array(...new Set(daemons));
@@ -1136,10 +1138,10 @@ function load_configs(configs) {
 
 	cfg_root.style.gridTemplateColumns = `repeat(${daemons.length + 1}, max-content)`;
 
-	for (var rtr of Object.keys(configs).sort()) {
+	for (let rtr of Object.keys(configs).sort()) {
 		create(cfg_root, "dt", "", rtr);
 
-		for (var daemon of daemons) {
+		for (const daemon of daemons) {
 			if (daemon in configs[rtr]) {
 				var item = create(cfg_root, "dd", "cfg-present", `${daemon}.conf`);
 				item.clickable = true;
@@ -1176,7 +1178,7 @@ function init() {
 	var item_idx = -1;
 	var xrefs = ("xrefs" in jsdata) ? jsdata["xrefs"] : new Object();
 
-	for (idx in jsdata.timed) {
+	for (const idx in jsdata.timed) {
 		var obj = jsdata.timed[idx];
 		obj.idx = idx;
 
@@ -1211,7 +1213,7 @@ function anchorclick(evt) {
 	}
 	anchor_active = null;
 
-	anchored = document.getElementById(targetanchor);
+	let anchored = document.getElementById(targetanchor);
 	console.log("anchor-click", targetanchor, anchored);
 	if (anchored) {
 		anchor_active = anchored;
