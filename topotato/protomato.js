@@ -743,6 +743,14 @@ function pdml_get_attr(item, key, attr = "show", idx = 0) {
 	return result === null ? null : result.getAttribute(attr);
 }
 
+function pdml_get_value(item, key, idx = 0) {
+	var result = pdml_get(item, key, idx);
+
+	if (result === null)
+		return null;
+	return parseInt(result.getAttribute("value"), 16);
+}
+
 function strip_colon(text) {
 	return text.split(": ").slice(1).join(": ");
 }
@@ -929,7 +937,9 @@ const protocols = {
 		var idx = 0;
 
 		while (proto && idx++ < 6) {
-			msgtype = pdml_get_attr(proto, "bgp.type", "showname");
+			let msgtype = pdml_get_attr(proto, "bgp.type", "showname");
+			let msglen = pdml_get_value(proto, "bgp.length");
+
 			m = msgtype.match(rex);
 			if (!m) {
 				items.push(msgtype);
@@ -942,11 +952,18 @@ const protocols = {
 				major = strip_colon(pdml_get_attr(proto, "bgp.notify.major_error", "showname"));
 				minor = strip_colon(proto.lastElementChild.getAttribute("showname"));
 				msgtype = `NOTIFY ${major}/${minor}`;
+			} else if (msgtype == "UPDATE" && msglen == 23) {
+				msgtype = "EOR";
 			} else if (msgtype == "UPDATE") {
 				subitems = new Array;
 
 				for (nlri of proto.querySelectorAll("field[name='bgp.update.nlri']")) {
 					subitems.push(pdml_get_attr(nlri, ""));
+				}
+				for (nlri of proto.querySelectorAll("field[name='bgp.update.path_attribute.mp_reach_nlri']")) {
+					for (item of nlri.querySelectorAll("field[name='']")) {
+						subitems.push(item.getAttribute("show"));
+					}
 				}
 				msgtype = "UPDATE [" + subitems.join(", ") + "]";
 			}
