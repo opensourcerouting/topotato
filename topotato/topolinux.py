@@ -104,7 +104,7 @@ class NetworkInstance(topobase.NetworkInstance):
         ip_ver_m = re.search(r"iproute2-([\d\.]+)", ip_ver)
         if ip_ver_m and packaging:
             ver = packaging.version.parse(ip_ver_m.group(1))
-            minver = packaging.version.parse("5.3")
+            minver = packaging.version.parse("5.4")
             if ver < minver:
                 result.error(
                     "iproute2 version %s is too old, need >= %s" % (ver, minver)
