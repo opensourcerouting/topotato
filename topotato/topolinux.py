@@ -15,6 +15,11 @@ import tempfile
 import time
 import logging
 
+try:
+    import packaging.version
+except ImportError:
+    packaging = None  # type: ignore
+
 from typing import Union, Dict, List, Any, Optional
 
 try:
@@ -92,6 +97,24 @@ class NetworkInstance(topobase.NetworkInstance):
                 cls._exec[name] = cur = exec_find(name)
             if cur is None:
                 result.error("%s is required to run on Linux systems", name)
+
+        ip_ver = subprocess.check_output([cls._exec.get("ip") or "ip", "-V"]).decode(
+            "UTF-8"
+        )
+        ip_ver_m = re.search(r"iproute2-([\d\.]+)", ip_ver)
+        if ip_ver_m and packaging:
+            ver = packaging.version.parse(ip_ver_m.group(1))
+            minver = packaging.version.parse("5.3")
+            if ver < minver:
+                result.error(
+                    "iproute2 version %s is too old, need >= %s" % (ver, minver)
+                )
+        else:
+            _logger.warning(
+                "cannot parse iproute2 version %r from %r",
+                ip_ver,
+                cls._exec.get("ip") or "ip",
+            )
 
     class BaseNS(topobase.CallableEnvMixin, LinuxNamespace, topobase.BaseNS):
         """
