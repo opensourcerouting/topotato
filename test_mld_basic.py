@@ -48,6 +48,7 @@ class FRRConfigured(RouterFRR):
     #%     for iface in router.ifaces
     interface {{ iface.ifname }}
      ipv6 pim
+     ipv6 mld query-max-response-time 10
      ipv6 mld
     !
     #%     endfor
@@ -85,7 +86,7 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
             for record in iter_mld_records(report):
                 if record.rtype == 2: # IS_EX
                     return True
-        yield from AssertPacket.make("h1_dut", maxwait=5.0, pkt=expect_pkt)
+        yield from AssertPacket.make("h1_dut", maxwait=2.0, pkt=expect_pkt)
 
     @topotatofunc
     def test_ssm(self, topo, dut, h1, h2, src):
@@ -149,4 +150,4 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
             "h1-dut",
             pkt = ip/hbh/ICMPv6MLReport2(records = [mfrec0]),
         )
-        yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1 fe80::fc02:ff:fefe:100] malformed MLDv2 report (invalid group fe80::1234)', maxwait=2.0)
+        yield from AssertLog.make(dut, 'pim6d', f"[MLD default:dut-h1 {h1.iface_to('dut').ll6}] malformed MLDv2 report (invalid group fe80::1234)", maxwait=2.0)
