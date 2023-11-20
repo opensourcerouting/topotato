@@ -16,7 +16,7 @@ function container_tag(obj, tagname) {
 function raw_expand(obj, ev) {
 	obj = container_class(obj, "e_cont");
 
-	for (target of obj.getElementsByClassName("e_hide")) {
+	for (let target of obj.getElementsByClassName("e_hide")) {
 		var et = container_class(target.parentElement, "e_cont");
 		if (et != obj) {
 			console.log("skip expanding", target);
@@ -54,16 +54,15 @@ const log_keys = {
 };
 
 function log_show(key, sel) {
-	enabled = {};
+	let enabled = {};
+	let cbox = document.getElementById("cf-log");
 	if (sel == "-") {
-		cbox = document.getElementById("cf-log");
 		cbox.checked = false;
-		for (const [classname, ctlchar] of Object.entries(log_keys)) {
+		for (const classname of Object.keys(log_keys)) {
 			cbox = document.getElementById("cf-".concat(classname));
 			cbox.disabled = true;
 		}
 	} else {
-		cbox = document.getElementById("cf-log");
 		cbox.checked = true;
 		for (const [classname, ctlchar] of Object.entries(log_keys)) {
 			enabled[classname] = (sel.indexOf(ctlchar) >= 0);
@@ -74,7 +73,7 @@ function log_show(key, sel) {
 		}
 	}
 
-	for (target of Array.from(document.getElementsByClassName("logmsg"))) {
+	for (let target of Array.from(document.getElementsByClassName("logmsg"))) {
 		var enable = false;
 		var prio = Array.from(target.classList).filter(s => s.startsWith("prio-"))[0];
 
@@ -95,7 +94,7 @@ function cli_show(key, sel) {
 	var show_repeat = (sel === "r");
 
 	console.log("cli_show", key, sel);
-	for (target of Array.from(document.getElementsByClassName("clicmd"))) {
+	for (let target of Array.from(document.getElementsByClassName("clicmd"))) {
 		var vis = target.classList.contains("cli-same") ? show_repeat : show_normal;
 
 		if (vis)
@@ -116,7 +115,7 @@ function anchor_apply(opts) {
 	for (const [key, val] of Object.entries(opts)) {
 		console.log("apply", key, val, anchor_current[key]);
 		if ((key in anchor_current) && (anchor_current[key] === val))
-		    continue;
+			continue;
 
 		anchor_funcs[key](key, val);
 		anchor_current[key] = val;
@@ -132,8 +131,8 @@ function anchor_update() {
 		loc = loc.substr(1);
 	}
 
-	args = loc.split(",");
-	anchor = args.shift();
+	let args = loc.split(",");
+	let anchor = args.shift();
 
 	prev_anchor = anchor_active;
 	if (anchor_active !== null) {
@@ -142,7 +141,7 @@ function anchor_update() {
 	anchor_active = null;
 
 	if (anchor) {
-		anchored = document.getElementById(anchor);
+		let anchored = document.getElementById(anchor);
 		if (anchored) {
 			anchor_active = anchored;
 			if (anchored !== prev_anchor)
@@ -151,14 +150,14 @@ function anchor_update() {
 		}
 	}
 
-	opts = {...anchor_defaults};
-	for (arg of args) {
+	let opts = {...anchor_defaults};
+	for (let arg of args) {
 		if (arg === "")
 			continue;
 
-		s = arg.split("=");
-		key = s.shift();
-		val = s.join("=");
+		let s = arg.split("=");
+		let key = s.shift();
+		let val = s.join("=");
 
 		if (key in anchor_funcs) {
 			opts[key] = val;
@@ -181,7 +180,7 @@ function anchor_export(opts) {
 
 	for (const [key, val] of Object.entries(opts)) {
 		if ((key in anchor_defaults) && (anchor_defaults[key] === val))
-		    continue;
+			continue;
 
 		out.push(key + "=" + val);
 	}
@@ -195,7 +194,7 @@ function onclicklog(evt) {
 	const srcid = evt.target.id;
 	const checked = evt.target.checked;
 
-	opts = {...anchor_current};
+	let opts = {...anchor_current};
 
 	if (srcid == "cf-log" && !checked)
 		opts["log"] = "-";
@@ -213,10 +212,7 @@ function onclicklog(evt) {
 
 /* exported onclickcli */
 function onclickcli(evt) {
-	const srcid = evt.target.id;
-	const checked = evt.target.checked;
-
-	opts = {...anchor_current};
+	let opts = {...anchor_current};
 
 	if (!document.getElementById("cf-cli").checked)
 		opts["cli"] = "-";
@@ -231,8 +227,8 @@ function onclickcli(evt) {
 function onclickclicmd(evt) {
 	evt.stopPropagation();
 
-	pobj = container_class(evt.target, "clicmd");
-	obj = pobj.nextElementSibling;
+	let pobj = container_class(evt.target, "clicmd");
+	let obj = pobj.nextElementSibling;
 	if (obj.style.display == "contents") {
 		pobj.classList.remove("cli-expanded");
 		obj.style.display = "none";
@@ -242,7 +238,7 @@ function onclickclicmd(evt) {
 	}
 }
 
-function onhashchange(evt) {
+function onhashchangedoc(evt) {
 	anchor_update();
 }
 
@@ -261,10 +257,10 @@ function onmouseenter_eth(evt) {
 		svg_hilight.classList.remove("src-hilight");
 	svg_hilight = null;
 
-	svg_rtr = document.getElementById("router-" + obj.d_router);
+	let svg_rtr = document.getElementById("router-" + obj.d_router);
 	for (const textobj of svg_rtr.getElementsByTagName("text")) {
 		if (textobj.textContent == obj.d_iface) {
-			poly = textobj;
+			let poly = textobj;
 			while (poly.tagName != "polygon")
 				poly = poly.previousElementSibling;
 
@@ -292,11 +288,11 @@ function eth_pretty(htmlparent, csscls, macaddr) {
 
 	if (macaddr in jsdata["macmap"]) {
 		name = jsdata["macmap"][macaddr];
-		m = name.match(mac_name_re);
+		let m = name.match(mac_name_re);
 		if (m) {
 			if (m[2].startsWith(m[1]))
 				name = m[2];
-			elem = create(htmlparent, "span", csscls, name);
+			let elem = create(htmlparent, "span", csscls, name);
 			elem.title = macaddr;
 			elem.d_router = m[1];
 			elem.d_iface = m[2];
@@ -401,10 +397,10 @@ function onclick_pkt(evt) {
 	const infopane = document.getElementById("infopane");
 	const packet = pkt.obj.pdml;
 
-	htmlpacket = document.createElement("dl");
+	let htmlpacket = document.createElement("dl");
 	htmlpacket.classList.add("pdml-root");
 
-	back_nav = document.createElement("dt");
+	let back_nav = document.createElement("dt");
 	back_nav.classList.add("back-nav");
 	back_nav.textContent = "‹ back to network diagram";
 	back_nav.onclick = function () {
@@ -444,7 +440,7 @@ function create(parent_, tagname, clsname, text = undefined) {
 	var element;
 
 	element = document.createElement(tagname);
-	for (cls of clsname.split(" "))
+	for (let cls of clsname.split(" "))
 		if (cls !== "")
 			element.classList.add(cls);
 	if (text !== undefined)
@@ -457,8 +453,10 @@ function create(parent_, tagname, clsname, text = undefined) {
 
 const mono_xrefs = new Set(["VDSXN-XE88Y", "SH01T-57BR4", "TCYNJ-TRV01", "TRN9Y-VYTR4"]);
 
+/* global coverage_loc:readonly */
+
 function load_log(timetable, obj, xrefs) {
-	var row, logmeta;
+	var row, logmeta, uidspan;
 
 	row = create(timetable, "div", "logmsg");
 	row.classList.add("prio-" + obj.data.prio);
@@ -481,32 +479,33 @@ function load_log(timetable, obj, xrefs) {
 			srclocs.add(srcloc["file"] + srcloc["line"]);
 		}
 		if (srclocs.size != 1) {
-			var uidspan = create(logmeta, "span", "uid uid-ambiguous", obj.data.uid);
+			uidspan = create(logmeta, "span", "uid uid-ambiguous", obj.data.uid);
 			uidspan.title = "xref uid is ambiguous";
 		} else {
-			row.xref_file = xref_file = srcloc["file"];
-			row.xref_line = xref_line = srcloc["line"];
+			let xref_file = row.xref_file = srcloc["file"];
+			let xref_line = row.xref_line = srcloc["line"];
 
-			var uidspan = create(logmeta, "a", "uid", obj.data.uid);
+			uidspan = create(logmeta, "a", "uid", obj.data.uid);
 			uidspan.title = `${xref_file} line ${xref_line}`;
 
 			try {
 				if (coverage_loc)
 					uidspan.href = `${coverage_loc}/${xref_file}.gcov.html#L${xref_line}`;
 			} catch (e) {
+				/* ignore */
 			}
 		}
 	} else {
-		var uidspan = create(logmeta, "span", "uid uid-unknown", obj.data.uid);
+		uidspan = create(logmeta, "span", "uid uid-unknown", obj.data.uid);
 		uidspan.title = "xref uid not found";
 		row.classList.add("mono");
 	}
 
 	create(row, "span", "logprio", obj.data.prio);
-	logtext = create(row, "span", "logtext", "");
+	let logtext = create(row, "span", "logtext", "");
 
 	var prev_e = obj.data.arghdrlen;
-	for ([s, e] of Object.values(obj.data.args)) {
+	for (let [s, e] of Object.values(obj.data.args)) {
 		logtext.append(obj.data.text.substr(prev_e, s - prev_e));
 		create(logtext, "span", "logarg", obj.data.text.substr(s, e - s));
 		prev_e = e;
@@ -561,14 +560,11 @@ function json_to_tree(textrow, text) {
 			use_nest = nest.shift();
 		}
 
-		if (!line.endsWith("]") &&
-		    !line.endsWith("],") &&
-		    !line.endsWith("}") &&
-		    !line.endsWith("},"))
+		if (!line.endsWith("]") && !line.endsWith("],") && !line.endsWith("}") && !line.endsWith("},"))
 			use_nest = nest[0];
 
 		let cur_flex = create(use_nest, "div", "clijsonflex");
-		let cur = create(cur_flex, "span", "clijsonitem", line);
+		create(cur_flex, "span", "clijsonitem", line);
 
 		/* indent of *next* line! */
 		let indent_m = whitespace_re.exec(lines[0]);
@@ -585,7 +581,7 @@ function json_to_tree(textrow, text) {
 			let shorten = create(cur_flex, "span", "clishorten");
 			shorten.style.display = "none";
 
-			for (shorten_line of lines.slice(0, 10)) {
+			for (let shorten_line of lines.slice(0, 10)) {
 				if (!shorten_line.startsWith(indent[0]))
 					break;
 				shorten.append(shorten_line + " ");
@@ -618,8 +614,7 @@ function json_to_tree(textrow, text) {
 			};
 			cur_flex.onclick = function() {
 				event.stopPropagation();
-				if (!getSelection().isCollapsed ||
-				    !sel_collapsed_on_mousedown)
+				if (!getSelection().isCollapsed || !sel_collapsed_on_mousedown)
 					return;
 				if (new_nest.style.maxHeight != "fit-content") {
 					cur_flex.do_uncollapse();
@@ -692,9 +687,10 @@ function load_vtysh(timetable, obj) {
 		try {
 			jsonp = JSON.parse(obj.data.text);
 		} catch (e) {
+			/* ignore */
 		}
 		if (jsonp !== null) {
-			text = JSON.stringify(jsonp, null, "  ");
+			let text = JSON.stringify(jsonp, null, "  ");
 			json_to_tree(textrow, text);
 		} else
 			create(textrow, "span", "cliouttext", obj.data.text);
@@ -1158,7 +1154,7 @@ function load_configs(configs) {
 /* global data:readonly */
 /* exported init */
 function init() {
-	document.getElementsByTagName("body")[0].onhashchange = onhashchange;
+	window.addEventListener("hashchange", onhashchangedoc);
 	document.onmousedown = onmousedown_selstate;
 
 	const infopane = document.getElementById("infopane");
