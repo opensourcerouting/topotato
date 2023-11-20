@@ -54,6 +54,7 @@ class Configs(FRRConfigs):
     #% extends "boilerplate.conf"
     #% block main
     debug mld
+    debug pimv6 trace
     #%   if router.name in ['r1', 'r2']
     interface lo
      ipv6 pim
@@ -83,9 +84,10 @@ class PIM6Basic(TestBase, AutoFixture, topo=topology, configs=Configs):
         self.receiver = MulticastReceiver(h2, h2.iface_to('r2'))
 
         yield from AssertVtysh.make(r1, "pim6d", "show ipv6 pim rp-info")
-        yield from AssertVtysh.make(r2, "pim6d", "show ipv6 pim rp-info", """
+        yield from AssertVtysh.make(r2, "pim6d", "show ipv6 pim rp-info", f"""
         RP address  group/prefix-list  OIF    I am RP  Source  Group-Type
-        fd00::3     ff00::/8           r2-r1  no       Static  ASM
+        { r1.lo_ip6[0].ip }     ff00::/8           r2-r1  no       Static  ASM
+
         """, maxwait=5.0)
 
     @topotatofunc
