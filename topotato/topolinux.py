@@ -475,6 +475,10 @@ class NetworkInstance(topobase.NetworkInstance):
                 self.scapys[br] = scapy.config.conf.L2socket(iface=br)
                 os.set_blocking(self.scapys[br].fileno(), False)
 
+        self.switch_ns.start_run()
+        for rns in self.routers.values():
+            rns.start_run()
+
     def _gcov_collect(self):
         have_gcov = False
         for dirname, _, filenames in os.walk(self.gcov_dir):

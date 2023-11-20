@@ -323,6 +323,10 @@ class NetworkInstance(topobase.NetworkInstance):
             args.extend(["-i", br])
         # self.dumpcap = self.switch_ns.popen(['dumpcap', '-B', '1', '-t', '-w', self.pcapfile] + args)
 
+        self.switch_ns.start_run()
+        for rns in self.routers.values():
+            rns.start_run()
+
     def stop(self):
         for rtr in self.routers.values():
             rtr.end_prep()

@@ -66,6 +66,11 @@ class BaseNS(ABC):
         Start this virtual system.
         """
 
+    def start_run(self) -> None:
+        """
+        Second-stage start, e.g. things inside the virtual system.
+        """
+
     def start_post(self, timeline: "Timeline", failed: List[Tuple[str, str]]) -> None:
         """
         Perform post-start checks.  Empty by default.

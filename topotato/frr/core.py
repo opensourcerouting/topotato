@@ -584,6 +584,9 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
         # bit of a hack
         self.check_call(["mount", "--bind", rundir, "/var/run"])
 
+    def start_run(self):
+        super().start_run()
+
         self.rtrcfg = self._configs.get(self.name, {})
 
         for daemon in self._configs.daemons:
