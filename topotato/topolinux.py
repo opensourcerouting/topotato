@@ -101,8 +101,15 @@ class NetworkInstance(topobase.NetworkInstance):
         ip_ver = subprocess.check_output([cls._exec.get("ip") or "ip", "-V"]).decode(
             "UTF-8"
         )
-        ip_ver_m = re.search(r"iproute2-([\d\.]+)", ip_ver)
-        if ip_ver_m and packaging:
+        ip_ver_m = re.search(r"iproute2-((?:ss)?[\d\.]+)", ip_ver)
+        if ip_ver_m and ip_ver_m.group(1).startswith("ss"):
+            ver = ip_ver_m.group(1)
+            ssdate = int(ver[2:])
+            if ssdate < 191125:
+                result.error(
+                    "iproute2 version %s is too old, need >= ss191125 / 5.4" % (ver,)
+                )
+        elif ip_ver_m and packaging:
             ver = packaging.version.parse(ip_ver_m.group(1))
             minver = packaging.version.parse("5.4")
             if ver < minver:
