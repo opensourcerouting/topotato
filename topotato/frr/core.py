@@ -210,10 +210,17 @@ class FRRSetup:
         except KeyError as e:
             result.error("FRR configured to use a non-existing user (%r)" % e)
 
-        if self.makevars["sysconfdir"] != self.confpath:
+        if self.makevars["sysconfdir"] not in (
+            self.confpath,
+            os.path.dirname(self.confpath),
+        ):
             result.error(
-                "FRR configured with --sysconfdir=%r, must be %r for topotato"
-                % (self.makevars["sysconfdir"], self.confpath)
+                "FRR configured with --sysconfdir=%r, must be %r or %r for topotato"
+                % (
+                    self.makevars["sysconfdir"],
+                    self.confpath,
+                    os.path.dirname(self.confpath),
+                )
             )
         if not os.path.isdir(self.confpath):
             result.error(
