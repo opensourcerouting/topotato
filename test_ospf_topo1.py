@@ -66,19 +66,17 @@ class Configs(FRRConfigs):
      ipv6 ospf6 hello-interval 1
      ipv6 ospf6 dead-interval 2
      ipv6 ospf6 retransmit-interval 3
+    #%     if 'r4' in iface.ifname
+     ipv6 ospf6 area 0.0.0.1
+    #%     else
+     ipv6 ospf6 area 0.0.0.0
+    #%     endif
     #%   endfor
     !
     router ospf6
      ospf6 router-id {{ router.lo_ip4[0].ip }}
      timers throttle spf 0 50 500
      redistribute connected
-    #%   for iface in router.ifaces
-    #%     if 'r4' in iface.ifname
-     interface {{ iface.ifname }} area 0.0.0.1
-    #%     else
-     interface {{ iface.ifname }} area 0.0.0.0
-    #%     endif
-    #%   endfor
     #% endblock
     """
 
