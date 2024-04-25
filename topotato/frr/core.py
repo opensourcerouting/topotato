@@ -518,7 +518,7 @@ class FRRInvalidConfigFail(TopotatoFail):
         return f"{self.router}/{self.daemon}: {self.errmsg}"
 
 
-# pylint: disable=too-many-ancestors
+# pylint: disable=too-many-ancestors,too-many-instance-attributes
 class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
     """
     Add a bunch of FRR daemons on top of an (OS-dependent) RouterNS
@@ -530,6 +530,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
     logfiles: Dict[str, str]
     pids: Dict[str, int]
     rundir: Optional[str]
+    varlibdir: Optional[str]
     rtrcfg: Dict[str, str]
     livelogs: Dict[str, LiveLog]
 
@@ -583,12 +584,18 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
 
         frrcred = self.frr.frrcred
 
+        # bit of a hack
         self.rundir = rundir = self.tempfile("run")
         os.mkdir(rundir)
         os.chown(rundir, frrcred.pw_uid, frrcred.pw_gid)
-        self.rundir = rundir
-        # bit of a hack
+        self.check_call(["mount", "--bind", rundir, "/run"])
         self.check_call(["mount", "--bind", rundir, "/var/run"])
+
+        self.varlibdir = varlibdir = self.tempfile("var_lib")
+        os.mkdir(varlibdir)
+        os.chown(varlibdir, frrcred.pw_uid, frrcred.pw_gid)
+        self.varlibdir = varlibdir
+        self.check_call(["mount", "--bind", varlibdir, "/var/lib"])
 
     def start_run(self):
         super().start_run()

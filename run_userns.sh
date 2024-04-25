@@ -14,6 +14,7 @@ if [ "$1" = "ns_inner" ]; then
 	done
 	mount -t tmpfs none /var/tmp
 	mount -t tmpfs none /var/run
+	mount -t tmpfs none /var/lib
 
 	ip link set lo up
 
