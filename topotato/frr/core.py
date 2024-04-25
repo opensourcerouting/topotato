@@ -244,7 +244,7 @@ class FRRSetup:
         self.daemons.insert(1, "staticd")
         if "mgmtd" in self.daemons:
             self.daemons.remove("mgmtd")
-            self.daemons.insert(1, "mgmtd")
+        self.daemons.insert(0, "mgmtd")
 
         logger.info("FRR daemons: %s", ", ".join(self.daemons))
 
@@ -605,7 +605,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
         frrpath = self.frr.frrpath
         binmap = self.frr.binmap
 
-        use_integrated = daemon in self.frr.daemons_integrated_only
+        use_integrated = True  # daemon in self.frr.daemons_integrated_only
 
         if use_integrated:
             cfgpath = self.tempfile("integrated-" + daemon + ".conf")
