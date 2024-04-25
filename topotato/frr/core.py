@@ -273,8 +273,7 @@ class _FRRConfigProtocol(Protocol):
     frr: FRRSetup
     daemons: Collection[str]
 
-    def want_daemon(self, rtr: str, daemon: str) -> bool:
-        ...
+    def want_daemon(self, rtr: str, daemon: str) -> bool: ...
 
 
 class FRRConfigs(dict):
