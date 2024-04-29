@@ -97,7 +97,7 @@ class FRRSetup:
     Daemons that don't have their config loaded with ``-f`` on startup
     """
 
-    daemons_mgmtd: ClassVar[FrozenSet[str]] = frozenset("staticd".split())
+    daemons_mgmtd: ClassVar[FrozenSet[str]] = frozenset("staticd ripd ripngd".split())
     """
     Daemons that get their config through mgmtd.
     """
