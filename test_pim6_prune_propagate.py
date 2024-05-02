@@ -48,6 +48,7 @@ class Configs(FRRConfigs):
     #% block main
     debug mld
     debug pimv6 trace
+    debug pimv6 packets joins
     #%   for iface in router.ifaces
     interface {{ iface.ifname }}
      ipv6 pim
