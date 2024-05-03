@@ -57,13 +57,15 @@ class Configs(FRRConfigs):
      no bgp ebgp-requires-policy
      neighbor 192.168.255.1 remote-as 65000
      neighbor 192.168.255.1 timers 3 10
+     neighbor 192.168.255.1 passive
     !
     #%   elif router.name == 'r1'
     router bgp 65000
      bgp minimum-holdtime 20
      neighbor 192.168.255.2 remote-as 65001
      neighbor 192.168.255.2 timers 3 10
-     neighbor 192.168.255.2 timers connect 10
+     neighbor 192.168.255.2 timers connect 1
+    ## this test will fail if r1 is passive!
     !
     #%   endif
     #% endblock

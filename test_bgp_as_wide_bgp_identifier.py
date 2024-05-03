@@ -57,15 +57,20 @@ class Configs(FRRConfigs):
      no bgp ebgp-requires-policy
      neighbor 192.168.255.1 remote-as 65002
      neighbor 192.168.255.1 timers 3 10
+     neighbor 192.168.255.1 timers connect 1
     !
     #%   elif router.name == 'r2'
     router bgp 65002
      bgp router-id 10.10.10.10
      no bgp ebgp-requires-policy
      neighbor 192.168.255.2 remote-as 65001
+     neighbor 192.168.255.2 passive
      neighbor 192.168.255.2 timers 3 10
+     neighbor 192.168.255.2 timers connect 1
      neighbor 192.168.255.3 remote-as 65002
+     neighbor 192.168.255.3 passive
      neighbor 192.168.255.3 timers 3 10
+     neighbor 192.168.255.3 timers connect 1
     !
     #%   elif router.name == 'r3'
     router bgp 65002
@@ -73,6 +78,7 @@ class Configs(FRRConfigs):
      no bgp ebgp-requires-policy
      neighbor 192.168.255.1 remote-as 65002
      neighbor 192.168.255.1 timers 3 10
+     neighbor 192.168.255.1 timers connect 1
     !
     #%   endif
     #% endblock

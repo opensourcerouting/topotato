@@ -57,6 +57,7 @@ class Configs(FRRConfigs):
     router bgp 65001
      no bgp ebgp-requires-policy
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} remote-as 65000
+     neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} passive
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} timers 3 10
      address-family ipv4 unicast
       redistribute connected
@@ -65,6 +66,7 @@ class Configs(FRRConfigs):
     router bgp 65000
      no bgp ebgp-requires-policy
      neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} remote-as 65001
+     neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} timers connect 1
      neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} timers 3 10
      address-family ipv4 unicast
       redistribute connected
