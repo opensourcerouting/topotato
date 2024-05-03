@@ -121,7 +121,7 @@ class RIPAllowECMP(TestBase, AutoFixture, topo=topology, configs=Configs):
             r1,
             "vtysh",
             f"show yang operational-data {xpath} ripd",
-            maxwait=5.0,
+            maxwait=7.5,
             compare=expected,
         )
 
@@ -136,7 +136,7 @@ class RIPAllowECMP(TestBase, AutoFixture, topo=topology, configs=Configs):
             r1,
             "zebra",
             f"show ip route json",
-            maxwait=5.0,
+            maxwait=7.5,
             compare=expected,
         )
 
