@@ -25,9 +25,6 @@ def topology(topo):
     [ r2 ]
 
     """
-    topo.router("r1").lo_ip4.append("172.16.255.254/32")
-    topo.router("r1").iface_to("s1").ip4.append("192.168.255.1/24")
-    topo.router("r2").iface_to("s1").ip4.append("192.168.255.2/24")
 
 
 class Configs(FRRConfigs):
@@ -59,8 +56,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} remote-as 65000
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} passive
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} timers 3 10
-     address-family ipv4 unicast
-      redistribute connected
     !
     #%   elif router.name == 'r1'
     router bgp 65000
@@ -69,7 +64,6 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} timers connect 1
      neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} timers 3 10
      address-family ipv4 unicast
-      redistribute connected
       network 192.168.13.0/24 route-map internal
       neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} default-originate route-map default
     !
@@ -97,14 +91,14 @@ class BGPDefaultOriginateRouteMapMatchSet(
         expected = {
             str(r1.ifaces[0].ip4[0].ip): {
                 "bgpState": "Established",
-                "addressFamilyInfo": {"ipv4Unicast": {"acceptedPrefixCounter": 2}},
+                "addressFamilyInfo": {"ipv4Unicast": {"acceptedPrefixCounter": 1}},
             }
         }
         yield from AssertVtysh.make(
             r2,
             "bgpd",
             f"show ip bgp neighbor {r1.ifaces[0].ip4[0].ip} json",
-            maxwait=3.0,
+            maxwait=6.0,
             compare=expected,
         )
 
