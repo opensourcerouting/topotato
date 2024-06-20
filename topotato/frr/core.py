@@ -57,6 +57,7 @@ from ..pcapng import Context
 from ..network import TopotatoNetwork
 from ..topobase import CallableNS
 from .templating import TemplateUtils, jenv
+from .exceptions import FRRStartupVtyshConfigFail
 
 if typing.TYPE_CHECKING:
     from .. import toponom
@@ -89,13 +90,6 @@ class FRRSetup:
     daemons_all.extend("bgpd ripd ripngd ospfd ospf6d isisd fabricd babeld".split())
     daemons_all.extend("eigrpd pimd pim6d ldpd nhrpd sharpd pathd pbrd".split())
     daemons_all.extend("bfdd vrrpd".split())
-
-    daemons_integrated_only: ClassVar[FrozenSet[str]] = frozenset(
-        "pim6d staticd mgmtd".split()
-    )
-    """
-    Daemons that don't have their config loaded with ``-f`` on startup
-    """
 
     daemons_mgmtd: ClassVar[FrozenSet[str]] = frozenset(
         "staticd ripd ripngd zebra".split()
@@ -535,6 +529,8 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
     varlibdir: Optional[str]
     rtrcfg: Dict[str, str]
     livelogs: Dict[str, LiveLog]
+    frrconfpath: str
+    merged_cfg: str
 
     def __init__(
         self, instance: TopotatoNetwork, name: str, configs: _FRRConfigProtocol
@@ -565,6 +561,8 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
             return
 
         logmsg = cast(LogMessage, evt)
+        # FIXME: this will no longer trigger with integrated config
+        # as the error is reported by vtysh (in _load_config) instead
         if logmsg.uid == "SHWNK-NWT5S":
             raise FRRInvalidConfigFail(logmsg.router.name, logmsg.daemon, logmsg.text)
 
@@ -603,25 +601,50 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
         super().start_run()
 
         self.rtrcfg = self._configs.get(self.name, {})
+        self.frrconfpath = self.tempfile("frr.conf")
+
+        # TODO: convert to integrated config in tests rather than crudely merge here
+        self.merged_cfg = "\n".join(
+            self.rtrcfg.get(daemon, "") for daemon in self._configs.daemons
+        )
+
+        with open(self.frrconfpath, "w", encoding="utf-8") as fd:
+            fd.write(self.merged_cfg)
 
         for daemon in self._configs.daemons:
             if daemon not in self.rtrcfg:
                 continue
             self.logfiles[daemon] = self.tempfile("%s.log" % daemon)
-            self.start_daemon(daemon)
+            self.start_daemon(daemon, defer_config=True)
 
-    def start_daemon(self, daemon: str):
+        # one-pass load all daemons
+        self._load_config()
+
+    def _load_config(self, daemon=None):
+        daemon_arg = ["-d", daemon] if daemon else []
+
+        vtysh = self._vtysh(
+            daemon_arg + ["-f", self.frrconfpath], stderr=subprocess.PIPE
+        )
+        out, err = vtysh.communicate()
+        out, err = out.decode("UTF-8"), err.decode("UTF-8")
+
+        _logger.debug("stdout from config load: %r", out)
+        _logger.debug("stderr from config load: %r", err)
+
+        if 0 < vtysh.returncode < 128:
+            raise FRRStartupVtyshConfigFail(
+                self.name, vtysh.returncode, out, err, self.merged_cfg
+            )
+        if vtysh.returncode != 0:
+            # terminated by signal
+            raise subprocess.CalledProcessError(
+                vtysh.returncode, vtysh.args, vtysh.stdout, vtysh.stderr
+            )
+
+    def start_daemon(self, daemon: str, defer_config=False):
         frrpath = self.frr.frrpath
         binmap = self.frr.binmap
-
-        use_integrated = True  # daemon in self.frr.daemons_integrated_only
-
-        if use_integrated:
-            cfgpath = self.tempfile("integrated-" + daemon + ".conf")
-        else:
-            cfgpath = self.tempfile(daemon + ".conf")
-        with open(cfgpath, "w", encoding="utf-8") as fd:
-            fd.write(self.rtrcfg[daemon])
 
         assert self.rundir is not None
 
@@ -636,13 +659,6 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
                 "-d",
             ]
         )
-        if not use_integrated:
-            cmdline.extend(
-                [
-                    "-f",
-                    cfgpath,
-                ]
-            )
         cmdline.extend(
             [
                 "--log",
@@ -673,11 +689,8 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
         )
         self.pids[daemon] = pid
 
-        if use_integrated:
-            # FIXME: do something with the output
-            self._vtysh(["-d", daemon, "-f", cfgpath]).communicate()
-            if daemon in self.frr.daemons_mgmtd and "mgmtd" in self.frr.daemons:
-                self._vtysh(["-d", "mgmtd", "-f", cfgpath]).communicate()
+        if not defer_config:
+            self._load_config(daemon)
 
     def start_post(self, timeline, failed: List[Tuple[str, str]]):
         for daemon in self._configs.daemons:
@@ -746,7 +759,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
 
         super().end()
 
-    def _vtysh(self, args: List[str]) -> subprocess.Popen:
+    def _vtysh(self, args: List[str], **kwargs) -> subprocess.Popen:
         assert self.rundir is not None
 
         frrpath = self.frr.frrpath
@@ -754,6 +767,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
         return self.popen(
             [execpath] + ["--vty_socket", self.rundir] + args,
             stdout=subprocess.PIPE,
+            **kwargs,
         )
 
     def vtysh_exec(self, timeline: Timeline, cmds, timeout=5.0):
