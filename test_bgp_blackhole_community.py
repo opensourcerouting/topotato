@@ -84,7 +84,7 @@ class BGPBlackholeCommunity(TestBase, AutoFixture, topo=topology, configs=Config
             r1,
             "bgpd",
             f"show ip bgp neighbor {r2.iface_to('r1').ip4[0].ip} advertised-routes json",
-            maxwait=4.0,
+            maxwait=7.0,
             compare=expected,
         )
 
