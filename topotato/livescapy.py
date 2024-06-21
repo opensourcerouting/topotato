@@ -16,7 +16,7 @@ from scapy.packet import Raw  # type: ignore
 from .timeline import MiniPollee, TimedElement
 from .pcapng import EnhancedPacket, IfDesc, Context
 
-_logger = logging.getLogger("topotato")
+_logger = logging.getLogger(__name__)
 
 
 class TimedScapy(TimedElement):

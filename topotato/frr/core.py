@@ -62,7 +62,7 @@ if typing.TYPE_CHECKING:
     from .. import toponom
 
 
-logger = logging.getLogger("topotato")
+_logger = logging.getLogger(__name__)
 
 
 class FRRSetupError(EnvironmentError):
@@ -175,7 +175,7 @@ class FRRSetup:
         """
         self.frrpath = os.path.abspath(frrpath)
 
-        logger.debug("FRR build directory: %r", frrpath)
+        _logger.debug("FRR build directory: %r", frrpath)
 
         self._source_locate()
         self._env_check(result)
@@ -197,7 +197,7 @@ class FRRSetup:
             raise FRRSetupError("cannot identify source directory for %r")
 
         self.srcpath = os.path.abspath(os.path.join(self.frrpath, srcdirm.group(1)))
-        logger.debug("FRR source directory: %r", self.srcpath)
+        _logger.debug("FRR source directory: %r", self.srcpath)
 
         oldpath = sys.path[:]
         sys.path.append(os.path.join(self.srcpath, "python"))
@@ -235,7 +235,7 @@ class FRRSetup:
         self.daemons = list(sorted(self.makevars["vtysh_daemons"].split()))
         missing = set(self.daemons) - in_topotato
         for daemon in missing:
-            logger.warning(
+            _logger.warning(
                 "daemon %s missing from FRRConfigs.daemons, please add!", daemon
             )
 
@@ -248,7 +248,7 @@ class FRRSetup:
             self.daemons.remove("mgmtd")
         self.daemons.insert(0, "mgmtd")
 
-        logger.info("FRR daemons: %s", ", ".join(self.daemons))
+        _logger.info("FRR daemons: %s", ", ".join(self.daemons))
 
         notbuilt = set()
         self.binmap = {}
@@ -258,9 +258,9 @@ class FRRSetup:
         for name in buildprogs:
             _, daemon = name.rsplit("/", 1)
             if daemon not in self.daemons:
-                logger.debug("ignoring target %r", name)
+                _logger.debug("ignoring target %r", name)
             else:
-                logger.debug("%s => %s", daemon, name)
+                _logger.debug("%s => %s", daemon, name)
                 if not os.path.exists(os.path.join(self.frrpath, name)):
                     result.warning("daemon %r enabled but not built?" % daemon)
                     notbuilt.add(daemon)

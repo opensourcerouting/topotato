@@ -25,7 +25,7 @@ from .interactive import Interactive
 from .pretty import PrettySession
 from .osdep import NetworkInstance
 
-logger = logging.getLogger("topotato")
+_logger = logging.getLogger(__name__)
 
 # pidns (or tini?) sets these to IGN by default, which isn't quite what we want
 signal.signal(signal.SIGINT, signal.default_int_handler)

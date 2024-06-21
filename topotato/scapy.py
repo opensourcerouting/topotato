@@ -16,7 +16,7 @@ import pytest
 
 from .assertions import TopotatoModifier
 
-logger = logging.getLogger("topotato")
+_logger = logging.getLogger(__name__)
 
 try:
     # pylint: disable=no-name-in-module
@@ -26,7 +26,7 @@ try:
     scapy_exc = None
 
 except ImportError as e:
-    logger.error("scapy not available: %r", e)
+    _logger.error("scapy not available: %r", e)
     Ether = None  # type: ignore
     NetnsL2Socket = None  # type: ignore
     scapy_exc = e

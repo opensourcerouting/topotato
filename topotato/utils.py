@@ -23,7 +23,7 @@ from typing import List, Union
 from .defer import subprocess
 from .exceptions import TopotatoCLICompareFail
 
-logger = logging.getLogger("topotato")
+_logger = logging.getLogger("topotato")
 
 _wsp_re = re.compile(r"^[ \t]+")
 
@@ -428,7 +428,7 @@ def exec_find(name, stacklevel=1):
     for p in _env_path:
         pname = os.path.join(p, name)
         if os.access(pname, os.X_OK):
-            logger.debug(
+            _logger.debug(
                 "executable %s found: %s",
                 shlex.quote(name),
                 shlex.quote(pname),
@@ -436,7 +436,7 @@ def exec_find(name, stacklevel=1):
             )
             return pname
 
-    logger.warning("executable %s not found in PATH", shlex.quote(name))
+    _logger.warning("executable %s not found in PATH", shlex.quote(name))
     return None
 
 

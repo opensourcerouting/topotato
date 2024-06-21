@@ -51,7 +51,7 @@ if typing.TYPE_CHECKING:
     from .network import TopotatoNetwork
     from .timeline import Timeline
 
-logger = logging.getLogger("topotato")
+_logger = logging.getLogger(__name__)
 
 
 class _SkipTrace(set):
@@ -277,9 +277,9 @@ class TopotatoItem(nodes.Item):
         """
         if hasattr(obj, "_topotato_makeitem"):
             if inspect.ismethod(obj._topotato_makeitem):
-                logger.debug("_topotato_makeitem(%r, %r, %r)", collector, name, obj)
+                _logger.debug("_topotato_makeitem(%r, %r, %r)", collector, name, obj)
                 return obj._topotato_makeitem(collector, name, obj)
-            logger.debug("%r._topotato_makeitem: not a method", obj)
+            _logger.debug("%r._topotato_makeitem: not a method", obj)
         return None
 
     def setup(self):
@@ -689,7 +689,7 @@ class TopotatoFunction(nodes.Collector, _pytest.python.PyobjMixin):
             while True:
                 value = iterator.send(sendval)
                 if value is not None:
-                    logger.debug("collect on: %r test: %r", self, value)
+                    _logger.debug("collect on: %r test: %r", self, value)
                     tests.append(value)
                 sendval = (self, self.name)
         except StopIteration:

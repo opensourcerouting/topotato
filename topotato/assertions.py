@@ -61,7 +61,7 @@ __all__ = [
     "ReconfigureFRR",
 ]
 
-logger = logging.getLogger("topotato")
+_logger = logging.getLogger(__name__)
 
 
 class TopotatoAssertion(TopotatoItem):

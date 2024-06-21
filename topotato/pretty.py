@@ -30,7 +30,7 @@ from .scapy import ScapySend
 from .pcapng import Sink, SectionHeader
 
 
-logger = logging.getLogger("topotato")
+_logger = logging.getLogger(__name__)
 # _pretty_session = pytest.StashKey["PrettySession"]()
 
 
