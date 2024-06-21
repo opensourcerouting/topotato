@@ -25,6 +25,25 @@ if typing.TYPE_CHECKING:
 class TopotatoNetwork(NetworkInstance):
     """
     Main network representation & interface.
+
+    This class is not used directly;  each test (or multiple tests if they are
+    very similar) create subclasses of it.  The topotato machinery then creates
+    an instance of the subclass to run a particular test class against.
+
+    System names referenced in the topology are looked up directly in the class
+    namespace to get the "system type" (a subclass of
+    :py:class:`NetworkInstance.RouterNS`) for each system.  For example, for
+    ``[ h1 ]---[ h2 ]``, "h1" and "h2" should be class variables on the
+    subclass like this::
+
+        class TestSetup(TopotatoNetwork, topo=topology):
+            h1: Host
+            h2: Host
+
+    (where :py:class:`Host` refers to the class defined below.)
+
+    Note that the test only defines the subclass but does not create an
+    instance of it, that only happens when topotato actually runs the test.
     """
 
     timeline: Timeline
