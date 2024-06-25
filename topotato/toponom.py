@@ -60,9 +60,7 @@ def lan6_net(n):
 
 
 def p2p_ip4(g, a, b):
-    return addr2iface(
-        ipaddress.IPv4Address("10.0.0.0") + g * 2**16 + a * 2**8 + b, 16
-    )
+    return addr2iface(ipaddress.IPv4Address("10.0.0.0") + g * 2**16 + a * 2**8 + b, 16)
 
 
 class IPPrefixListBase(list):

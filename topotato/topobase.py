@@ -149,14 +149,13 @@ class CallableNS(Protocol):
     Implementing this protocol is a requirement for all uses currently.
     """
 
-    def check_call(self, cmdline: List[str], *args, **kwargs) -> None:
-        ...
+    def check_call(self, cmdline: List[str], *args, **kwargs) -> None: ...
 
-    def check_output(self, cmdline: List[str], *args, **kwargs) -> Tuple[bytes, bytes]:
-        ...
+    def check_output(
+        self, cmdline: List[str], *args, **kwargs
+    ) -> Tuple[bytes, bytes]: ...
 
-    def popen(self, cmdline: List[str], *args, **kwargs) -> "subprocess.Popen":
-        ...
+    def popen(self, cmdline: List[str], *args, **kwargs) -> "subprocess.Popen": ...
 
 
 class CallableEnvMixin(ABC):
