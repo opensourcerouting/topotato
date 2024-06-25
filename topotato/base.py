@@ -48,6 +48,7 @@ from .utils import apply_kwargs_maybe
 
 if typing.TYPE_CHECKING:
     from _pytest._code.code import ExceptionInfo, TracebackEntry
+    from _pytest.python import Function
 
     from .network import TopotatoNetwork
     from .timeline import Timeline
@@ -108,6 +109,62 @@ to debug when a test fails.
 endtrace = _SkipTrace()
 
 
+class TopotatoItemFixture(_pytest.fixtures.FixtureRequest):
+    """
+    pytest fixture request used by :py:class:`TopotatoItem`
+
+    This primarily exists to cover differences between pytest 7 and 8.  The
+    fixture system was refactored somewhat in the latter, and FixtureRequest
+    is now an ABC there.  This fills in the abstract methods for that.
+    """
+
+    _item: "TopotatoItem"
+
+    _scope = _pytest.fixtures.Scope.Function
+    """
+    pytest 7.x fills _scope from __init__, but pytest 8.x has it as a property.
+    However, 7.x would write to that property...  so just stick _scope here
+    in the class.
+    """
+
+    # pylint: disable=super-init-not-called
+    def __init__(self, item: "TopotatoItem"):
+        super_init = apply_kwargs_maybe(super().__init__, _ispytest=True)
+
+        if pytest.version_tuple >= (8,):
+            super_init(
+                fixturename=None,
+                pyfuncitem=cast("Function", item),
+                arg2fixturedefs=item._fixtureinfo.name2fixturedefs.copy(),
+                fixture_defs={},
+            )  # type: ignore [call-arg]
+        else:
+            super_init(item)  # type: ignore [call-arg, arg-type]
+
+        self._item = item
+
+    # abstract in pytest 8.  Functionally identical with 7, and TopRequest in 8
+    @property
+    def node(self):
+        return self._item
+
+    def __repr__(self) -> str:
+        return "<%s for %r>" % (self.__class__.__name__, self.node)
+
+    # expected to be implemented by the subclass in pytest 8, i.e. just doesn't
+    # exist in FixtureRequest.
+    def _fillfixtures(self) -> None:
+        item = self._item
+        fixturenames = getattr(item, "fixturenames", self.fixturenames)
+        for argname in fixturenames:
+            if argname not in item.funcargs:
+                item.funcargs[argname] = self.getfixturevalue(argname)
+
+    # abstract in pytest 8.  Functionally identical with 7, and TopRequest in 8
+    def addfinalizer(self, finalizer: Callable[[], object]) -> None:
+        self.node.addfinalizer(finalizer)
+
+
 class ItemGroup(list):
     pass
 
@@ -135,6 +192,7 @@ class TopotatoItem(nodes.Item):
     _fixtureinfo: _pytest.fixtures.FuncFixtureInfo
     fixturenames: Any
     funcargs: Dict[str, Any]
+    nofuncargs = True
 
     _ifix_name: str
     """Name of the network instance fixture"""
@@ -197,15 +255,16 @@ class TopotatoItem(nodes.Item):
 
         self._obj = tparent.obj
 
-        self._fixtureinfo = self.session._fixturemanager.getfixtureinfo(
-            self, self._obj, cls, funcargs=False
-        )
+        # the behavior re. funcargs changed across pytest versions, it used
+        # to be a parameter on getfixtureinfo, now it's a field on the item
+        _obj = cast(Callable[..., object], self._obj)
+        self._fixtureinfo = apply_kwargs_maybe(
+            self.session._fixturemanager.getfixtureinfo, funcargs=False
+        )(self, _obj, cls)
         self.fixturenames = self._fixtureinfo.names_closure
         self.funcargs = {}
 
-        self._request = apply_kwargs_maybe(
-            _pytest.fixtures.FixtureRequest, _ispytest=True
-        )(self)
+        self._request = TopotatoItemFixture(self)
 
         self._ifix_name = tparent._ifix_name
         self.add_marker(pytest.mark.usefixtures(self._ifix_name))
