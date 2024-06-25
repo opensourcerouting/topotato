@@ -44,6 +44,7 @@ from .exceptions import (
 )
 from .livescapy import LiveScapy
 from .generatorwrap import GeneratorWrapper, GeneratorChecks
+from .utils import apply_kwargs_maybe
 
 if typing.TYPE_CHECKING:
     from _pytest._code.code import ExceptionInfo, TracebackEntry
@@ -202,14 +203,9 @@ class TopotatoItem(nodes.Item):
         self.fixturenames = self._fixtureinfo.names_closure
         self.funcargs = {}
 
-        _kwargs = {}
-        if (
-            "_ispytest"
-            in inspect.getfullargspec(_pytest.fixtures.FixtureRequest).kwonlyargs
-        ):
-            # work around warning - TBD: find a better way to do this?
-            _kwargs["_ispytest"] = True
-        self._request = _pytest.fixtures.FixtureRequest(self, **_kwargs)  # type: ignore
+        self._request = apply_kwargs_maybe(
+            _pytest.fixtures.FixtureRequest, _ispytest=True
+        )(self)
 
         self._ifix_name = tparent._ifix_name
         self.add_marker(pytest.mark.usefixtures(self._ifix_name))

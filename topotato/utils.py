@@ -17,8 +17,24 @@ import shlex
 import fcntl
 import json
 import difflib
+import functools
+import inspect
 
-from typing import List, Union
+from typing import (
+    Callable,
+    List,
+    Union,
+    TypeVar,
+)
+
+try:
+    from typing import ParamSpec
+except ImportError:
+    # python < 3.10
+    # pylint: disable=unused-argument
+    def ParamSpec(name, *, bound=None, covariant=False, contravariant=False):  # type: ignore
+        return ...
+
 
 from .defer import subprocess
 from .exceptions import TopotatoCLICompareFail
@@ -79,6 +95,36 @@ def get_textdiff(text1: str, text2: str, title1="", title2="", **opts) -> str:
     # Clean up line endings
     diff = os.linesep.join([s for s in diff.splitlines() if s])
     return diff
+
+
+# this use of ParamSpec is technically incorrect, since arguments given to
+# apply_kwargs_maybe() are no longer accepted by the returned function, but...
+# ...eh.
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+
+def apply_kwargs_maybe(func: Callable[P, T], **args) -> Callable[P, T]:
+    """
+    Inspect a function and apply arguments that exist, ignoring others.
+
+    Use with functions whose parameter lists change between versions (looking at
+    you, pytest), like this::
+
+        fn = apply_kwargs_maybe(pytest.something, a=1, b=2)
+        fn(3, x=4)
+
+    This will add each of ``a=1`` and ``b=2`` only of ``a`` and ``b``
+    respectively are parameters on pytest.something.  (The check is done
+    separately.)
+
+    :return: a functools.partial copy of func, with arguments filled in.
+    """
+    sig = inspect.signature(func)
+    argnames = frozenset(sig.parameters.keys())
+    existing = {name: value for name, value in args.items() if name in argnames}
+    return functools.partial(func, **existing)
 
 
 class json_cmp_result:
