@@ -181,6 +181,13 @@ class TopotatoItem(nodes.Item):
     to pytest to do its thing.
     """
 
+    parent: "TopotatoClass"
+    """
+    Part of pytest, but in general nodes may have `None` as a parent.  This
+    causes false errors in mypy, so this is here to state that `parent` is
+    never `None` (and always a `TopotatoClass`)
+    """
+
     _codeloc: Optional[inspect.FrameInfo]
     """
     Test source code location that resulted in the creation of this item.

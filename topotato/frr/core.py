@@ -61,6 +61,7 @@ from .exceptions import FRRStartupVtyshConfigFail
 
 if typing.TYPE_CHECKING:
     from .. import toponom
+    from ..types import ISession
 
 
 _logger = logging.getLogger(__name__)
@@ -156,7 +157,7 @@ class FRRSetup:
 
     @classmethod
     @pytest.hookimpl()
-    def pytest_topotato_envcheck(cls, session, result: EnvcheckResult):
+    def pytest_topotato_envcheck(cls, session: "ISession", result: EnvcheckResult):
         frrpath = get_dir(session, "--frr-builddir", "frr_builddir")
 
         session.frr = cls(frrpath, result)
@@ -845,7 +846,7 @@ class RouterFRR(FRRRouterNS, dict):
     daemon_rtrs: ClassVar[Dict[Any, Any]]
     daemons: Collection[str]
 
-    def __init__(self, instance: TopotatoNetwork, name: str, session):
+    def __init__(self, instance: TopotatoNetwork, name: str, session: "ISession"):
         self.frr = session.frr
         self.topology = instance.network
         super().__init__(instance, name, self)

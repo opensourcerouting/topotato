@@ -21,6 +21,8 @@ from .osdep import NetworkInstance
 
 if typing.TYPE_CHECKING:
     from . import toponom
+    from .types import ISession
+    from .frr.core import FRRSetup
 
 
 _logger = logging.getLogger(__name__)
@@ -51,12 +53,12 @@ class TopotatoNetwork(NetworkInstance):
     """
 
     timeline: Timeline
-    session: Any
+    session: "ISession"
 
     def make(self, name):
         return self.__class__.__annotations__[name](self, name, self.session)
 
-    def __init__(self, network: "toponom.Network", session):
+    def __init__(self, network: "toponom.Network", session: "ISession"):
         super().__init__(network)
         self.session = session
         self.timeline = Timeline()
@@ -77,7 +79,7 @@ class TopotatoNetworkCompat(TopotatoNetwork):
     def make(self, name):
         return self.router_factories.get(name, super().make)(name)
 
-    def __init__(self, network: "toponom.Network", session):
+    def __init__(self, network: "toponom.Network", session: "ISession"):
         super().__init__(network, session)
         self.router_factories = {}
 

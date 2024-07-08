@@ -21,6 +21,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    cast,
 )
 
 import pytest
@@ -31,6 +32,7 @@ from .utils import LockedFile, AtomicPublishFile, deindent
 if typing.TYPE_CHECKING:
     from _pytest import nodes
     from .network import TopotatoNetwork
+    from .types import ISession
 
 
 taskbasedir = "/tmp/topotato-%s" % os.uname().nodename
@@ -91,7 +93,7 @@ class Interactive:
 
     @staticmethod
     @pytest.hookimpl(hookwrapper=True, trylast=True)
-    def pytest_collection(session):
+    def pytest_collection(session: pytest.Session):
         _ = yield
 
         if session.config.getoption("--run-topology"):
@@ -113,9 +115,9 @@ class Interactive:
 
     @pytest.hookimpl()
     @classmethod
-    def pytest_sessionstart(cls, session):
+    def pytest_sessionstart(cls, session: pytest.Session):
         # self = session.stash[_interactive_session] = cls()
-        self = session.interactive_session = cls()
+        self = cast("ISession", session).interactive_session = cls()
         self.session = session
 
         self.pause_on_fail = bool(session.config.getoption("--pause-on-fail"))

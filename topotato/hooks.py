@@ -15,10 +15,11 @@ from .utils import EnvcheckResult
 
 if typing.TYPE_CHECKING:
     from .base import TopotatoItem
+    from .types import ISession
 
 
 @hookspec()
-def pytest_topotato_envcheck(session, result: EnvcheckResult):
+def pytest_topotato_envcheck(session: "ISession", result: EnvcheckResult):
     pass
 
 
