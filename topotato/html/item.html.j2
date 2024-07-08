@@ -21,9 +21,13 @@
     {%- if item.result.failed %}
     {%- set longrepr = item.result.longrepr %}
       <div class="failinfo">
-        {%- for erepr, exc, _ in longrepr.chain %}
-          <pre>{{ erepr }}</pre>
-        {%- endfor %}
+        {%- if longrepr.tohtml %}
+          {{ longrepr.tohtml() | safe }}
+        {%- else %}
+          {%- for erepr, exc, _ in longrepr.chain %}
+            <pre>{{ erepr }}</pre>
+          {%- endfor %}
+        {%- endif %}
       </div>
     {%- endif %}
   </div>

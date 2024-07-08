@@ -7,6 +7,7 @@ Exceptions raised by topotato FRR integration.
 # pylint: disable=duplicate-code
 
 import re
+import html
 from typing import Optional
 import attr
 
@@ -85,3 +86,30 @@ class FRRStartupVtyshConfigFail(TopotatoFail):
             for i, line in enumerate(exc.config.rstrip("\n").splitlines()):
                 lineno = i + 1
                 tw.line(f"{lineno:4d}\t{line}", red=lineno in errlinenos)
+
+        def tohtml(self) -> str:
+            # TODO: make this less ugly
+            exc = self.excinfo.value
+            errlinenos = self._errlinenos()
+            lines = []
+
+            for i, line in enumerate(exc.config.rstrip("\n").splitlines()):
+                lineno = i + 1
+                style = ""
+                if lineno in errlinenos:
+                    style = "background-color:#fcc"
+                lines.append(
+                    f"<span style='user-select:none'>{lineno:4d} </span><span style='{ style }'>{ html.escape(line) }</span>\n"
+                )
+
+            return f"""<h3>startup integrated-config load failed on {exc.router} (status {exc.returncode})</h3>
+  <div>stdout:
+    <pre>{ html.escape(exc.stdout) }</pre>
+  </div>
+  <div>stderr:
+    <pre>{ html.escape(exc.stderr) }</pre>
+  </div>
+  <div>config:
+    <pre>{ "".join(lines) }</pre>
+  </div>
+"""
