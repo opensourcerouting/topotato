@@ -845,8 +845,8 @@ class RouterFRR(FRRRouterNS, dict):
     daemon_rtrs: ClassVar[Dict[Any, Any]]
     daemons: Collection[str]
 
-    def __init__(self, instance: TopotatoNetwork, name: str, frr: FRRSetup):
-        self.frr = frr
+    def __init__(self, instance: TopotatoNetwork, name: str, session):
+        self.frr = session.frr
         self.topology = instance.network
         super().__init__(instance, name, self)
 

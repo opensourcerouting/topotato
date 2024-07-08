@@ -5,6 +5,7 @@
 Test network for topotato.
 """
 
+import logging
 import typing
 from typing import (
     Any,
@@ -20,6 +21,9 @@ from .osdep import NetworkInstance
 
 if typing.TYPE_CHECKING:
     from . import toponom
+
+
+_logger = logging.getLogger(__name__)
 
 
 class TopotatoNetwork(NetworkInstance):
@@ -47,21 +51,35 @@ class TopotatoNetwork(NetworkInstance):
     """
 
     timeline: Timeline
-    router_factories: Dict[str, Callable[[str], NetworkInstance.RouterNS]]
+    session: Any
 
     def make(self, name):
-        maker = self.router_factories.get(name, super().make)
-        return maker(name)
+        return self.__class__.__annotations__[name](self, name, self.session)
 
-    def __init__(self, network: "toponom.Network"):
+    def __init__(self, network: "toponom.Network", session):
         super().__init__(network)
+        self.session = session
         self.timeline = Timeline()
-        self.router_factories = {}
 
     @classmethod
     def __init_subclass__(cls, /, topo=None, **kwargs):
         super().__init_subclass__(**kwargs)
         cls.topo = topo
+
+
+class TopotatoNetworkCompat(TopotatoNetwork):
+    """
+    This subclass is used for the previous style with a FRR config class.
+    """
+
+    router_factories: Dict[str, Callable[[str], NetworkInstance.RouterNS]]
+
+    def make(self, name):
+        return self.router_factories.get(name, super().make)(name)
+
+    def __init__(self, network: "toponom.Network", session):
+        super().__init__(network, session)
+        self.router_factories = {}
 
 
 class Host(TopotatoNetwork.RouterNS):

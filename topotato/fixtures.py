@@ -10,7 +10,7 @@ import functools
 
 from .parse import Topology
 from .toponom import Network
-from .network import TopotatoNetwork
+from .network import TopotatoNetworkCompat
 from .frr import FRRRouterNS
 
 
@@ -130,7 +130,7 @@ class AutoFixture:
         @staticmethod
         def auto_instance(request):
             cfg_inst = request.getfixturevalue(cfix_name)
-            net_inst = TopotatoNetwork(cfg_inst.topology)
+            net_inst = TopotatoNetworkCompat(cfg_inst.topology, request.session)
 
             for rtrname in cfg_inst.topology.routers.keys():
                 net_inst.router_factories[rtrname] = lambda name: FRRRouterNS(
@@ -171,12 +171,8 @@ class AutoFixture:
         @staticmethod
         def auto_instance(request):
             topo = request.getfixturevalue(topo_name)
-            net_inst = setup(topo)
+            net_inst = setup(topo, request.session)
 
-            for rtrname in topo.routers.keys():
-                net_inst.router_factories[rtrname] = lambda name: setup.__annotations__[
-                    name
-                ](net_inst, name, request.session.frr)
             return net_inst.prepare()
 
         auto_instance.__name__ = ifix_name
