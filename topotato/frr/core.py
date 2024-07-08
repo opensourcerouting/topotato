@@ -617,8 +617,9 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
             self.logfiles[daemon] = self.tempfile("%s.log" % daemon)
             self.start_daemon(daemon, defer_config=True)
 
-        # one-pass load all daemons
-        self._load_config()
+        if self.pids:
+            # one-pass load all daemons
+            self._load_config()
 
     def _load_config(self, daemon=None):
         daemon_arg = ["-d", daemon] if daemon else []
