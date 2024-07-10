@@ -410,9 +410,6 @@ class PrettyStartup(PrettyTopotato, matches=base.InstanceStartup):
 
         self.instance.ts_rel = self.item.parent.starting_ts
 
-        if call.excinfo:
-            return
-
     def files(self):
         dot = self.instance.network.dot()
         yield PrettyExtraFile(self, "dotfile", ".dot", "text/plain; charset=utf-8", dot)
