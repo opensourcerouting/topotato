@@ -220,6 +220,9 @@ class AssertKernelRoutesV6(AssertKernelRoutes):
 
 
 class AssertVtysh(TopotatoAssertion, TimedMixin):
+    _nodename = "vtysh"
+    _cmdprefix = ""
+
     commands: OrderedDict
 
     # pylint does not understand that from_parent is our __init__
@@ -242,17 +245,24 @@ class AssertVtysh(TopotatoAssertion, TimedMixin):
         compare=None,
         **kwargs,
     ):
-        name = "%s:%s/%s/vtysh[%s]" % (
+        command_cleaned = command
+        command_cleaned = re.sub(r"(?m)^[\s\n]+", "", command_cleaned)
+        command_cleaned = re.sub(r"\s+\n", "\n", command_cleaned)
+        command_cleaned = command_cleaned.rstrip("\n")
+        command_cleaned = re.sub(r"\n+", "; ", command_cleaned)
+
+        name = "%s:%s/%s/%s[%s]" % (
             name,
             rtr.name,
             daemon,
-            command.replace("\n", "; "),
+            cls._nodename,
+            command_cleaned,
         )
         self = super().from_parent(parent, name=name, **kwargs)
 
         self._rtr = rtr
         self._daemon = daemon
-        self._command = command
+        self._command = cls._cmdprefix + command
         self._compare = compare
         return self
 
@@ -303,35 +313,8 @@ class AssertVtysh(TopotatoAssertion, TimedMixin):
 
 
 class ReconfigureFRR(AssertVtysh):
-    # pylint: disable=arguments-differ,too-many-arguments,protected-access
-    @classmethod
-    def from_parent(
-        cls,
-        parent,
-        name,
-        rtr,
-        daemon,
-        command,
-        compare="",
-        **kwargs,
-    ):
-        command_with_shell_enabled = "enable\nconfigure\n" + command
-        name = "%s:%s/%s/vtysh[%s]" % (
-            name,
-            rtr.name,
-            daemon,
-            command_with_shell_enabled.replace("\n", "; "),
-        )
-        self = super().from_parent(
-            parent,
-            name,
-            rtr,
-            daemon,
-            command_with_shell_enabled,
-            compare,
-            **kwargs,
-        )
-        return self
+    _nodename = "reconfigure"
+    _cmdprefix = "enable\nconfigure\n"
 
 
 class AssertPacket(TopotatoAssertion, TimedMixin):
