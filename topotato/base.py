@@ -47,7 +47,7 @@ from .generatorwrap import GeneratorWrapper, GeneratorChecks
 from .utils import apply_kwargs_maybe
 
 if typing.TYPE_CHECKING:
-    from _pytest._code.code import ExceptionInfo, TracebackEntry
+    from _pytest._code.code import ExceptionInfo, TracebackEntry, Traceback
     from _pytest.python import Function
 
     from .network import TopotatoNetwork
@@ -402,9 +402,14 @@ class TopotatoItem(nodes.Item):
         lineno = self._codeloc.lineno
         return fspath, lineno, self.name
 
+    # pytest < 7.4
     def _prunetraceback(self, excinfo: "ExceptionInfo[BaseException]") -> None:
+        excinfo.traceback = self._traceback_filter(excinfo)
+
+    # pytest >= 7.4
+    def _traceback_filter(self, excinfo: "ExceptionInfo[BaseException]") -> "Traceback":
         if self.config.getoption("fulltrace", False):
-            return
+            return excinfo.traceback
 
         tb = excinfo.traceback
         newtb: List["TracebackEntry"] = []
@@ -420,7 +425,7 @@ class TopotatoItem(nodes.Item):
                     entry.set_repr_style("short")
             newtb.insert(0, entry)
 
-        excinfo.traceback = type(excinfo.traceback)(newtb)
+        return type(excinfo.traceback)(newtb)
 
     def _repr_failure(self, excinfo, style=None):
         reprcls = getattr(excinfo.value, "TopotatoRepr", None)
