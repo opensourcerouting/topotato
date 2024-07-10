@@ -240,7 +240,7 @@ class FRRSetup:
         self.daemons.insert(1, "staticd")
         if "mgmtd" in self.daemons:
             self.daemons.remove("mgmtd")
-        self.daemons.insert(0, "mgmtd")
+            self.daemons.insert(0, "mgmtd")
 
         _logger.info("FRR daemons: %s", ", ".join(self.daemons))
 
@@ -532,6 +532,9 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
         for daemon in self._configs.daemons:
             if daemon not in self.rtrcfg:
                 continue
+            if daemon not in self.frr.daemons:
+                _logger.warning("daemon %s not in build, skipping", daemon)
+                continue
             self.logfiles[daemon] = self.tempfile("%s.log" % daemon)
             self.start_daemon(daemon, defer_config=True)
 
@@ -638,6 +641,8 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
     def start_post(self, timeline, failed: List[Tuple[str, str]]):
         for daemon in self._configs.daemons:
             if not self._configs.want_daemon(daemon):
+                continue
+            if daemon not in self.frr.daemons:
                 continue
 
             try:
