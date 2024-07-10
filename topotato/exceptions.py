@@ -58,9 +58,9 @@ class TopotatoLogFail(TopotatoFail):
     """
 
 
-class TopotatoDaemonCrash(TopotatoFail):
+class TopotatoDaemonErrors(TopotatoFail):
     """
-    Daemon exited/crashed unexpectedly.
+    Common base for unexpected things going on with a daemon process
     """
 
     def __init__(self, daemon: str, router: str, cmdline: Optional[str] = None):
@@ -87,13 +87,34 @@ class TopotatoDaemonCrash(TopotatoFail):
         def toterminal(self, tw: TerminalWriter) -> None:
             exc = self.excinfo.value
             tw.line("")
-            tw.sep(" ", f"{exc.daemon} crashed on {exc.router}", red=True, bold=True)
+            tw.sep(
+                " ",
+                f"{exc.daemon} {exc.topotato_kind} on {exc.router}",
+                red=True,
+                bold=True,
+            )
             if exc.cmdline:
                 tw.line("")
                 tw.line(f"started as: {exc.cmdline}")
             if exc.__cause__ is not None:
                 tw.line("")
                 tw.line(f"cause: {exc.__cause__!r}")
+
+
+class TopotatoDaemonCrash(TopotatoDaemonErrors):
+    """
+    Daemon exited/crashed unexpectedly.
+    """
+
+    topotato_kind = "crashed"
+
+
+class TopotatoDaemonStartFail(TopotatoDaemonErrors):
+    """
+    Daemon did not start correctly.
+    """
+
+    topotato_kind = "failed to start"
 
 
 class TopotatoDaemonStopFail(TopotatoFail):

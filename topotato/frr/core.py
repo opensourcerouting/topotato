@@ -49,6 +49,7 @@ from ..timeline import Timeline, MiniPollee, TimedElement
 from .livelog import LiveLog, LogMessage
 from ..exceptions import (
     TopotatoDaemonCrash,
+    TopotatoDaemonStartFail,
     TopotatoDaemonStopFail,
     TopotatoSkipped,
     TopotatoFail,
@@ -678,17 +679,27 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
         try:
             self.check_call(cmdline, pass_fds=[logfd.fileno()])
         except subprocess.CalledProcessError as e:
-            raise TopotatoDaemonCrash(
+            raise TopotatoDaemonStartFail(
                 daemon=daemon, router=self.name, cmdline=shlex.join(cmdline)
             ) from e
 
         # want record-priority & timestamp precision...
-        pid, _, _ = self.vtysh_polled(
-            self.instance.timeline,
-            daemon,
-            "enable\nconfigure\nlog file %s\ndebug memstats-at-exit\nend\nclear log cmdline-targets"
-            % self.logfiles[daemon],
-        )
+        try:
+            pid, _, _ = self.vtysh_polled(
+                self.instance.timeline,
+                daemon,
+                "enable\nconfigure\nlog file %s\ndebug memstats-at-exit\nend\nclear log cmdline-targets"
+                % self.logfiles[daemon],
+            )
+        except ConnectionRefusedError as e:
+            raise TopotatoDaemonStartFail(
+                daemon=daemon, router=self.name, cmdline=shlex.join(cmdline)
+            ) from e
+        except FileNotFoundError as e:
+            raise TopotatoDaemonStartFail(
+                daemon=daemon, router=self.name, cmdline=shlex.join(cmdline)
+            ) from e
+
         self.pids[daemon] = pid
 
         if not defer_config:
