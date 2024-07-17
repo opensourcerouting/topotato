@@ -684,21 +684,30 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
             ) from e
 
         # want record-priority & timestamp precision...
-        try:
-            pid, _, _ = self.vtysh_polled(
-                self.instance.timeline,
-                daemon,
-                "enable\nconfigure\nlog file %s\ndebug memstats-at-exit\nend\nclear log cmdline-targets"
-                % self.logfiles[daemon],
-            )
-        except ConnectionRefusedError as e:
-            raise TopotatoDaemonStartFail(
-                daemon=daemon, router=self.name, cmdline=shlex.join(cmdline)
-            ) from e
-        except FileNotFoundError as e:
-            raise TopotatoDaemonStartFail(
-                daemon=daemon, router=self.name, cmdline=shlex.join(cmdline)
-            ) from e
+
+        # have to retry this due to mgmtd/frr issue #16362
+        for retry in range(10, -1, -1):
+            try:
+                pid, _, _ = self.vtysh_polled(
+                    self.instance.timeline,
+                    daemon,
+                    "enable\nconfigure\nlog file %s\ndebug memstats-at-exit\nend\nclear log cmdline-targets"
+                    % self.logfiles[daemon],
+                )
+            except ConnectionRefusedError as e:
+                if retry:
+                    time.sleep(0.1)
+                    continue
+                raise TopotatoDaemonStartFail(
+                    daemon=daemon, router=self.name, cmdline=shlex.join(cmdline)
+                ) from e
+            except FileNotFoundError as e:
+                if retry:
+                    time.sleep(0.1)
+                    continue
+                raise TopotatoDaemonStartFail(
+                    daemon=daemon, router=self.name, cmdline=shlex.join(cmdline)
+                ) from e
 
         self.pids[daemon] = pid
 
