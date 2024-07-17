@@ -9,7 +9,6 @@ from .core import (
     FRRSetup,
     FRRRouterNS,
     TimedVtysh,
-    VtyshPoll,
 )
 from .params import (
     FRRParams,

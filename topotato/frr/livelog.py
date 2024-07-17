@@ -8,16 +8,22 @@ Live-capture log messages from FRR and feed them into topotato.
 import socket
 import struct
 import syslog
+import logging
+import asyncio
 from collections import namedtuple
 
 import typing
-from typing import Dict, Generator, Optional, Set, Tuple
+from typing import Dict, Generator, Optional, Set, Tuple, Union
 
-from ..timeline import MiniPollee, TimedElement, FrameworkEvent
+from ..timeline import EventMux, EventOrigin, Timeline, TimedElement, FrameworkEvent
 from ..pcapng import JournalExport, Context
 
 if typing.TYPE_CHECKING:
+    from asyncio import Future
     from . import FRRRouterNS
+
+
+_logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -248,7 +254,16 @@ class LogClosed(FrameworkEvent):
         self._data["daemon"] = daemon
 
 
-class LiveLog(MiniPollee):
+class LogReadCancelled(FrameworkEvent):
+    typ = "log_read_cancelled"
+
+    def __init__(self, rtrname: str, daemon: str):
+        super().__init__()
+        self._data["router"] = rtrname
+        self._data["daemon"] = daemon
+
+
+class LiveLog(EventMux[Union[LogMessage, LogClosed, LogReadCancelled]], EventOrigin):
     """
     Receiver for log messages from an FRR daemon.
 
@@ -263,7 +278,11 @@ class LiveLog(MiniPollee):
     All FRR unique xref identifiers seen in log messages on this socket.
     """
 
-    def __init__(self, router: "FRRRouterNS", daemon: str):
+    _router: "FRRRouterNS"
+    _daemon: str
+    _task: asyncio.Task
+
+    def __init__(self, router: "FRRRouterNS", daemon: str, timeline: Timeline):
         super().__init__()
 
         self._router = router
@@ -294,8 +313,11 @@ class LiveLog(MiniPollee):
         self._rdfd = rdfd
         self._wrfd = wrfd
 
+        timeline.origin_add(self)
+        self._task = timeline.aioloop.create_task(self._taskfn(), name=repr(self))
+
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, super().__repr__())
+        return f"<{self.__class__.__name__} for {self._daemon}@{self._router.name}>"
 
     @property
     def wrfd(self):
@@ -308,12 +330,6 @@ class LiveLog(MiniPollee):
             raise ValueError("trying to reuse LiveLog after it was closed")
         return self._wrfd
 
-    def fileno(self):
-        """
-        Read side file descriptor to receive messages on.
-        """
-        return self._rdfd
-
     def close_prep(self):
         """
         Close FRR side file descriptor after fork/exec is done.
@@ -323,34 +339,43 @@ class LiveLog(MiniPollee):
             self._wrfd = None  # type: ignore[assignment]
 
     def close(self):
+        # breakpoint()
         assert self._wrfd is None
         if self._rdfd is not None:
             self._rdfd.close()
             self._rdfd = None  # type: ignore[assignment]
 
-    def readable(self):
-        """
-        Called from event loop, receive log messages (max 100 per call).
+    async def _taskfn(self) -> None:
+        aioloop = asyncio.get_running_loop()
+        try:
+            while True:
+                rddata = await aioloop.sock_recv(self._rdfd, 16384)
 
-        If there's more log messages this will be called again since the FD
-        will still be readable, just give other event handlers a chance to run
-        meanwhile.
-        """
-        for _ in range(0, 100):
-            try:
-                rddata = self._rdfd.recv(16384)
-            except BlockingIOError:
-                return
+                if len(rddata) == 0:
+                    self.dispatch([LogClosed(self._router.name, self._daemon)])
 
-            if len(rddata) == 0:
-                yield LogClosed(self._router.name, self._daemon)
-                self._rdfd.close()
-                self._rdfd = None  # type: ignore[assignment]
-                return
+                    self._rdfd.close()
+                    self._rdfd = None  # type: ignore[assignment]
+                    break
 
-            logmsg = LogMessage(self._router, self._daemon, rddata)
-            self.xrefs_seen.add(logmsg.uid)
-            yield logmsg
+                logmsg = LogMessage(self._router, self._daemon, rddata)
+                self.xrefs_seen.add(logmsg.uid)
+                self.dispatch([logmsg])
+
+        except asyncio.CancelledError:
+            _logger.warning(
+                "FRR log receiver (%s: %s) terminating hard",
+                self._router.name,
+                self._daemon,
+            )
+            self.dispatch([LogReadCancelled(self._router.name, self._daemon)])
+
+    async def drain(self) -> None:
+        await self._task
+
+    async def terminate(self) -> None:
+        self._task.cancel()
+        await self._task
 
     def serialize(self, context: Context):
         """

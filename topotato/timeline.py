@@ -8,7 +8,9 @@ test timeline related utilities
 from abc import ABC, abstractmethod
 import bisect
 import time
-import select
+import logging
+import asyncio
+from asyncio.events import AbstractEventLoop
 from dataclasses import dataclass
 
 import typing
@@ -18,17 +20,24 @@ from typing import (
     ClassVar,
     Dict,
     Generator,
-    Iterable,
+    Generic,
     List,
     Optional,
+    Self,
     Tuple,
-    Union,
+    Type,
+    TypeVar,
 )
+from types import TracebackType
 
 from .pcapng import Context, Block, Sink
 
 if typing.TYPE_CHECKING:
+    from typing import Awaitable
     from .base import TopotatoItem
+
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -61,152 +70,6 @@ class TimingParams:
     def evaluate(self):
         start = self._start()
         return (start, start + (self.maxwait or 0.0))
-
-
-class MiniPollee(ABC):
-    """
-    Event receiver for topotato event loop
-
-    Can be added on :py:class:`MiniPoller` to receive fd poll events.
-    """
-
-    @abstractmethod
-    def readable(self) -> Generator["TimedElement", None, None]:
-        """
-        Event handler, called when file descriptor is readable.
-
-        Should yield :py:class:`TimedElement` instances describing events that
-        are happening live.
-        """
-        yield from []
-        raise NotImplementedError()
-
-    @abstractmethod
-    def fileno(self) -> Optional[int]:
-        """
-        Return file descriptor to poll in event loop.
-
-        Can return None if nothing to poll currently.
-        """
-        raise NotImplementedError()
-
-    # pylint: disable=unused-argument, no-self-use
-    def serialize(
-        self, context: Context
-    ) -> Generator[Tuple[Optional[Dict[str, Any]], Optional[Block]], None, None]:
-        """
-        Generate possible header blocks for this event source.
-
-        Only pcap-ng is currently handled, dicts for JSON are thrown away.
-        """
-        yield from []
-
-
-ObserverCallback = Callable[["TimedElement"], None]
-
-
-class MiniPoller:
-    """
-    Event loop for topotato.  Used when sleeping or doing I/O in tests.
-    """
-
-    pollees: List[MiniPollee]
-    """
-    Poll items, e.g. Log message readers and Packet receivers.
-    """
-
-    observers: Dict[Optional[MiniPollee], List[ObserverCallback]]
-
-    def __init__(self):
-        super().__init__()
-        self.pollees = []
-        self.observers = {}
-
-    def __repr__(self):
-        return "<%s %r>" % (self.__class__.__name__, self.pollees)
-
-    def sleep(self, duration: float, final: Union[bool, Iterable[MiniPollee]] = False):
-        """
-        Delay for some time while processing events.
-
-        :param final: drain events until all MiniPollees report None as fd.
-        """
-        for _ in self.run_iter(time.time() + duration, final=final):
-            pass
-
-    def run_tick(self, timing: TimingParams) -> Generator[int, None, None]:
-        """
-        Process events while generating retry "ticks" for an active check.
-
-        Yields the retry iteration count as an integer.
-        """
-
-        for i, deadline in enumerate(timing.ticks()):
-            # do polling pass first, to avoid building up backlog
-            # on first iteration of this loop, nexttick = now, so no delay
-            for _ in self.run_iter(deadline):
-                pass
-
-            yield i
-            # caller will use break when check was sucessful
-
-    def observe(self, origin: Optional[MiniPollee], observer: ObserverCallback):
-        self.observers.setdefault(origin, []).append(observer)
-
-    # pylint: disable=too-many-branches
-    def run_iter(
-        self, deadline=float("inf"), final: Union[bool, Iterable[MiniPollee]] = False
-    ) -> Generator["TimedElement", None, None]:
-        """
-        Process events and yield :py:class:`TimedElement` items as they happen.
-
-        :param deadline: maximum time to wait until, as unix timestamp.
-        :param final: drain events until all MiniPollees report None as fd.
-        """
-
-        if isinstance(final, Iterable):
-            _final = set(final)
-        elif final is True:
-            _final = set(self.pollees)
-        else:
-            _final = set()
-
-        # always run at least one iteration
-        first = True
-
-        while True:
-            fdmap: Dict[int, MiniPollee] = {}
-
-            for target in self.pollees:
-                fileno = target.fileno()
-                if fileno is None:
-                    continue
-                fdmap[fileno] = target
-
-            if final is not False and not set(fdmap.values()) & _final:
-                break
-
-            fds = list(fdmap.keys())
-
-            timeout = max(deadline - time.time(), 0)
-            if timeout == 0 and not first:
-                return
-            if timeout == float("inf"):
-                timeout = None
-
-            ready, _, _ = select.select(fds, [], [], timeout)
-            if not ready:
-                break
-
-            for fd in ready:
-                assert fd in fdmap
-                for i in fdmap[fd].readable():
-                    for pollee in [fdmap[fd], None]:
-                        for obs in self.observers.get(pollee, []):
-                            obs(i)
-                    yield i
-
-            first = False
 
 
 class TimedElement(ABC):
@@ -285,31 +148,127 @@ class _Dummy(TimedElement):
         return (None, None)
 
 
-class Timeline(MiniPoller, List[TimedElement]):
+TE_contra = TypeVar("TE_contra", bound=TimedElement, contravariant=True)
+
+
+class EventDispatch(Generic[TE_contra], ABC):
+    @abstractmethod
+    def dispatch(self, elements: List[TE_contra]): ...
+
+
+class EventMux(EventDispatch[TE_contra]):
+    history: List[TE_contra]
+
+    _dispatch: List["EventDispatch[TE_contra]"]
+
+    def __init__(self):
+        super().__init__()
+        self.history = []
+        self._dispatch = []
+
+    def dispatch(self, elements: List[TE_contra]):
+        for sub in self._dispatch:
+            sub.dispatch(elements)
+        for element in elements:
+            bisect.insort(self.history, element)
+
+    def dispatch_add(
+        self, receiver: EventDispatch[TE_contra], backfill: Optional[float] = None
+    ):
+        if backfill is not None:
+            idx = bisect.bisect_left(self.history, _Dummy(backfill))
+            receiver.dispatch(self.history[idx:])
+        self._dispatch.append(receiver)
+
+    def dispatch_remove(self, receiver: EventDispatch[TE_contra]):
+        self._dispatch.remove(receiver)
+
+    def observe(self, backfill: Optional[float] = None) -> "EventIter[TE_contra]":
+        return EventIter(self, backfill=backfill)
+
+
+class EventIter(EventDispatch[TE_contra]):
+    source: EventMux[TE_contra]
+    _queue: asyncio.Queue[List[TE_contra]]
+    _pending: List[TE_contra]
+    _backfill: Optional[float]
+
+    def __init__(self, source: EventMux[TE_contra], backfill: Optional[float] = None):
+        super().__init__()
+        self.source = source
+        self._queue = asyncio.Queue()
+        self._backfill = backfill
+        self._pending = []
+
+    def dispatch(self, elements: List[TE_contra]):
+        self._queue.put_nowait(elements)
+
+    def __aiter__(self) -> Self:
+        return self
+
+    async def __anext__(self) -> TE_contra:
+        while not self._pending:
+            elements = await self._queue.get()
+            # if not elements:
+            #    raise StopAsyncIteration()
+            self._pending.extend(elements)
+        return self._pending.pop(0)
+
+    def __enter__(self) -> Self:
+        self.source.dispatch_add(self, self._backfill)
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        tb: Optional["TracebackType"],
+    ):
+        self.source.dispatch_remove(self)
+
+
+class EventOrigin:
+    # pylint: disable=unused-argument, no-self-use
+    def serialize(
+        self, context: Context
+    ) -> Generator[Tuple[Optional[Dict[str, Any]], Optional[Block]], None, None]:
+        """
+        Generate possible header blocks for this event source.
+
+        Only pcap-ng is currently handled, dicts for JSON are thrown away.
+        """
+        yield from []
+
+    async def terminate(self) -> None:
+        pass
+
+
+class Timeline(EventMux[TimedElement]):
     """
     Sorted list of TimedElement|s
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.observe(None, self.record)
+    aioloop: AbstractEventLoop
+    origins: List[EventOrigin]
 
-    def record(self, element: TimedElement):
-        bisect.insort(self, element)
+    def __init__(self, aioloop: AbstractEventLoop, *args, **kwargs):
+        self.aioloop = aioloop
+        super().__init__(*args, **kwargs)
+        self.origins = []
 
     def serialize(self, sink: Sink) -> Tuple[List, Dict[str, Any]]:
         ret = []
         toplevel: Dict[str, Any] = {}
 
-        for poller in self.pollees:
-            for jsdata, block in poller.serialize(sink):
+        for origin in self.origins:
+            for jsdata, block in origin.serialize(sink):
                 if block:
                     sink.write(block)
                 if jsdata:
                     for k, v in jsdata.items():
                         toplevel.setdefault(k, {}).update(v)
 
-        for item in self:
+        for item in self.history:
             jsdata, block = item.serialize(sink)
             if jsdata:
                 ret.append({"ts": item.ts[0], "data": jsdata})
@@ -317,42 +276,5 @@ class Timeline(MiniPoller, List[TimedElement]):
                 sink.write(block)
         return ret, toplevel
 
-    def iter_since(
-        self, start: float = float("-inf")
-    ) -> Generator[TimedElement, None, None]:
-        if start == float("-inf"):
-            startidx = 0
-        else:
-            startidx = bisect.bisect_left(self, _Dummy(start))
-
-        yield from self[startidx:]
-
-    def run_timing(self, timing: TimingParams) -> Generator[TimedElement, None, None]:
-        start, end = timing.evaluate()
-
-        if timing.full_history:
-            yield from self.iter_since()
-        else:
-            yield from self.iter_since(start)
-        yield from self.run_iter(end)
-
-    def install(self, pollee: MiniPollee):
-        self.pollees.append(pollee)
-
-    def uninstall(self, pollee: MiniPollee):
-        self.pollees.remove(pollee)
-
-    class WithPollee:
-        def __init__(self, poller: "Timeline", pollee: MiniPollee):
-            self._poller = poller
-            self._pollee = pollee
-
-        def __enter__(self):
-            self._poller.install(self._pollee)
-            return self._poller
-
-        def __exit__(self, exc_type, exc_value, tb):
-            self._poller.uninstall(self._pollee)
-
-    def with_pollee(self, pollee: MiniPollee):
-        return self.WithPollee(self, pollee)
+    def origin_add(self, origin: EventOrigin):
+        self.origins.append(origin)

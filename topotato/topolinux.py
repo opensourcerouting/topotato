@@ -14,6 +14,7 @@ import re
 import time
 import subprocess
 import logging
+import asyncio
 
 try:
     import packaging.version
@@ -161,7 +162,7 @@ class NetworkInstance(topobase.NetworkInstance):
             super().start()
             self.check_call([self._exec("ip"), "link", "set", "lo", "up"])
 
-        def end_prep(self):
+        async def end_prep(self):
             pass
 
         def routes(
@@ -379,7 +380,7 @@ class NetworkInstance(topobase.NetworkInstance):
         self.lcov_args = []
 
     # pylint: disable=too-many-branches
-    def start(self):
+    async def _start(self):
         """
         kick everything up
 
@@ -489,9 +490,12 @@ class NetworkInstance(topobase.NetworkInstance):
                     self.scapys[br] = sock
                     os.set_blocking(sock.fileno(), False)
 
-        self.switch_ns.start_run()
+        await self.switch_ns.start_run()
+
+        tasks = []
         for rns in self.routers.values():
-            rns.start_run()
+            tasks.append(rns.start_run())
+        await asyncio.gather(*tasks)
 
     def _gcov_collect(self):
         have_gcov = False
@@ -528,17 +532,21 @@ class NetworkInstance(topobase.NetworkInstance):
             self._lcov = None
         return self._covdatafile
 
-    def stop(self):
+    async def _stop(self):
         assert self.switch_ns is not None
 
-        for rns in self.routers.values():
-            rns.end_prep()
-        for rns in self.routers.values():
+        aws = [rns.end_prep() for rns in self.routers.values()]
+        await asyncio.gather(*aws, return_exceptions=True)
+
+        async def do_stop(rns):
             rns._do_atexit()
-            rns.end()
+            await rns.end()
+
+        aws = [do_stop(rns) for rns in self.routers.values()]
+        await asyncio.gather(*aws, return_exceptions=True)
 
         self.switch_ns._do_atexit()
-        self.switch_ns.end()
+        await self.switch_ns.end()
         self._gcov_collect()
 
     def status(self):

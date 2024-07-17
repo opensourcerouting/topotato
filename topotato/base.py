@@ -12,6 +12,7 @@ from collections import OrderedDict
 import time
 import logging
 import string
+import asyncio
 from enum import Enum
 
 import typing
@@ -351,7 +352,11 @@ class TopotatoItem(nodes.Item):
     @pytest.hookimpl()
     @staticmethod
     def pytest_topotato_run(item: "TopotatoItem", testfunc: Callable):
-        testfunc()
+        asyncallable = getattr(item, "async_call", None)
+        if asyncallable is not None:
+            item.timeline.aioloop.run_until_complete(asyncallable())
+        else:
+            testfunc()
 
     @endtrace
     @skiptrace
@@ -938,7 +943,7 @@ class TopotatoClass(_pytest.python.Class):
         )
 
         netinst.start()
-        netinst.timeline.sleep(0.2)
+        netinst.timeline.aioloop.run_until_complete(asyncio.sleep(0.2))
         # netinst.status()
 
         failed: List[Tuple[str, str]] = []
@@ -947,7 +952,7 @@ class TopotatoClass(_pytest.python.Class):
             router.start_post(netinst.timeline, failed)
 
         if len(failed) > 0:
-            netinst.timeline.sleep(0)
+            netinst.timeline.aioloop.run_until_complete(asyncio.sleep(0.01))
             if len(failed) == 1:
                 rname, daemon = failed[0]
                 raise TopotatoDaemonCrash(daemon=daemon, router=rname)
@@ -959,12 +964,11 @@ class TopotatoClass(_pytest.python.Class):
         self.started_ts = time.time()
 
         for ifname, sock in netinst.scapys.items():  # type: ignore[attr-defined]
-            netinst.timeline.install(LiveScapy(ifname, sock))
+            scapysrc = LiveScapy(ifname, sock, netinst.timeline)
+            scapysrc.dispatch_add(netinst.timeline)
 
     @staticmethod
     def do_stop(stopitem):
         netinst = stopitem.instance
 
         netinst.stop()
-
-        netinst.timeline.sleep(1, final=True)

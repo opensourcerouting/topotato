@@ -10,6 +10,7 @@ import os
 import time
 import subprocess
 import json
+import asyncio
 
 from typing import (
     Dict,
@@ -58,7 +59,7 @@ class NetworkInstance(topobase.NetworkInstance):
             super().start()
             self.check_call(["ifconfig", "lo0", "up"])
 
-        def end_prep(self):
+        async def end_prep(self):
             pass
 
         def routes(self, af=4, local=False):
@@ -223,7 +224,7 @@ class NetworkInstance(topobase.NetworkInstance):
     def __init__(self, network):
         super().__init__(network)
 
-    def start(self):
+    async def _start(self):
         """
         kick everything up
 
@@ -323,18 +324,21 @@ class NetworkInstance(topobase.NetworkInstance):
             args.extend(["-i", br])
         # self.dumpcap = self.switch_ns.popen(['dumpcap', '-B', '1', '-t', '-w', self.pcapfile] + args)
 
-        self.switch_ns.start_run()
-        for rns in self.routers.values():
-            rns.start_run()
+        await self.switch_ns.start_run()
 
-    def stop(self):
+        tasks = []
+        for rns in self.routers.values():
+            tasks.append(rns.start_run())
+        await asyncio.gather(*tasks)
+
+    async def _stop(self):
         assert self.switch_ns is not None
 
         for rtr in self.routers.values():
-            rtr.end_prep()
+            await rtr.end_prep()
         for rtr in self.routers.values():
-            rtr.end()
-        self.switch_ns.end()
+            await rtr.end()
+        await self.switch_ns.end()
         # self.dumpcap.send_signal(signal.SIGINT)
         # self.dumpcap.wait()
 

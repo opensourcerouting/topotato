@@ -15,6 +15,9 @@ from abc import ABC, abstractmethod
 import os
 import weakref
 import warnings
+import asyncio
+from asyncio.events import AbstractEventLoop
+from asyncio import tasks
 import typing
 from typing import (
     cast,
@@ -154,7 +157,7 @@ class BaseNS:
         Start this virtual system.
         """
 
-    def start_run(self) -> None:
+    async def start_run(self) -> None:
         """
         Second-stage start, e.g. things inside the virtual system.
         """
@@ -168,12 +171,12 @@ class BaseNS:
            rework/remove "failed" parameter.
         """
 
-    def end_prep(self) -> None:
+    async def end_prep(self) -> None:
         """
         Prepare for shutdown.
         """
 
-    def end(self) -> None:
+    async def end(self) -> None:
         """
         Stop this virtual system.
 
@@ -375,12 +378,20 @@ class NetworkInstance(ABC):
     OS environment variables for processes created on this instance
     """
 
+    aioloop: AbstractEventLoop
+    """
+    AsyncIO loop used for events in this network instance
+
+    Note that this assumes there is *one* active NetworkInstance.
+    """
+
     def __init__(self, network: "toponom.Network") -> None:
         super().__init__()
         self.network = network
         self.switch_ns = None
         self.routers = {}
         self.environ = {}
+        self.aioloop = asyncio.events.new_event_loop()
 
     def make(self, name: str) -> RouterNS:
         """
@@ -402,6 +413,8 @@ class NetworkInstance(ABC):
         """
         Execute setup (create switch & router objects) for this network instance.
         """
+        asyncio.events.set_event_loop(self.aioloop)
+
         # pylint: disable=abstract-class-instantiated
         self.switch_ns = self.SwitchyNS(instance=self, name="switch-ns")
 
@@ -413,13 +426,58 @@ class NetworkInstance(ABC):
         return self
 
     @abstractmethod
+    async def _start(self) -> None:
+        """
+        Subclass/Implementation specific back end of :py:method:`start`
+        """
+
     def start(self) -> None:
         """
         Start this network instance.
         """
+        self.aioloop.run_until_complete(self._start())
 
     @abstractmethod
+    async def _stop(self) -> None:
+        """
+        Subclass/Implementation specific back end of :py:method:`stop`
+        """
+
     def stop(self) -> None:
         """
         Stop this network instance.
         """
+        try:
+            self.aioloop.run_until_complete(self._stop())
+        finally:
+            try:
+                self._cancel_all_tasks()
+                self.aioloop.run_until_complete(self.aioloop.shutdown_asyncgens())
+            finally:
+                asyncio.events.set_event_loop(None)
+                self.aioloop.close()
+
+    # shamelessly stolen from 3.8/Lib/asyncio/runners.py
+    def _cancel_all_tasks(self):
+        loop = self.aioloop
+
+        to_cancel = tasks.all_tasks(loop)
+        if not to_cancel:
+            return
+
+        for task in to_cancel:
+            task.cancel()
+
+        loop.run_until_complete(tasks.gather(*to_cancel, return_exceptions=True))
+
+        for task in to_cancel:
+            if task.cancelled():
+                continue
+            if task.exception() is not None:
+                loop.call_exception_handler(
+                    {
+                        "message": "unhandled exception during asyncio.run() shutdown",
+                        "exception": task.exception(),
+                        "task": task,
+                    }
+                )

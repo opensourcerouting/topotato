@@ -43,7 +43,7 @@ class FreeBSDJail:
         self.jid = int(self.process.stdout.readline())
         self.process.stdout.readline()
 
-    def end(self):
+    async def end(self):
         assert self.process.stdin is not None
 
         subprocess.check_call(["jail", "-r", "%d" % self.jid])

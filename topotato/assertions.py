@@ -13,6 +13,8 @@ import logging
 import tempfile
 import re
 import inspect
+import time
+import asyncio
 from collections import OrderedDict
 
 import typing
@@ -23,6 +25,7 @@ from typing import (
     ClassVar,
     List,
     Optional,
+    Protocol,
     Type,
     Union,
 )
@@ -52,6 +55,7 @@ from .exceptions import (
 if typing.TYPE_CHECKING:
     from .frr.core import FRRRouterNS
     from .exceptions import TopotatoFail
+    from .timeline import Timeline
     from . import toponom, topobase
 
 __all__ = [
@@ -89,6 +93,20 @@ class TopotatoModifier(TopotatoItem):
     """
 
     cascade_failures = SkipMode.SkipThisAndLater
+
+
+class TimedMixinSelfProtocol(Protocol):
+    """
+    Items that the mixin host for :py:class:`TimedMixin` may need to provide.
+    """
+
+    timeline: "Timeline"
+
+    async def _async_timed(self) -> None:
+        """
+        Used by the provided :py:meth:`_async` function, not needed if that
+        is overridden.
+        """
 
 
 class TimedMixin:
@@ -159,6 +177,27 @@ class TimedMixin:
         assert fn is not None
         return fn.started_ts
 
+    def obs_start(self) -> float:
+        return float("-Inf") if self._timing.full_history else self.relative_start()
+
+    async def _run_tick(self):
+        for i, deadline in enumerate(self._timing.ticks()):
+            delta = deadline - time.time()
+            if delta > 0:
+                await asyncio.sleep(delta)
+
+            yield i
+
+    async def _async(self):
+        _, until = self._timing.evaluate()
+        selfc = cast(TimedMixinSelfProtocol, self)
+        # pylint: disable=protected-access
+        await asyncio.wait_for(selfc._async_timed(), max(0.001, until - time.time()))
+
+    def __call__(self):
+        selfc = cast(TimedMixinSelfProtocol, self)
+        selfc.timeline.aioloop.run_until_complete(self._async())
+
 
 class AssertKernelRoutes(TimedMixin, TopotatoAssertion):
     """
@@ -183,10 +222,10 @@ class AssertKernelRoutes(TimedMixin, TopotatoAssertion):
         self._routes = routes
         self._local = local
 
-    def __call__(self):
+    async def _async(self):
         router = self.instance.routers[self._rtr]
 
-        for _ in self.timeline.run_tick(self._timing):
+        async for _ in self._run_tick():
             routes = router.routes(self.af, self._local)
             diff = json_cmp(routes, self._routes)
             if diff is None:
@@ -283,12 +322,12 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
         self._compare = compare
         self._filters = filters or self.default_filters
 
-    def __call__(self) -> None:
+    async def _async(self) -> None:
         router = cast("FRRRouterNS", self.instance.routers[self._rtr.name])
         result: Optional["TopotatoFail"]
 
-        for _ in self.timeline.run_tick(self._timing):
-            _, out, rc = router.vtysh_polled(self.timeline, self._daemon, self._command)
+        async for _ in self._run_tick():
+            _, out, rc = await router.vtysh_polled(self._daemon, self._command)
             if rc != 0:
                 msg = f"vtysh return value {rc}"
                 if out and out[-1].text.strip() != "":
@@ -304,6 +343,7 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
                 elif isinstance(self._compare, str):
                     for filterfn in self._filters:
                         text = filterfn(text)
+                    # pylint: disable=protected-access
                     result = text_rich_cmp(
                         router._configs,
                         text,
@@ -371,41 +411,42 @@ class AssertPacket(TimedMixin, TopotatoAssertion):
                 )
             self._argtypes.append(argtype)
 
-    def __call__(self):
-        for element in self.timeline.run_timing(self._timing):
-            if not isinstance(element, TimedScapy):
-                continue
-            pkt = element.pkt
-            if pkt.sniffed_on != self._link:
-                continue
+    async def _async_timed(self):
+        with self.timeline.observe(backfill=self.obs_start()) as obs:
+            async for element in obs:  # async_iter_timing(self._timing):
+                if not isinstance(element, TimedScapy):
+                    continue
+                pkt = element.pkt
+                if pkt.sniffed_on != self._link:
+                    continue
 
-            args = []
-            cur_layer = pkt
+                args = []
+                cur_layer = pkt
 
-            for argtype in self._argtypes:
-                cur_layer = cur_layer.getlayer(argtype)
+                for argtype in self._argtypes:
+                    cur_layer = cur_layer.getlayer(argtype)
+                    if cur_layer is None:
+                        break
+                    args.append(cur_layer)
+
                 if cur_layer is None:
+                    continue
+
+                if self._pkt(*args):
+                    self.matched = pkt
+                    element.match_for.append(self)
+                    if not self._expect_pkt:
+                        raise TopotatoPacketFail(
+                            "received an unexpected matching packet for:\n%s"
+                            % inspect.getsource(self._pkt)
+                        )
                     break
-                args.append(cur_layer)
-
-            if cur_layer is None:
-                continue
-
-            if self._pkt(*args):
-                self.matched = pkt
-                element.match_for.append(self)
-                if not self._expect_pkt:
+            else:
+                if self._expect_pkt:
                     raise TopotatoPacketFail(
-                        "received an unexpected matching packet for:\n%s"
+                        "did not receive a matching packet for:\n%s"
                         % inspect.getsource(self._pkt)
                     )
-                break
-        else:
-            if self._expect_pkt:
-                raise TopotatoPacketFail(
-                    "did not receive a matching packet for:\n%s"
-                    % inspect.getsource(self._pkt)
-                )
 
 
 class AssertLog(TimedMixin, TopotatoAssertion):
@@ -429,36 +470,36 @@ class AssertLog(TimedMixin, TopotatoAssertion):
         self.matched = None
 
     @skiptrace
-    def __call__(self):
-        for msg in self.timeline.run_timing(self._timing):
-            if not isinstance(msg, LogMessage):
-                continue
-
-            text = msg.text
-            if isinstance(self._msg, re.Pattern):
-                m = self._msg.match(text)
-                if not m:
-                    continue
-            else:
-                if text.find(self._msg) == -1:
+    async def _async_timed(self):
+        with self.timeline.observe(backfill=self.obs_start()) as obs:
+            async for msg in obs:  # async_iter_timing(self._timing):
+                if not isinstance(msg, LogMessage):
                     continue
 
-            self.matched = msg
-            msg.match_for.append(self)
-            break
-        else:
-            if isinstance(self._msg, re.Pattern):
-                detail = cast(str, self._msg.pattern)
+                text = msg.text
+                if isinstance(self._msg, re.Pattern):
+                    m = self._msg.match(text)
+                    if not m:
+                        continue
+                else:
+                    if text.find(self._msg) == -1:
+                        continue
+
+                self.matched = msg
+                msg.match_for.append(self)
+                break
             else:
-                detail = cast(str, self._msg)
-            raise TopotatoLogFail(detail)
+                if isinstance(self._msg, re.Pattern):
+                    detail = cast(str, self._msg.pattern)
+                else:
+                    detail = cast(str, self._msg)
+                raise TopotatoLogFail(detail)
 
 
 class Delay(TimedMixin, TopotatoAssertion):
     @skiptrace
-    def __call__(self):
-        for _ in self.timeline.run_timing(self._timing):
-            pass
+    async def _async(self):
+        await asyncio.sleep(self._timing.maxwait or 0.0)
 
 
 class _DaemonControl(TopotatoModifier):
@@ -474,26 +515,26 @@ class _DaemonControl(TopotatoModifier):
         self._rtr = rtr
         self._daemon = daemon
 
-    def do(self, router):
+    async def do(self, router):
         pass
 
     def runtest(self):
         router = self.instance.routers[self._rtr.name]
-        self.do(router)
+        self.timeline.aioloop.run_until_complete(self.do(router))
 
 
 class DaemonRestart(_DaemonControl):
     op_name = "restart"
 
-    def do(self, router):
-        router.restart_daemon(self._daemon)
+    async def do(self, router):
+        await router.restart_daemon(self._daemon)
 
 
 class DaemonStop(_DaemonControl):
     op_name = "stop"
 
-    def do(self, router):
-        router.stop_daemon(self._daemon)
+    async def do(self, router):
+        await router.stop_daemon(self._daemon)
 
 
 class ModifyLinkStatus(TopotatoModifier):

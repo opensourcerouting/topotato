@@ -6,6 +6,7 @@ Scapy packet-sending integration for topotato.
 """
 
 import logging
+import asyncio
 
 import typing
 from typing import (
@@ -67,7 +68,7 @@ class ScapySend(TopotatoModifier):
 
         self._pkt = pkt
 
-    def __call__(self):
+    async def _async(self):
         if scapy_exc:
             pytest.skip(str(scapy_exc))
 
@@ -78,8 +79,11 @@ class ScapySend(TopotatoModifier):
 
         if self._repeat:
             for _ in range(1, self._repeat):
-                self.timeline.sleep(self._interval or 0.0)
+                await asyncio.sleep(self._interval or 0.0)
                 with router:
                     sock.send(self._pkt)
 
         sock.close()
+
+    def __call__(self):
+        self.timeline.aioloop.run_until_complete(self._async())

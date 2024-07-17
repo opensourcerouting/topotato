@@ -212,7 +212,7 @@ class LinuxNamespace:
             # ... and wait for parent to tell us to exit
             sys.stdin.read()
 
-    def end(self):
+    async def end(self):
         """
         stop namespace (and kill everything within)
 

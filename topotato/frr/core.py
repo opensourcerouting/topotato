@@ -18,6 +18,7 @@ import struct
 import subprocess
 import sys
 import time
+import asyncio
 import typing
 from typing import (
     cast,
@@ -27,7 +28,6 @@ from typing import (
     Collection,
     Dict,
     FrozenSet,
-    Generator,
     List,
     Mapping,
     Optional,
@@ -48,7 +48,7 @@ except ImportError:
 
 
 from ..utils import get_dir, EnvcheckResult
-from ..timeline import Timeline, MiniPollee, TimedElement
+from ..timeline import TimedElement, EventMux
 from .livelog import LiveLog, LogMessage
 from ..exceptions import (
     TopotatoDaemonCrash,
@@ -396,72 +396,6 @@ class TimedVtysh(TimedElement):
         return (jsdata, None)
 
 
-class VtyshPoll(MiniPollee):
-    """
-    vtysh read poll event handler.
-
-    Instances of this class are dynamically added (and removed) from the
-    :py:class:`Timeline` event poll list while commands are executed.
-
-    This also handles sending the next command when the previous one is done.
-    """
-
-    rtrname: str
-    daemon: str
-
-    _cur_cmd: Optional[str]
-    _cur_out: Optional[bytes]
-
-    def __init__(self, rtrname: str, daemon: str, sock: socket.socket, cmds: List[str]):
-        self.rtrname = rtrname
-        self.daemon = daemon
-        self._sock = sock
-        self._cmds = cmds
-        self._cur_cmd = None
-        self._cur_out = None
-
-    def send_cmd(self):
-        assert self._cur_cmd is None
-
-        if not self._cmds:
-            return
-
-        self._cur_cmd = cmd = self._cmds.pop(0)
-        self._cur_out = b""
-
-        self._sock.setblocking(True)
-        self._sock.sendall(cmd.strip().encode("UTF-8") + b"\0")
-        self._sock.setblocking(False)
-
-    def fileno(self) -> Optional[int]:
-        return self._sock.fileno()
-
-    def readable(self) -> Generator[TimedElement, None, None]:
-        # TODO: timeout? socket close?
-        assert self._cur_cmd is not None
-        assert self._cur_out is not None
-
-        self._cur_out += self._sock.recv(4096)
-
-        if len(self._cur_out) >= 4 and self._cur_out[-4:-1] == b"\0\0\0":
-            rc = self._cur_out[-1]
-            raw = self._cur_out[:-4]
-            text = raw.decode("UTF-8").replace("\r\n", "\n")
-
-            # accept a few more non-error return codes?
-            last = rc != 0 or not self._cmds
-
-            yield TimedVtysh(
-                time.time(), self.rtrname, self.daemon, self._cur_cmd, rc, text, last
-            )
-
-            self._cur_cmd = None
-            self._cur_out = None
-
-            if not last:
-                self.send_cmd()
-
-
 class FRRInvalidConfigFail(TopotatoFail):
     def __init__(self, router: str, daemon: str, errmsg: str):
         self.router = router
@@ -492,6 +426,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
     livelogs: Dict[str, LiveLog]
     frrconfpath: str
     merged_cfg: str
+    events: EventMux[TimedElement]
 
     # hack to fix CallableNS foo...  really needs some improvement
     check_call: Callable[..., None]
@@ -512,6 +447,8 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         self.pids = {}
         self.rundir = None
         self.rtrcfg = {}
+        self.events = EventMux()
+        self.events.dispatch_add(self.instance.timeline)
 
     @property
     @deprecated
@@ -520,11 +457,12 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
 
     def _getlogfd(self, daemon):
         if daemon not in self.livelogs:
-            self.livelogs[daemon] = LiveLog(self, daemon)
-            self.instance.timeline.install(self.livelogs[daemon])
-            self.instance.timeline.observe(self.livelogs[daemon], self._logwatch)
+            self.livelogs[daemon] = LiveLog(self, daemon, self.instance.timeline)
+            self.livelogs[daemon].dispatch_add(self.events)
+
         return self.livelogs[daemon].wrfd
 
+    # TBD: UNUSED
     def _logwatch(self, evt: TimedElement):
         if not isinstance(evt, LogMessage):
             return
@@ -569,9 +507,8 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
     def start_run_frr_pre(self):
         pass
 
-    def start_run(self):
-        super().start_run()
-        self.start_run_frr_pre()
+    async def start_run(self):
+        await super().start_run()
 
         self.rtrcfg = self._configs.configs
         self.frrconfpath = self.tempfile("frr.conf")
@@ -591,7 +528,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
                 _logger.warning("daemon %s not in build, skipping", daemon)
                 continue
             self.logfiles[daemon] = self.tempfile("%s.log" % daemon)
-            self.start_daemon(daemon, defer_config=True)
+            await self.start_daemon(daemon, defer_config=True)
 
         if self.pids:
             # one-pass load all daemons
@@ -622,7 +559,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
     def adjust_cmdline(self, daemon: str, args: List[str]):
         pass
 
-    def start_daemon(self, daemon: str, defer_config=False):
+    async def start_daemon(self, daemon: str, defer_config=False):
         frrpath = self.frr.frrpath
         binmap = self.frr.binmap
 
@@ -664,8 +601,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         # have to retry this due to mgmtd/frr issue #16362
         for retry in range(30, -1, -1):
             try:
-                pid, _, _ = self.vtysh_polled(
-                    self.instance.timeline,
+                pid, _, _ = await self.vtysh_polled(
                     daemon,
                     "enable\nconfigure\ndebug memstats-at-exit\nend",
                 )
@@ -698,7 +634,9 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
                 continue
 
             try:
-                _, _, rc = self.vtysh_polled(timeline, daemon, "show version")
+                _, _, rc = timeline.aioloop.run_until_complete(
+                    self.vtysh_polled(daemon, "show version")
+                )
             except ConnectionRefusedError:
                 failed.append((self.name, daemon))
                 return
@@ -708,7 +646,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
             if rc != 0:
                 failed.append((self.name, daemon))
 
-    def stop_daemon(self, daemon: str):
+    async def stop_daemon(self, daemon: str):
         if daemon not in self.pids:
             return
 
@@ -721,7 +659,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
             raise TopotatoDaemonCrash(daemon=daemon, router=self.name) from e
 
         for i in range(0, 5):
-            self.instance.timeline.sleep(i * 0.1)
+            await asyncio.sleep(i * 0.1)
             try:
                 os.kill(pid, signal.SIGTERM)
             except ProcessLookupError:
@@ -729,11 +667,11 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
 
         raise TopotatoDaemonStopFail(daemon=daemon, router=self.name)
 
-    def restart_daemon(self, daemon: str):
-        self.stop_daemon(daemon)
-        self.start_daemon(daemon)
+    async def restart_daemon(self, daemon: str):
+        await self.stop_daemon(daemon)
+        await self.start_daemon(daemon)
 
-    def end_prep(self):
+    async def end_prep(self):
         for livelog in self.livelogs.values():
             livelog.close_prep()
 
@@ -741,23 +679,32 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
             try:
                 os.kill(pid, signal.SIGTERM)
                 # stagger SIGTERM signals a tiiiiny bit
-                self.instance.timeline.sleep(0.01)
+                await asyncio.sleep(0.01)
             except ProcessLookupError:
                 del self.pids[daemon]
                 # FIXME: log something
 
-        super().end_prep()
+        await super().end_prep()
 
-    def end(self):
+    async def end(self):
         livelogs = self.livelogs.values()
 
+        aioloop = asyncio.get_running_loop()
+
+        aws = list(aioloop.create_task(ll.drain()) for ll in livelogs)
+        if aws:
+            _, pending = await asyncio.wait(aws, timeout=1.0)
+            for t in pending:
+                t.cancel()
+
         # TODO: move this to instance level
-        self.instance.timeline.sleep(1.0, final=livelogs)
+        # await self.instance.timeline.async_run(time.time() + 1.0, final=livelogs)
+        # await asyncio.sleep(1.0) # FIXME
 
         for livelog in self.livelogs.values():
-            livelog.close()
+            await livelog.terminate()
 
-        super().end()
+        await super().end()
 
     def _vtysh(self, args: List[str], **kwargs) -> subprocess.Popen:
         assert self.rundir is not None
@@ -770,7 +717,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
             **kwargs,
         )
 
-    def vtysh_exec(self, timeline: Timeline, cmds, timeout=5.0):
+    def vtysh_exec(self, cmds, timeout=5.0):
         cmds = [c.strip() for c in cmds.splitlines() if c.strip() != ""]
 
         args: List[str] = []
@@ -784,20 +731,31 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         timed = TimedVtysh(
             time.time(), self.name, "vtysh", cmds, proc.returncode, output, True
         )
-        timeline.append(timed)
+        self.events.dispatch([timed])
 
         return (None, [timed], proc.returncode)
 
     # pylint: disable=too-many-locals
-    def vtysh_polled(self, timeline: Timeline, daemon, cmds, timeout=5.0):
+    async def vtysh_polled(self, daemon, cmds, timeout=5.0):
         if daemon == "vtysh":
-            return self.vtysh_exec(timeline, cmds, timeout)
+            return self.vtysh_exec(cmds, timeout)
 
+        return await asyncio.wait_for(self.vtysh_async(daemon, cmds), timeout)
+
+    async def vtysh_async(self, daemon: str, cmds: Union[List[str], str]):
+        aioloop = asyncio.get_running_loop()
         fn = self.tempfile("run/%s.vty" % (daemon))
+        output = []
+        retcode = 0
+
+        if isinstance(cmds, str):
+            cmds = [c.strip() for c in cmds.splitlines() if c.strip() != ""]
+        else:
+            cmds = cmds[:]
 
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0) as sock:
             try:
-                sock.connect(fn)
+                await aioloop.sock_connect(sock, fn)
             except OSError as e:
                 e.add_note(
                     f"while attempting to connect to {daemon} on {self.name} ({fn!r})"
@@ -816,24 +774,28 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
             )
             pid, _, _ = struct.unpack("3I", peercred)
 
-            cmds = [c.strip() for c in cmds.splitlines() if c.strip() != ""]
+            while cmds:
+                cmd = cmds.pop(0)
+                await aioloop.sock_sendall(sock, cmd.encode("UTF-8") + b"\0")
 
-            # TODO: refactor
-            vpoll = VtyshPoll(self.name, daemon, sock, cmds)
+                cur_out = b""
+                while cur_out[-4:-1] != b"\0\0\0":
+                    cur_out += await aioloop.sock_recv(sock, 4096)
 
-            output = []
-            retcode = None
+                retcode = cur_out[-1]
+                raw = cur_out[:-4]
 
-            with timeline.with_pollee(vpoll) as poller:
-                vpoll.send_cmd()
+                text = raw.decode("UTF-8").replace("\r\n", "\n")
 
-                end = time.time() + timeout
-                for event in poller.run_iter(end):
-                    if not isinstance(event, TimedVtysh):
-                        continue
-                    output.append(event)
-                    retcode = event.retcode
-                    if event.last:
-                        break
+                # accept a few more non-error return codes?
+                last = retcode != 0 or not cmds
+                event = TimedVtysh(
+                    time.time(), self.name, daemon, cmd, retcode, text, last
+                )
+                output.append(event)
+                self.events.dispatch([event])
+
+                if retcode:
+                    break
 
         return (pid, output, retcode)

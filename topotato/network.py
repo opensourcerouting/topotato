@@ -94,7 +94,7 @@ class TopotatoNetwork(NetworkInstance):
         self.nodeid = nodeid
         super().__init__(self.__class__._network)
         self.session = session
-        self.timeline = Timeline()
+        self.timeline = Timeline(self.aioloop)
         self._params = {}
 
         taskdir = session.interactive_session.taskdir
