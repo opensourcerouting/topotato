@@ -686,7 +686,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
         # want record-priority & timestamp precision...
 
         # have to retry this due to mgmtd/frr issue #16362
-        for retry in range(10, -1, -1):
+        for retry in range(30, -1, -1):
             try:
                 pid, _, _ = self.vtysh_polled(
                     self.instance.timeline,
