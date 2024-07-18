@@ -8,6 +8,7 @@ FreeBSD implementation of topotato instances, based on jailwrap
 
 import os
 import time
+import subprocess
 import json
 
 from typing import (
@@ -16,7 +17,6 @@ from typing import (
     Optional,
 )
 
-from .defer import subprocess
 from .jailwrap import FreeBSDJail
 from .toponom import LAN, Network
 from . import topobase

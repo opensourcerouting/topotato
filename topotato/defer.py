@@ -5,15 +5,12 @@
 gevent-or-not topotato integration
 """
 
-# pylint: disable=unused-import
-import select
-import subprocess
-import typing
-
 
 class _FakeGreenlet:
     """
     Pretend to be a gevent.Greenlet when gevent is not available.
+
+    FIXME: deprecated, remove
     """
 
     def __init__(self, run, *args, **kwargs):
@@ -38,17 +35,3 @@ class _FakeGreenlet:
 
 Greenlet = _FakeGreenlet
 spawn = _FakeGreenlet.spawn
-
-
-if not typing.TYPE_CHECKING:
-    try:
-        import gevent
-        import gevent.subprocess
-        import gevent.select
-
-        subprocess = gevent.subprocess
-        select = gevent.select
-        spawn = gevent.spawn
-        Greenlet = gevent.Greenlet
-    except ImportError:
-        pass

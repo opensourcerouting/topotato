@@ -8,6 +8,7 @@ test timeline related utilities
 from abc import ABC, abstractmethod
 import bisect
 import time
+import select
 from dataclasses import dataclass
 
 import typing
@@ -24,7 +25,6 @@ from typing import (
     Union,
 )
 
-from .defer import select
 from .pcapng import Context, Block, Sink
 
 if typing.TYPE_CHECKING:

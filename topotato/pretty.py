@@ -14,6 +14,7 @@ import lzma
 import zlib
 import tempfile
 import logging
+import subprocess
 from xml.etree import ElementTree
 
 import typing
@@ -33,7 +34,7 @@ import jinja2
 import markupsafe
 
 from . import base, assertions
-from .defer import subprocess, spawn
+from .defer import spawn
 from .utils import exec_find, deindent, get_dir
 from .scapy import ScapySend
 from .pcapng import Sink, SectionHeader

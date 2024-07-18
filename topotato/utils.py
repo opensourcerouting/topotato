@@ -13,6 +13,7 @@ import re
 import logging
 import traceback
 import atexit
+import subprocess
 import shlex
 import fcntl
 import json
@@ -43,7 +44,6 @@ except ImportError:
         return ...
 
 
-from .defer import subprocess
 from .exceptions import TopotatoCLICompareFail
 
 _logger = logging.getLogger("topotato")

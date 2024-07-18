@@ -15,6 +15,7 @@ import shlex
 import signal
 import socket
 import struct
+import subprocess
 import sys
 import time
 import typing
@@ -46,7 +47,6 @@ except ImportError:
         return fn
 
 
-from ..defer import subprocess
 from ..utils import get_dir, EnvcheckResult
 from ..timeline import Timeline, MiniPollee, TimedElement
 from .livelog import LiveLog, LogMessage

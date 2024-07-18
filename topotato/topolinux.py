@@ -12,6 +12,7 @@ import sys
 import shlex
 import re
 import time
+import subprocess
 import logging
 
 try:
@@ -41,7 +42,6 @@ scapy.arch.read_nameservers = lambda: []
 import scapy.all  # type: ignore[import-untyped]
 
 from .scapyext.netnssock import NetnsL2Socket
-from .defer import subprocess
 from .utils import exec_find, EnvcheckResult
 from .nswrap import LinuxNamespace
 from .toponom import LAN, LinkIface, Network

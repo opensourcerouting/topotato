@@ -11,6 +11,7 @@ import fcntl
 import ctypes
 import ctypes.util
 import errno
+import subprocess
 
 from typing import (
     ClassVar,
@@ -18,7 +19,6 @@ from typing import (
     Optional,
 )
 
-from .defer import subprocess
 from .utils import LockedFile, PathDict, self_or_kwarg
 
 _libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
