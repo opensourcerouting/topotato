@@ -134,9 +134,6 @@ class AllStartupTest(TestBase, AutoFixture, topo=allproto_topo, configs=Configs)
             r1, "ripngd", "show ip ripng status", maxwait=5.0, compare=compare
         )
 
-    def test_other(self, allstartuptest_configs):
-        print(repr(list(allstartuptest_configs["r1"].keys())))
-
 
 if __name__ == "__main__":
     pass

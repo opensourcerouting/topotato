@@ -9,11 +9,12 @@ import logging
 import typing
 from typing import (
     Any,
+    ClassVar,
     Dict,
-    Callable,
     List,
     Optional,
     Tuple,
+    Type,
 )
 
 from .timeline import Timeline
@@ -22,7 +23,7 @@ from .osdep import NetworkInstance
 if typing.TYPE_CHECKING:
     from . import toponom
     from .types import ISession
-    from .frr.core import FRRSetup
+    from .frr.core import FRRSetup, FRRConfigs
 
 
 _logger = logging.getLogger(__name__)
@@ -54,19 +55,30 @@ class TopotatoNetwork(NetworkInstance):
 
     timeline: Timeline
     session: "ISession"
+    _network: ClassVar["toponom.Network"]
 
     def make(self, name):
         return self.__class__.__annotations__[name](self, name, self.session)
 
-    def __init__(self, network: "toponom.Network", session: "ISession"):
-        super().__init__(network)
+    def __init__(self, session: "ISession"):
+        super().__init__(self.__class__._network)
         self.session = session
         self.timeline = Timeline()
 
     @classmethod
     def __init_subclass__(cls, /, topo=None, **kwargs):
         super().__init_subclass__(**kwargs)
-        cls.topo = topo
+
+        if not topo:
+            return
+
+        while not hasattr(topo, "net") and (
+            hasattr(topo, "__wrapped__") or hasattr(topo, "topo")
+        ):
+            topo = getattr(topo, "__wrapped__", topo)
+            topo = getattr(topo, "topo", topo)
+
+        cls._network = topo.net
 
 
 class TopotatoNetworkCompat(TopotatoNetwork):
@@ -74,14 +86,24 @@ class TopotatoNetworkCompat(TopotatoNetwork):
     This subclass is used for the previous style with a FRR config class.
     """
 
-    router_factories: Dict[str, Callable[[str], NetworkInstance.RouterNS]]
+    configs: ClassVar[Type["FRRConfigs"]]
 
     def make(self, name):
-        return self.router_factories.get(name, super().make)(name)
+        # pylint: disable=import-outside-toplevel,abstract-class-instantiated
+        from .frr.core import FRRRouterNS
 
-    def __init__(self, network: "toponom.Network", session: "ISession"):
-        super().__init__(network, session)
-        self.router_factories = {}
+        return FRRRouterNS(self, name, self.cfg_inst)
+
+    def __init__(self, session: "ISession"):
+        super().__init__(session)
+        self.cfg_inst = self.configs(self._network, session.frr).generate()
+        for rtrname in self._network.routers.keys():
+            setattr(self, rtrname, self.cfg_inst)
+
+    @classmethod
+    def __init_subclass__(cls, /, configs=None, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.configs = configs
 
 
 class Host(TopotatoNetwork.RouterNS):

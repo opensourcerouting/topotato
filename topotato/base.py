@@ -44,12 +44,13 @@ from .exceptions import (
 )
 from .livescapy import LiveScapy
 from .generatorwrap import GeneratorWrapper, GeneratorChecks
-from .utils import apply_kwargs_maybe
+from .network import TopotatoNetworkCompat
 
 if typing.TYPE_CHECKING:
     from _pytest._code.code import ExceptionInfo, TracebackEntry, Traceback
     from _pytest.python import Function
 
+    from .toponom import Network
     from .network import TopotatoNetwork
     from .timeline import Timeline
 
@@ -109,62 +110,6 @@ to debug when a test fails.
 endtrace = _SkipTrace()
 
 
-class TopotatoItemFixture(_pytest.fixtures.FixtureRequest):
-    """
-    pytest fixture request used by :py:class:`TopotatoItem`
-
-    This primarily exists to cover differences between pytest 7 and 8.  The
-    fixture system was refactored somewhat in the latter, and FixtureRequest
-    is now an ABC there.  This fills in the abstract methods for that.
-    """
-
-    _item: "TopotatoItem"
-
-    _scope = _pytest.fixtures.Scope.Function
-    """
-    pytest 7.x fills _scope from __init__, but pytest 8.x has it as a property.
-    However, 7.x would write to that property...  so just stick _scope here
-    in the class.
-    """
-
-    # pylint: disable=super-init-not-called
-    def __init__(self, item: "TopotatoItem"):
-        super_init = apply_kwargs_maybe(super().__init__, _ispytest=True)
-
-        if pytest.version_tuple >= (8,):
-            super_init(
-                fixturename=None,
-                pyfuncitem=cast("Function", item),
-                arg2fixturedefs=item._fixtureinfo.name2fixturedefs.copy(),
-                fixture_defs={},
-            )  # type: ignore [call-arg]
-        else:
-            super_init(item)  # type: ignore [call-arg, arg-type]
-
-        self._item = item
-
-    # abstract in pytest 8.  Functionally identical with 7, and TopRequest in 8
-    @property
-    def node(self):
-        return self._item
-
-    def __repr__(self) -> str:
-        return "<%s for %r>" % (self.__class__.__name__, self.node)
-
-    # expected to be implemented by the subclass in pytest 8, i.e. just doesn't
-    # exist in FixtureRequest.
-    def _fillfixtures(self) -> None:
-        item = self._item
-        fixturenames = getattr(item, "fixturenames", self.fixturenames)
-        for argname in fixturenames:
-            if argname not in item.funcargs:
-                item.funcargs[argname] = self.getfixturevalue(argname)
-
-    # abstract in pytest 8.  Functionally identical with 7, and TopRequest in 8
-    def addfinalizer(self, finalizer: Callable[[], object]) -> None:
-        self.node.addfinalizer(finalizer)
-
-
 class ItemGroup(list):
     pass
 
@@ -193,16 +138,6 @@ class TopotatoItem(nodes.Item):
     Test source code location that resulted in the creation of this item.
     Filtered heavily to condense down useful information.
     """
-
-    # pytest dragons -- before touching, check what these mean to pytest!
-    _request: _pytest.fixtures.FixtureRequest
-    _fixtureinfo: _pytest.fixtures.FuncFixtureInfo
-    fixturenames: Any
-    funcargs: Dict[str, Any]
-    nofuncargs = True
-
-    _ifix_name: str
-    """Name of the network instance fixture"""
 
     nodeid_children_sep: Optional[str] = None
 
@@ -261,20 +196,6 @@ class TopotatoItem(nodes.Item):
         assert tparent is not None
 
         self._obj = tparent.obj
-
-        # the behavior re. funcargs changed across pytest versions, it used
-        # to be a parameter on getfixtureinfo, now it's a field on the item
-        _obj = cast(Callable[..., object], self._obj)
-        self._fixtureinfo = apply_kwargs_maybe(
-            self.session._fixturemanager.getfixtureinfo, funcargs=False
-        )(self, _obj, cls)
-        self.fixturenames = self._fixtureinfo.names_closure
-        self.funcargs = {}
-
-        self._request = TopotatoItemFixture(self)
-
-        self._ifix_name = tparent._ifix_name
-        self.add_marker(pytest.mark.usefixtures(self._ifix_name))
         return self
 
     @classmethod
@@ -355,8 +276,9 @@ class TopotatoItem(nodes.Item):
             # pylint: disable=attribute-defined-outside-init
             fn.started_ts = time.time()
 
-        self._request._fillfixtures()
-        self.instance = self.funcargs[self._ifix_name]
+        tcls = self.getparent(TopotatoClass)
+
+        self.instance = tcls.netinst
         self.timeline = self.instance.timeline
 
     # pylint: disable=unused-argument
@@ -514,11 +436,17 @@ class InstanceStartup(TopotatoItem):
         fspath, _, _ = self.getparent(TopotatoClass).reportinfo()
         return fspath, float("-inf"), "startup"
 
+    def setup(self):
+        tcls = self.getparent(TopotatoClass)
+        # pylint: disable=protected-access
+        tcls.netinst = tcls.obj._setup(self.session).prepare()
+        super().setup()
+
     @endtrace
     @skiptrace
     def runtest(self):
         try:
-            self.parent.do_start(self)
+            self.parent.do_start()
         except TopotatoFail as e:
             e.topotato_node = self
             self.parent.skipall = e
@@ -562,10 +490,7 @@ class TestBase:
     doesn't need to be direct, i.e. further subclassing is possible.
     """
 
-    instancefn: ClassVar[Callable[..., "TopotatoNetwork"]]
-    """
-    TBD (rework in progress)
-    """
+    _setup: ClassVar[Type["TopotatoNetwork"]]
 
     @classmethod
     def _topotato_makeitem(cls, collector, name, obj):
@@ -583,6 +508,35 @@ class TestBase:
         if cls is TestBase:
             return []
         return [TopotatoClass.from_hook(obj, collector, name=name)]
+
+    @classmethod
+    def __init_subclass__(
+        cls, /, topo: Optional["Network"] = None, configs=None, setup=None, **kwargs
+    ):
+        super().__init_subclass__(**kwargs)
+
+        if any([topo, configs]):
+            if not all([topo, configs]):
+                raise RuntimeError(
+                    f"{cls.__name__}: topo= and configs= must be used together"
+                )
+            if setup:
+                raise RuntimeError(
+                    f"{cls.__name__}: topo= and configs= are exclusive against setup="
+                )
+
+            class AutoSetup(
+                TopotatoNetworkCompat, topo=topo, configs=configs.prepare()
+            ):
+                pass
+
+            cls._setup = AutoSetup  # type: ignore[type-abstract]
+        elif not setup:
+            raise RuntimeError(
+                f"{cls.__name__}: either setup=, or topo= + configs= must be used"
+            )
+        else:
+            cls._setup = setup
 
 
 class TopotatoWrapped:
@@ -725,7 +679,7 @@ class TopotatoFunction(nodes.Collector, _pytest.python.PyobjMixin):
         method = getattr(tcls.newinstance(), self.name)
         assert callable(method)
 
-        topo = tcls.obj.instancefn.net
+        topo = tcls.obj._setup._network
 
         # pylint: disable=protected-access
         argspec = inspect.getfullargspec(method._call).args[1:]
@@ -786,9 +740,6 @@ class TopotatoClass(_pytest.python.Class):
     The actual instance of our test class.
     """
 
-    _ifix_name: str
-    """Name of the network instance fixture"""
-
     skipall: Optional[Exception]
 
     starting_ts: float
@@ -806,13 +757,6 @@ class TopotatoClass(_pytest.python.Class):
         for fixture in getattr(self._obj, "use", []):
             self.add_marker(pytest.mark.usefixtures(fixture))
 
-        self._ifix_name = getattr(self._obj, "instancefixturename", None)
-        if not self._ifix_name:
-            self._ifix_name = self._obj.instancefn.__name__
-        else:
-            self._obj.instancefn = getattr(self._obj, self._ifix_name)
-
-        self.add_marker(pytest.mark.usefixtures(self._ifix_name))
         return self
 
     def newinstance(self):
@@ -850,13 +794,13 @@ class TopotatoClass(_pytest.python.Class):
         if not first:
             yield InstanceShutdown.from_parent(self)
 
-    def do_start(self, startitem):
+    def do_start(self):
         if self.skipall:
             pytest.skip(self.skipall)
 
         self.starting_ts = time.time()
 
-        self.netinst = netinst = startitem.instance
+        netinst = self.netinst
 
         tcname = self.nodeid
         tcname = "".join(
