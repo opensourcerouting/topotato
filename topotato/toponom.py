@@ -203,9 +203,10 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
                 if i.link.parallel_num != 0:
                     ifname += "-%d" % (i.link.parallel_num)
                 i.ifname = ifname
-            if i.macaddr is None:
+            # pylint: disable=protected-access
+            if i._macaddr is None:
                 typecode = 0xBC if isinstance(i.other.endpoint, LAN) else 0xFE
-                i.macaddr = "fe:%02x:%02x:%02x:%02x:%02x" % (
+                i._macaddr = "fe:%02x:%02x:%02x:%02x:%02x" % (
                     self.num,
                     i.link.parallel_num,
                     typecode,
@@ -222,6 +223,9 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
     def iface_to(self, other: str) -> "LinkIface":
         """
         get the *one* interfaces of this node that goes to "other"
+
+        If there is more than one interface towards `other`, this throws
+        `AssertionError`.
         """
         ifaces = self.ifaces_to(other)
         assert len(ifaces) == 1
@@ -239,7 +243,7 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
             return ortr.iface_to(self.name)
         return ortr.iface_to(via)
 
-    def flip(self, a: str, b: str) -> "NOMLinked":
+    def flip(self, a: str, b: str) -> "Router":
         """
         get the one of (a, b) that's not us
         """
@@ -303,6 +307,9 @@ class Router(NOMLinked):
 
     @property
     def dotname(self):
+        """
+        Name for use in graphviz dot rendering
+        """
         return "router-%s" % (self.name)
 
     def neighbors(
@@ -465,22 +472,31 @@ class LinkIface(NOMNode):
     other: "LinkIface"
     endpoint: NOMLinked
     ifname: Optional[str]
-    macaddr: Optional[str]
     ip4: IPPrefixIfaceList
     ip6: IPPrefixIfaceList
+
+    _macaddr: Optional[str]
 
     def __init__(self, network, link, endpoint):
         super().__init__(network)
         self.link = link
         self.endpoint = endpoint
         self.ifname = None
-        self.macaddr = None
+        self._macaddr = None
         self.ip4 = IPPrefixIfaceList(4)
         self.ip6 = IPPrefixIfaceList(6)
         # Link.__init__ sets up more stuff here for both ifaces
 
     def __repr__(self):
         return "%r:%r" % (self.endpoint, self.ifname)
+
+    @property
+    def macaddr(self) -> str:
+        if self._macaddr is None:
+            raise RuntimeError(
+                f"{self!r} (on {self.endpoint!r}): access to MAC address before interfaces have been numbered"
+            )
+        return self._macaddr
 
     def auto_ip4(self):
         if isinstance(self.endpoint, LAN):
@@ -629,21 +645,32 @@ class Network:
         self.lans = {}
         self.links = {}
 
-    def router(self, name: str, create=False):
+    def router(self, name: str, create=False) -> Router:
+        """
+        Accessor helper to retrieve a given router (or optionally create it)
+        """
         if name not in self.routers:
             if not create:
                 raise IndexError('router "%s" does not exist' % name)
             self.routers[name] = Router(self, name)
         return self.routers[name]
 
-    def lan(self, name: str, create=False):
+    def lan(self, name: str, create=False) -> LAN:
+        """
+        Accessor helper to retrieve a given LAN (or optionally create it)
+
+        Note that P2P links are not LANs and have no names.
+        """
         if name not in self.lans:
             if not create:
                 raise IndexError('lan "%s" does not exist' % name)
             self.lans[name] = LAN(self, name)
         return self.lans[name]
 
-    def link_all(self, routers):
+    def link_all(self, routers: Tuple[Router, Router]) -> List[Link]:
+        """
+        Retrieve the list of links between two routers
+        """
         assert len(routers) == 2
         a, b = routers
         if b < a:
@@ -749,7 +776,12 @@ class Network:
                 link.a.auto_ip6()
                 link.b.auto_ip6()
 
-    def macmap(self):
+    def macmap(self) -> Dict[str, str]:
+        """
+        Return a lookup table for MAC addresses used in this network.
+
+        Used primarily for HTML report generation.
+        """
         macmap = {}
         for r in self.routers.values():
             for i in r.ifaces:
@@ -757,6 +789,9 @@ class Network:
         return macmap
 
     def dot(self):
+        """
+        Render this network as graphviz dot diagram.
+        """
         out = []
         out += ["graph net {"]
         out += ["  rankdir = LR;"]

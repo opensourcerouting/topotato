@@ -13,6 +13,9 @@ from .base import (
     TestBase,
     topotatofunc,
 )
+from .toponom import (
+    Network,
+)
 from .fixtures import (
     topology_fixture,
     AutoFixture,
