@@ -44,7 +44,7 @@ except ImportError:
 
 
 from ..defer import subprocess
-from ..utils import deindent, get_dir, EnvcheckResult
+from ..utils import get_dir, EnvcheckResult
 from ..timeline import Timeline, MiniPollee, TimedElement
 from .livelog import LiveLog, LogMessage
 from ..exceptions import (
@@ -359,9 +359,10 @@ class FRRConfigs(dict):
             daemons.add("mgmtd")
 
         for daemon in daemons:
-            text = deindent(getattr(cls, daemon, empty_cfg))
-
-            cls.templates[daemon] = jenv.from_string(text)
+            if hasattr(cls, daemon):
+                cls.templates[daemon] = jenv.compile_class_attr(cls, daemon)
+            else:
+                cls.templates[daemon] = jenv.from_string(empty_cfg)
             cls.daemon_rtrs[daemon] = getattr(cls, "%s_routers" % daemon, None)
 
         return cls
@@ -970,9 +971,8 @@ class RouterFRR(FRRRouterNS, dict):
         for daemon in cls.daemons:
             if not hasattr(cls, daemon):
                 continue
-            text = deindent(getattr(cls, daemon))
 
-            cls.templates[daemon] = jenv.from_string(text)
+            cls.templates[daemon] = jenv.compile_class_attr(cls, daemon)
             cls.daemon_rtrs[daemon] = getattr(cls, "%s_routers" % daemon, None)
 
         return cls
