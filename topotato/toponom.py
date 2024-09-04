@@ -639,11 +639,21 @@ class Network:
     lo_v4 = True
     lo_v6 = True
 
+    _finalizers: List[Callable[["Network"], None]]
+
     def __init__(self):
         self.diagram = None
         self.routers = {}
         self.lans = {}
         self.links = {}
+        self._finalizers = []
+
+    def add_finalizer(self, finalizer: Callable[["Network"], None]):
+        self._finalizers.append(finalizer)
+
+    def finalize(self):
+        while self._finalizers:
+            self._finalizers.pop(0)(self)
 
     def router(self, name: str, create=False) -> Router:
         """

@@ -61,6 +61,7 @@ def topology_fixture():
         net.auto_ifnames()
         net.auto_ip4()
         net.auto_ip6()
+        net.finalize()
 
         @functools.wraps(fnwrap)
         def wrap():
