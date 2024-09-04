@@ -277,6 +277,8 @@ class TopotatoItem(nodes.Item):
             fn.started_ts = time.time()
 
         tcls = self.getparent(TopotatoClass)
+        if tcls.skipall:
+            raise TopotatoEarlierFailSkip(tcls.skipall.topotato_node) from tcls.skipall
 
         self.instance = tcls.netinst
         self.timeline = self.instance.timeline
@@ -439,7 +441,12 @@ class InstanceStartup(TopotatoItem):
     def setup(self):
         tcls = self.getparent(TopotatoClass)
         # pylint: disable=protected-access
-        tcls.netinst = tcls.obj._setup(self.session).prepare()
+        try:
+            tcls.netinst = tcls.obj._setup(self.session).prepare()
+        except Exception as e:
+            e.topotato_node = self
+            self.parent.skipall = e
+            raise
         super().setup()
 
     @endtrace
