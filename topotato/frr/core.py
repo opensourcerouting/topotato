@@ -511,8 +511,12 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
         self.varlibdir = varlibdir
         self.check_call(["mount", "--bind", varlibdir, "/var/lib"])
 
+    def start_run_frr_pre(self):
+        pass
+
     def start_run(self):
         super().start_run()
+        self.start_run_frr_pre()
 
         self.rtrcfg = self._configs.configs
         self.frrconfpath = self.tempfile("frr.conf")
@@ -557,6 +561,9 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
                 vtysh.returncode, vtysh.args, vtysh.stdout, vtysh.stderr
             )
 
+    def adjust_cmdline(self, daemon: str, args: List[str]):
+        pass
+
     def start_daemon(self, daemon: str, defer_config=False):
         frrpath = self.frr.frrpath
         binmap = self.frr.binmap
@@ -588,6 +595,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
                 "%s/%s.pid" % (self.rundir, daemon),
             ]
         )
+        self.adjust_cmdline(daemon, cmdline)
         try:
             self.check_call(cmdline, pass_fds=[logfd.fileno()])
         except subprocess.CalledProcessError as e:
