@@ -441,7 +441,7 @@ class InstanceStartup(TopotatoItem):
         tcls = self.getparent(TopotatoClass)
         # pylint: disable=protected-access
         try:
-            tcls.netinst = tcls.obj._setup(self.session).prepare()
+            tcls.netinst = tcls.obj._setup(self.session, tcls.nodeid).prepare()
         except Exception as e:
             e.topotato_node = self
             self.parent.skipall = e

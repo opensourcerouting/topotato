@@ -56,6 +56,7 @@ class TopotatoNetwork(NetworkInstance):
 
     timeline: Timeline
     session: "ISession"
+    nodeid: str
 
     _network: ClassVar["toponom.Network"]
 
@@ -75,10 +76,14 @@ class TopotatoNetwork(NetworkInstance):
     instances, which matches the behavior implied by the type annotations.
     """
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(..., {self.nodeid!r})"
+
     def make(self, name: str) -> NetworkInstance.RouterNS:
         return self._params[name].instantiate()
 
-    def __init__(self, session: "ISession"):
+    def __init__(self, session: "ISession", nodeid: str):
+        self.nodeid = nodeid
         super().__init__(self.__class__._network)
         self.session = session
         self.timeline = Timeline()
