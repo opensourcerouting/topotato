@@ -11,6 +11,7 @@ from typing import (
 )
 
 if typing.TYPE_CHECKING:
+    from .control import Control
     from .interactive import Interactive
     from .pretty import PrettySession
     from .frr.core import FRRSetup
@@ -25,6 +26,7 @@ class ISession(Protocol):
     topotato bits.
     """
 
+    control: "Control"
     interactive_session: "Interactive"
     pretty_session: "PrettySession"
     frr: "FRRSetup"

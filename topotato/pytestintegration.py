@@ -22,6 +22,7 @@ from .base import TopotatoItem
 from .frr import FRRSetup
 from .toponom import LAN
 from .interactive import Interactive
+from .control import Control
 from .pretty import PrettySession
 from .osdep import NetworkInstance
 
@@ -43,6 +44,7 @@ def pytest_report_teststatus(report):
 
 def pytest_addhooks(pluginmanager):
     pluginmanager.add_hookspecs(hooks)
+    pluginmanager.register(Control)
     pluginmanager.register(NetworkInstance)
     pluginmanager.register(TopotatoItem)
     pluginmanager.register(FRRSetup)
