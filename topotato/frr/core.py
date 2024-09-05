@@ -29,6 +29,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Self,
     Tuple,
 )
 from typing_extensions import Protocol
@@ -56,6 +57,7 @@ from ..exceptions import (
 from ..pcapng import Context
 from ..network import TopotatoNetwork
 from ..topobase import CallableNS
+from ..control import TargetSection
 from .exceptions import FRRStartupVtyshConfigFail
 
 if typing.TYPE_CHECKING:
@@ -68,6 +70,27 @@ _logger = logging.getLogger(__name__)
 
 class FRRSetupError(EnvironmentError):
     pass
+
+
+class TargetFRRSection(TargetSection, name="frr"):
+    builddir: str
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}(name={self.name!r}, builddir={self.builddir!r})"
+        )
+
+    def instantiate(self, network, name, params):
+        setup = FRRSetup.setups[self.name]
+        _logger.debug("setup for %r: %r", name, setup)
+
+        # pylint believes we might be instantiating a subclass of
+        # .topobase.NetworkInstance.RouterNS, but in reality we choose either
+        # .topolinux.NetworkInstance.RouterNS or
+        # .topofreebsd.NetworkInstance.RouterNS instead
+        #
+        # pylint: disable=abstract-class-instantiated
+        return FRRRouterNS(network, name, setup, params)
 
 
 class FRRSetup:
@@ -138,6 +161,11 @@ class FRRSetup:
     is mildly security relevant.)
     """
 
+    setups: ClassVar[Dict[str | None, Self]] = {}
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: frrpath={self.frrpath}>"
+
     @staticmethod
     @pytest.hookimpl()
     def pytest_addoption(parser):
@@ -160,6 +188,12 @@ class FRRSetup:
         frrpath = get_dir(session, "--frr-builddir", "frr_builddir")
 
         session.frr = cls(frrpath, result)
+        cls.setups[None] = session.frr
+
+        for section in session.control.typed_sections.get(TargetFRRSection, []):
+            _logger.debug("additional loading %r", section)
+            setup = cls(os.path.expanduser(section.builddir), result)
+            cls.setups[section.name] = setup
 
     def __init__(self, frrpath: str, result: EnvcheckResult):
         """
@@ -273,7 +307,6 @@ class FRRSetup:
 
 
 class _FRRConfigProtocol(Protocol):
-    frr: FRRSetup
     daemons: Collection[str]
 
     def want_daemon(self, daemon: str) -> bool: ...
@@ -447,11 +480,15 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
     merged_cfg: str
 
     def __init__(
-        self, instance: TopotatoNetwork, name: str, configs: _FRRConfigProtocol
+        self,
+        instance: TopotatoNetwork,
+        name: str,
+        frr: FRRSetup,
+        configs: _FRRConfigProtocol,
     ):
         super().__init__(instance, name)
         self._configs = configs
-        self.frr = configs.frr
+        self.frr = frr
         self.logfiles = {}
         self.livelogs = {}
         self.pids = {}

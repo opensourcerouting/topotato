@@ -23,9 +23,13 @@ from ..network import (
 from .core import (
     FRRSetup,
     FRRRouterNS,
+    TargetFRRSection,
 )
 from ..exceptions import (
     TopotatoSkipped,
+)
+from ..control import (
+    SystemSpecificSection,
 )
 from .templating import TemplateUtils, jenv
 
@@ -110,8 +114,42 @@ class FRRParams(TopotatoParams):
         self.daemons = list(d for d in FRRSetup.daemons_all if d in self.configs)
 
     def instantiate(self) -> TopotatoNetwork.RouterNS:
+        target: Optional[TargetFRRSection] = None
+        session: ISession = self.instance.session
+
+        for rule in session.control.typed_sections.get(SystemSpecificSection, []):
+            applies = rule.match(
+                self.instance.nodeid, self.name, self.__class__.__name__
+            )
+            if not applies:
+                continue
+            if rule.target:
+                t = session.control.targets[rule.target]
+                if not isinstance(t, TargetFRRSection):
+                    _logger.error(
+                        "router %r: rule %r references non-FRR target %r",
+                        self.name,
+                        rule.name,
+                        t,
+                    )
+                    continue
+                target = t
+                _logger.info(
+                    "router %r: rule %r applies using target %r",
+                    self.name,
+                    rule.name,
+                    t,
+                )
+            else:
+                _logger.info(
+                    "router %r: rule %r applies but has no effect", self.name, rule.name
+                )
+
+        if target:
+            return target.instantiate(self.instance, self.name, self)
+
         # pylint: disable=abstract-class-instantiated
-        return FRRRouterNS(self.instance, self.name, self)  # type: ignore[abstract]
+        return FRRRouterNS(self.instance, self.name, self.frr, self)  # type: ignore[abstract]
 
     def require_defun(self, cmd: str, contains: Optional[str] = None) -> None:
         """
