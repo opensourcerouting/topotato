@@ -84,7 +84,7 @@ class AllStartupTest(TestBase, AutoFixture, topo=allproto_topo, configs=Configs)
         """
         just check that all daemons are running
         """
-        for daemon in Configs.daemons:
+        for daemon in Configs.templates.keys():
             if not hasattr(Configs, daemon):
                 continue
             yield from AssertVtysh.make(r1, daemon, command="show version")

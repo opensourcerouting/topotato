@@ -420,7 +420,7 @@ def json_cmp(d1, d2):
     return None
 
 
-def text_rich_cmp(configs, rtr, out, expect, outtitle):
+def text_rich_cmp(params, out, expect, outtitle):
     lines = []
     for line in deindent(expect).split("\n"):
         items = line.split("$$")
@@ -434,7 +434,7 @@ def text_rich_cmp(configs, rtr, out, expect, outtitle):
                 expr = expr[1:]
                 if expr.startswith(" "):
                     lre.append("\\s+")
-                lre.append(re.escape(str(configs.eval(rtr, expr))))
+                lre.append(re.escape(str(params.eval(expr))))
                 if expr.endswith(" "):
                     lre.append("\\s+")
             else:

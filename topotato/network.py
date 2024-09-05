@@ -8,6 +8,7 @@ Test network for topotato.
 import logging
 import typing
 from typing import (
+    cast,
     Any,
     ClassVar,
     Dict,
@@ -23,7 +24,7 @@ from .osdep import NetworkInstance
 if typing.TYPE_CHECKING:
     from . import toponom
     from .types import ISession
-    from .frr.core import FRRSetup, FRRConfigs
+    from .frr.core import FRRSetup
 
 
 _logger = logging.getLogger(__name__)
@@ -35,11 +36,11 @@ class TopotatoNetwork(NetworkInstance):
 
     This class is not used directly;  each test (or multiple tests if they are
     very similar) create subclasses of it.  The topotato machinery then creates
-    an instance of the subclass to run a particular test class against.
+    an instance through the subclass to run a particular test class against.
 
     System names referenced in the topology are looked up directly in the class
     namespace to get the "system type" (a subclass of
-    :py:class:`NetworkInstance.RouterNS`) for each system.  For example, for
+    :py:class:`TopotatoParams`) for each system.  For example, for
     ``[ h1 ]---[ h2 ]``, "h1" and "h2" should be class variables on the
     subclass like this::
 
@@ -55,18 +56,49 @@ class TopotatoNetwork(NetworkInstance):
 
     timeline: Timeline
     session: "ISession"
+
     _network: ClassVar["toponom.Network"]
 
-    def make(self, name):
-        return self.__class__.__annotations__[name](self, name, self.session)
+    _defaultparams: ClassVar[Optional[Type["TopotatoParams"]]] = None
+    """
+    Fallback class to use if a system in the topology has no type annotation.
+    This mostly exists to support "all-FRR" test setups.
+    """
+
+    _params: Dict[str, "TopotatoParams"]
+    """
+    Instances of :py:class:`TopotatoParams` for each system in this topology.
+    Created during ``__init__``, then used to invoke
+    :py:meth:`TopotatoParams.instantiate` on when the network is brought up.
+
+    The items of this dict are also accessible as member variables on
+    instances, which matches the behavior implied by the type annotations.
+    """
+
+    def make(self, name: str) -> NetworkInstance.RouterNS:
+        return self._params[name].instantiate()
 
     def __init__(self, session: "ISession"):
         super().__init__(self.__class__._network)
         self.session = session
         self.timeline = Timeline()
+        self._params = {}
+
+        for name in self._network.routers.keys():
+            if name in self.__class__.__annotations__:
+                paramcls = cast(
+                    Type[TopotatoParams], self.__class__.__annotations__[name]
+                )
+            elif self._defaultparams is not None:
+                paramcls = self._defaultparams
+            else:
+                raise ValueError(f"no router type/parameters for {name!r}")
+
+            self._params[name] = paramcls(self, name)
+            setattr(self, name, self._params[name])
 
     @classmethod
-    def __init_subclass__(cls, /, topo=None, **kwargs):
+    def __init_subclass__(cls, /, topo=None, params=None, **kwargs):
         super().__init_subclass__(**kwargs)
 
         if not topo:
@@ -79,37 +111,38 @@ class TopotatoNetwork(NetworkInstance):
             topo = getattr(topo, "topo", topo)
 
         cls._network = topo.net
+        if params is not None:
+            cls._defaultparams = params
 
 
-class TopotatoNetworkCompat(TopotatoNetwork):
+class TopotatoParams:
     """
-    This subclass is used for the previous style with a FRR config class.
+    The set of necessary information for system(s) in a test topology.
+
+    The various subclasses of this class primarily encapsulate configs for a
+    given kind of router.  The information is placed on the **subclass**, not
+    instances of it;  for tests with similar configs on multiple routers,
+    the same subclass is instantiated multiple times for each router.
     """
 
-    configs: ClassVar[Type["FRRConfigs"]]
+    instance: TopotatoNetwork
+    name: str
 
-    def make(self, name):
-        # pylint: disable=import-outside-toplevel,abstract-class-instantiated
-        from .frr.core import FRRRouterNS
+    def __init__(self, instance: TopotatoNetwork, name: str):
+        self.instance = instance
+        self.name = name
 
-        return FRRRouterNS(self, name, self.cfg_inst)
-
-    def __init__(self, session: "ISession"):
-        super().__init__(session)
-        self.cfg_inst = self.configs(self._network, session.frr).generate()
-        for rtrname in self._network.routers.keys():
-            setattr(self, rtrname, self.cfg_inst)
-
-    @classmethod
-    def __init_subclass__(cls, /, configs=None, **kwargs):
-        super().__init_subclass__(**kwargs)
-        cls.configs = configs
+    def instantiate(self) -> NetworkInstance.RouterNS:
+        raise NotImplementedError(f"cannot instantiate router {self.name!r}")
 
 
-class Host(TopotatoNetwork.RouterNS):
-    def __init__(self, instance: TopotatoNetwork, name: str, frr):
-        super().__init__(instance, name)
-        _ = frr  # FIXME: remove arg / rework FRR specific setup
+class HostNS(TopotatoNetwork.RouterNS):
+    """
+    A plain host in the test network.
+
+    Just overrides the necessary abstract bits from
+    :py:class:`TopotatoNetwork.RouterNS` with empty stubs.
+    """
 
     def interactive_state(self) -> Dict[str, Any]:
         return {}
@@ -119,3 +152,13 @@ class Host(TopotatoNetwork.RouterNS):
 
     def start_post(self, timeline, failed: List[Tuple[str, str]]):
         pass
+
+
+class Host(TopotatoParams):
+    """
+    Plain hosts in the network - no parameters needed.
+    """
+
+    def instantiate(self):
+        # pylint: disable=abstract-class-instantiated
+        return HostNS(self.instance, self.name)

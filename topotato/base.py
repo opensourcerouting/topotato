@@ -44,14 +44,13 @@ from .exceptions import (
 )
 from .livescapy import LiveScapy
 from .generatorwrap import GeneratorWrapper, GeneratorChecks
-from .network import TopotatoNetworkCompat
+from .network import TopotatoNetwork
 
 if typing.TYPE_CHECKING:
     from _pytest._code.code import ExceptionInfo, TracebackEntry, Traceback
     from _pytest.python import Function
 
     from .toponom import Network
-    from .network import TopotatoNetwork
     from .timeline import Timeline
 
 _logger = logging.getLogger(__name__)
@@ -532,9 +531,7 @@ class TestBase:
                     f"{cls.__name__}: topo= and configs= are exclusive against setup="
                 )
 
-            class AutoSetup(
-                TopotatoNetworkCompat, topo=topo, configs=configs.prepare()
-            ):
+            class AutoSetup(TopotatoNetwork, topo=topo, params=configs):
                 pass
 
             cls._setup = AutoSetup  # type: ignore[type-abstract]

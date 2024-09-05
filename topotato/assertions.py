@@ -287,7 +287,6 @@ class AssertVtysh(TopotatoAssertion, TimedMixin):
                     text = deindent(text, trim=True)
                     result = text_rich_cmp(
                         router._configs,
-                        self._rtr.name,
                         text,
                         self._compare,
                         "output from %s" % (self._command),
