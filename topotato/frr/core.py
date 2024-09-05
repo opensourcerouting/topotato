@@ -695,6 +695,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
                     "enable\nconfigure\nlog file %s\ndebug memstats-at-exit\nend\nclear log cmdline-targets"
                     % self.logfiles[daemon],
                 )
+                break
             except ConnectionRefusedError as e:
                 if retry:
                     time.sleep(0.1)
