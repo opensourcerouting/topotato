@@ -83,6 +83,7 @@ def pytest_sessionstart(session):
 
     envstate = EnvcheckResult()
 
+    session.config.hook.pytest_topotato_preenvcheck(session=session)
     session.config.hook.pytest_topotato_envcheck(session=session, result=envstate)
 
     if os.getuid() != 0:

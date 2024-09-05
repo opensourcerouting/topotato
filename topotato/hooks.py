@@ -19,6 +19,11 @@ if typing.TYPE_CHECKING:
 
 
 @hookspec()
+def pytest_topotato_preenvcheck(session: "ISession"):
+    pass
+
+
+@hookspec()
 def pytest_topotato_envcheck(session: "ISession", result: EnvcheckResult):
     pass
 
