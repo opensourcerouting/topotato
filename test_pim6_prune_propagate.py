@@ -46,7 +46,9 @@ class Configs(FRRConfigs):
     pim6d = """
     #% extends "boilerplate.conf"
     #% block main
+    #%   if frr.has_defun("debug_mld_cmd")
     debug mld
+    #%   endif
     debug pimv6 trace
     debug pimv6 packets joins
     #%   for iface in router.ifaces

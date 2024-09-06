@@ -53,7 +53,9 @@ class Configs(FRRConfigs):
     pim6d = """
     #% extends "boilerplate.conf"
     #% block main
+    #%   if frr.has_defun("debug_mld_cmd")
     debug mld
+    #%   endif
     debug pimv6 trace
     #%   if router.name in ['r1', 'r2']
     interface lo

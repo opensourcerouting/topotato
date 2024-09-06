@@ -43,7 +43,9 @@ class FRRConfigured(RouterFRR):
     pim6d = """
     #% extends "boilerplate.conf"
     #% block main
+    #%   if frr.has_defun("debug_mld_cmd")
     debug mld
+    #%   endif
     #%   if router.name in ['dut']
     #%     for iface in router.ifaces
     interface {{ iface.ifname }}
