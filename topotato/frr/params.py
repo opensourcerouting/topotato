@@ -220,11 +220,13 @@ class FRRParams(TopotatoParams):
         cls.templates = {}
         cls.daemon_rtrs = {}
 
+        all_routers = getattr(cls, "routers", None)
+
         for daemon in FRRSetup.daemons_all:
             if not hasattr(cls, daemon):
                 continue
 
             cls.templates[daemon] = jenv.compile_class_attr(cls, daemon)
-            cls.daemon_rtrs[daemon] = getattr(cls, "%s_routers" % daemon, None)
+            cls.daemon_rtrs[daemon] = getattr(cls, "%s_routers" % daemon, all_routers)
 
         return cls
