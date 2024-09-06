@@ -430,4 +430,4 @@ class Sink(Context):
 
     def close(self):
         self.fd.close()
-        self.fd = None
+        self.fd = None  # type: ignore

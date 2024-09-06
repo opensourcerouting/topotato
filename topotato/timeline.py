@@ -33,7 +33,7 @@ if typing.TYPE_CHECKING:
 
 @dataclass
 class TimingParams:
-    delay: Optional[float]
+    delay: float
     maxwait: Optional[float]
     full_history: bool = False
 

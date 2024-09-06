@@ -14,8 +14,8 @@ from types import TracebackType
 from typing import (
     Any,
     Callable,
+    Generator,
     Generic,
-    Iterable,
     List,
     Optional,
     TypeVar,
@@ -33,7 +33,7 @@ class GeneratorDeletedUnused(Exception):
     are normally printed but ignored there.
     """
 
-    origin: Iterable[str]
+    origin: List[str]
     """
     Formatted string traceback for the generator's call location.
 
@@ -41,7 +41,7 @@ class GeneratorDeletedUnused(Exception):
     after the call site and these objects would change due to that.
     """
 
-    def __init__(self, origin: Iterable[str]):
+    def __init__(self, origin: List[str]):
         self.origin = origin
 
 
@@ -124,7 +124,7 @@ class GeneratorChecks:
         raise GeneratorsUnused(self._errs)
 
 
-TG = TypeVar("TG")
+TG = TypeVar("TG", bound=Generator)
 
 
 class GeneratorWrapper(Generic[TG]):
@@ -158,12 +158,12 @@ class GeneratorWrapper(Generic[TG]):
     """
     Has this generator actually been iterated over?  (Not necessarily to completion.)
     """
-    _loc: Iterable[str]
+    _loc: List[str]
     """
     Location of call to pass to :py:class:`GeneratorDeletedUnused`, see there.
     """
 
-    def __init__(self, wraps: TG, loc: Iterable[str]):
+    def __init__(self, wraps: TG, loc: List[str]):
         self._wraps = wraps
         self._loc = loc
         self._run = False
@@ -194,7 +194,12 @@ class GeneratorWrapper(Generic[TG]):
 
         @functools.wraps(function)
         def wrapper(*args, **kwargs):
-            loc = traceback.format_stack(inspect.currentframe().f_back)
+            f = inspect.currentframe()
+            if f is None:
+                loc = ["???"]
+            else:
+                loc = traceback.format_stack(f.f_back)
+            del f
             return cls(function(*args, **kwargs), loc)
 
         return wrapper

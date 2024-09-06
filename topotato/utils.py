@@ -21,9 +21,16 @@ import functools
 import inspect
 
 from typing import (
+    cast,
+    Any,
     Callable,
+    Dict,
     List,
+    Optional,
     Union,
+    TextIO,
+    Tuple,
+    Type,
     TypeVar,
 )
 
@@ -81,7 +88,13 @@ def deindent(text: str, trim=False) -> str:
     return "\n".join(do_trim(line)[len(common_prefix) :] for line in lines)
 
 
-def get_textdiff(text1: str, text2: str, title1="", title2="", **opts) -> str:
+def get_textdiff(
+    text1: Union[str, List[str]],
+    text2: Union[str, List[str]],
+    title1="",
+    title2="",
+    **opts,
+) -> str:
     """
     Diff formatting wrapper (just cleans up line endings)
 
@@ -190,7 +203,7 @@ class JSONCompareListKeyedDict(JSONCompareDirective):
     :param keying: dict keys to look up/match up.
     """
 
-    keying: List[Union[int, str]]
+    keying: Tuple[Union[int, str]]
 
     def __init__(self, *keying):
         super().__init__()
@@ -218,22 +231,22 @@ def _json_diff(d1, d2):
     """
     Returns a string with the difference between JSON data.
     """
-    json_format_opts = {
-        "indent": 4,
-        "sort_keys": True,
-    }
-    dstr1 = json.dumps(d1, **json_format_opts)
-    dstr2 = json.dumps(d2, **json_format_opts)
 
-    dstr1 = ("\n".join(dstr1.rstrip().splitlines()) + "\n").splitlines(1)
-    dstr2 = ("\n".join(dstr2.rstrip().splitlines()) + "\n").splitlines(1)
+    def json_dump_fmt(data):
+        return json.dumps(data, indent=4, sort_keys=True)
+
+    dstr1 = json_dump_fmt(d1)
+    dstr2 = json_dump_fmt(d2)
+
+    dstr1 = ("\n".join(dstr1.rstrip().splitlines()) + "\n").splitlines(True)
+    dstr2 = ("\n".join(dstr2.rstrip().splitlines()) + "\n").splitlines(True)
     return get_textdiff(
         dstr2, dstr1, title1="Expected value", title2="Current value", n=0
     )
 
 
 # pylint: disable=too-many-locals,too-many-branches
-def _json_list_cmp(list1, list2, parent, result):
+def _json_list_cmp(list1, list2, parent, result: json_cmp_result) -> None:
     "Handles list type entries."
     if isinstance(list1, JSONCompareIgnoreContent) or isinstance(
         list2, JSONCompareIgnoreContent
@@ -250,12 +263,13 @@ def _json_list_cmp(list1, list2, parent, result):
         )
         return
 
-    flags = [{}, {}]
+    flags: List[Dict[Type[JSONCompareDirective], JSONCompareDirective]] = [{}, {}]
     # don't modify input list with l.pop(0) below...
     list1 = list1[:]
     list2 = list2[:]
+    process: List[Tuple[int, List[Any]]] = [(0, list1), (1, list2)]
 
-    for i, l in [(0, list1), (1, list2)]:
+    for i, l in process:
         while l and isinstance(l[0], JSONCompareDirective):
             item = l.pop(0)
             flags[i][type(item)] = item
@@ -276,12 +290,12 @@ def _json_list_cmp(list1, list2, parent, result):
 
     # List all unmatched items errors
     if JSONCompareListKeyedDict in flags[1]:
-        keys = flags[1][JSONCompareListKeyedDict].keying
-        for expected in list2:
+        keys = cast(JSONCompareListKeyedDict, flags[1][JSONCompareListKeyedDict]).keying
+        for expected in cast(List[Dict[Any, Any]], list2):
             assert isinstance(expected, dict)
 
             keymatch = []
-            for value in list1:
+            for value in cast(List[Dict[Any, Any]], list1):
                 if not isinstance(value, dict):
                     continue
                 for key in keys:
@@ -563,6 +577,7 @@ class LockedFile:
     """
     File name relative to _dir_fd.
     """
+    _fd: Optional[TextIO]
 
     def __init__(self, filename: _PathLike, dir_fd=None):
         self.filename = filename
@@ -619,6 +634,8 @@ class LockedFile:
             raise
 
     def _close(self):
+        assert self._fd is not None
+
         self._depth -= 1
         if self._depth:
             return
@@ -682,6 +699,7 @@ class AtomicPublishFile:
     """
     Temporary file name, also relative to _dir_fd.
     """
+    _fd: Optional[TextIO]
 
     def __init__(self, filename, *args, dir_fd=None, **kwargs):
         self.filename = filename
@@ -707,10 +725,12 @@ class AtomicPublishFile:
             return os.open(path, flags, mode=0o666, dir_fd=self._dir_fd)
 
         # pylint: disable=unspecified-encoding
-        self._fd = open(self._tmpname, *self._args, opener=_opener, **self._kwargs)
+        self._fd = open(self._tmpname, *self._args, opener=_opener, **self._kwargs)  # type: ignore[call-overload]
         return self._fd
 
     def __exit__(self, exc_type, exc_value, tb):
+        assert self._fd is not None
+
         self._fd.close()
 
         if exc_type is None:

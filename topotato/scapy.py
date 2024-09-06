@@ -7,14 +7,20 @@ Scapy packet-sending integration for topotato.
 
 import logging
 
+import typing
 from typing import (
+    cast,
     Any,
     Optional,
+    Self,
 )
 
 import pytest
 
 from .assertions import TopotatoModifier
+
+if typing.TYPE_CHECKING:
+    from .nswrap import LinuxNamespace
 
 _logger = logging.getLogger(__name__)
 
@@ -45,8 +51,11 @@ class ScapySend(TopotatoModifier):
     @classmethod
     def from_parent(cls, parent, name, rtr, iface, pkt, *, repeat=None, interval=None):
         path = "/".join([l.__name__ for l in pkt.layers()])
-        self = super().from_parent(
-            parent, name="%s:%s/scapy[%s/%s]" % (name, rtr.name, iface, path)
+        self = cast(
+            Self,
+            super().from_parent(
+                parent, name="%s:%s/scapy[%s/%s]" % (name, rtr.name, iface, path)
+            ),
         )
         self._rtr = rtr
         self._iface = iface
@@ -64,16 +73,16 @@ class ScapySend(TopotatoModifier):
 
     def __call__(self):
         if scapy_exc:
-            pytest.skip(scapy_exc)
+            pytest.skip(str(scapy_exc))
 
-        router = self.instance.routers[self._rtr.name]
+        router = cast("LinuxNamespace", self.instance.routers[self._rtr.name])
         with router:
             sock = NetnsL2Socket(iface=self._iface, promisc=False)
             sock.send(self._pkt)
 
         if self._repeat:
             for _ in range(1, self._repeat):
-                self.timeline.sleep(self._interval)
+                self.timeline.sleep(self._interval or 0.0)
                 with router:
                     sock.send(self._pkt)
 

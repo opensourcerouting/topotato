@@ -15,9 +15,11 @@ import configparser
 import logging
 import typing
 from typing import (
+    cast,
     ClassVar,
     Dict,
     List,
+    Mapping,
     Optional,
     Protocol,
     Type,
@@ -63,7 +65,7 @@ class ControlSection:
 
     @classmethod
     def dispatch(
-        cls, control: "Control", name: str, items: Dict[str, str]
+        cls, control: "Control", name: str, items: Mapping[str, str]
     ) -> "ControlSection":
         _name = name.split(":", 1)[0]
         if _name not in cls.sections:
@@ -74,12 +76,12 @@ class ControlSection:
 
     @classmethod
     def make(
-        cls, control: "Control", name: str, items: Dict[str, str]
+        cls, control: "Control", name: str, items: Mapping[str, str]
     ) -> "ControlSection":
         return cls(control, name, items)
 
     # pylint: disable=too-many-branches
-    def __init__(self, control: "Control", name: str, items: Dict[str, str]):
+    def __init__(self, control: "Control", name: str, items: Mapping[str, str]):
         self.control = control
 
         def try_type(typ, raw_value):
@@ -171,7 +173,7 @@ class Control:
         self.session = session
         self.config = configparser.ConfigParser()
         self.configfiles = []
-        self.typed_sections = {}
+        self.typed_sections = cast(_ControlSectionTypeDict, {})
         self.targets = {}
 
     def load_configs(self, configs):
@@ -246,10 +248,10 @@ class TargetSection(ControlSection, name="target"):
 
     @classmethod
     def make(
-        cls, control: "Control", name: str, items: Dict[str, str]
+        cls, control: "Control", name: str, items: Mapping[str, str]
     ) -> "ControlSection":
         return cls._types[items["type"]](control, name, items)
 
-    def __init__(self, control: "Control", name: str, items: Dict[str, str]):
+    def __init__(self, control: "Control", name: str, items: Mapping[str, str]):
         super().__init__(control, name, items)
         control.targets[self.name] = self
