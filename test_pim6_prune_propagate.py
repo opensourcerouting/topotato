@@ -132,12 +132,16 @@ class PIM6PrunePropagate(TestBase, AutoFixture, topo=topo1, configs=Configs):
 
         yield from self.receiver.join("ff35::2345", srcaddr)
 
-        yield from AssertLog.make(
+        logchecks = yield from AssertLog.make(
             r4,
             "pim6d",
             f"[MLD default:r4-lan4 ({srcaddr},ff35::2345)] NOINFO => JOIN",
             maxwait=2.0,
         )
+        @logchecks.skip_on_exception
+        def need_debug_mld(testitem):
+            testitem.instance.r4.require_defun("debug_mld_cmd")
+
         for rtr in [r3, r2, r1]:
             yield from AssertLog.make(
                 rtr,
@@ -173,18 +177,21 @@ class PIM6PrunePropagate(TestBase, AutoFixture, topo=topo1, configs=Configs):
         (Timing: query-max-response-time + robustness * interval)
         """
         yield from self.receiver.leave("ff35::2345", self.srcaddr)
-        yield from AssertLog.make(
+        logchecks = yield from AssertLog.make(
             r4,
             "pim6d",
             f"[MLD default:r4-lan4 ({self.srcaddr},ff35::2345)] JOIN => JOIN_EXPIRING",
             maxwait=2.0,
         )
-        yield from AssertLog.make(
+        logchecks += yield from AssertLog.make(
             r4,
             "pim6d",
             f"[MLD default:r4-lan4 ({self.srcaddr},ff35::2345)] JOIN_EXPIRING => NOINFO",
             maxwait=12.0,
         )
+        @logchecks.skip_on_exception
+        def need_debug_mld(testitem):
+            testitem.instance.r4.require_defun("debug_mld_cmd")
 
     @topotatofunc
     def prune(self, topo, r1, r2, r3, r4, h1, h4):

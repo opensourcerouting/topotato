@@ -110,8 +110,36 @@ to debug when a test fails.
 endtrace = _SkipTrace()
 
 
-class ItemGroup(list):
-    pass
+class ItemGroup(list["TopotatoItem"]):
+    """
+    Return value of the :py:meth:`TopotatoItem.make` generators.
+
+    This is handed back as a temporary second reference to the test items that
+    were just yielded back from the ``yield from`` in a test, in order to allow
+    optional additional tinkering with test items.
+
+    See :py:meth:`skip_on_exception` below for how to use this.
+    """
+
+    def skip_on_exception(self, fn: Callable[["TopotatoItem"], None]):
+        """
+        Add conditional skip to given test items.
+
+        For use either as a function decorator, or with helper functions.  Adds
+        the given callable function to prerequisites of all test items::
+
+            mytests = yield from AssertSomething.make(...)
+
+            # condition A (as decorator)
+            @mytests.skip_on_exception
+            def conditional(item):
+                raise TopotatoSkipped("don't actually run this")
+
+            # condition B (use helper)
+            mytests.skip_on_exception(check_feature_xyz)
+        """
+        for item in self:
+            item.skipchecks.append(fn)
 
 
 # false warning on get_closest_marker()
@@ -155,6 +183,16 @@ class TopotatoItem(nodes.Item):
 
     # TBD: replace/rework skipping functionality
     skipall = None
+
+    skipchecks: List[Callable[["TopotatoItem"], None]]
+    """
+    List of additional callables to check before running this test item.  The
+    called functions should either return or raise a :py:class:`TopotatoSkipped`
+    exception.
+
+    Exceptions from these checks do not automatically skip other tests, only
+    this test item is skipped.
+    """
 
     # pylint: disable=protected-access
     @classmethod
@@ -245,6 +283,7 @@ class TopotatoItem(nodes.Item):
     ) -> Generator[Optional["TopotatoItem"], Tuple["TopotatoClass", str], ItemGroup]:
         parent, _ = yield None
         self = cls.from_parent(parent, namesuffix, *args, **kwargs)
+        self.skipchecks = []
         self._codeloc = codeloc
         yield self
 
@@ -300,6 +339,8 @@ class TopotatoItem(nodes.Item):
             raise TopotatoEarlierFailSkip(
                 testinst.skipall.topotato_node
             ) from testinst.skipall
+        for check in self.skipchecks:
+            check(self)
 
         self.session.config.hook.pytest_topotato_run(item=self, testfunc=self)
 

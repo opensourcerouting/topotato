@@ -81,7 +81,10 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
         self.receiver = MulticastReceiver(h1, h1.iface_to('dut'))
 
         # wait for query before continuing
-        yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1] MLD query', maxwait=3.0)
+        logchecks = yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1] MLD query', maxwait=3.0)
+        @logchecks.skip_on_exception
+        def need_debug_mld(testitem):
+            testitem.instance.dut.require_defun("debug_mld_cmd")
 
         # get out of initial reporting (prevents timing issues later)
         def expect_pkt(ipv6: IPv6, report: ICMPv6MLReport2):
@@ -99,7 +102,11 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
 
         yield from self.receiver.join('ff05::2345', srcaddr)
 
-        yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1 (%s,ff05::2345)] NOINFO => JOIN' % srcaddr, maxwait=3.0)
+        logchecks = yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1 (%s,ff05::2345)] NOINFO => JOIN' % srcaddr, maxwait=3.0)
+        @logchecks.skip_on_exception
+        def need_debug_mld(testitem):
+            testitem.instance.dut.require_defun("debug_mld_cmd")
+
         yield from AssertVtysh.make(dut, "pim6d", "debug show mld interface %s" % (dut.iface_to('h1').ifname))
 
         ip = IPv6(hlim=255, src=srcaddr, dst="ff05::2345")
@@ -120,7 +127,11 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
     def test_asm(self, topo, dut, h1, h2, src):
         yield from self.receiver.join('ff05::1234')
 
-        yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1 (*,ff05::1234)] NOINFO => JOIN', maxwait=2.0)
+        logchecks = yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1 (*,ff05::1234)] NOINFO => JOIN', maxwait=2.0)
+        @logchecks.skip_on_exception
+        def need_debug_mld(testitem):
+            testitem.instance.dut.require_defun("debug_mld_cmd")
+
         yield from AssertVtysh.make(dut, "pim6d", "debug show mld interface %s" % (dut.iface_to('h1').ifname))
 
     @topotatofunc

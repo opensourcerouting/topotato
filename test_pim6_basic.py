@@ -101,7 +101,10 @@ class PIM6Basic(TestBase, AutoFixture, topo=topology, configs=Configs):
 
         yield from self.receiver.join('ff05::2345', srcaddr)
 
-        yield from AssertLog.make(r2, 'pim6d', '[MLD default:r2-h2 (%s,ff05::2345)] NOINFO => JOIN' % srcaddr, maxwait=3.0)
+        logchecks = yield from AssertLog.make(r2, 'pim6d', '[MLD default:r2-h2 (%s,ff05::2345)] NOINFO => JOIN' % srcaddr, maxwait=3.0)
+        @logchecks.skip_on_exception
+        def need_debug_mld(testitem):
+            testitem.instance.r2.require_defun("debug_mld_cmd")
 
         yield from AssertLog.make(r1, 'pim6d', 'pim_forward_start: (S,G)=(%s,ff05::2345) oif=r1-r2' % srcaddr, maxwait=3.0)
 
