@@ -103,7 +103,7 @@ class FRRParams(TopotatoParams):
                     router=router,
                     routers=rtrmap,
                     topo=topo,
-                    frr=TemplateUtils(router, daemon),
+                    frr=TemplateUtils(router, daemon, self),
                 )
 
         # TODO: rework mgmtd integration, particularly for supporting older
@@ -176,17 +176,41 @@ class FRRParams(TopotatoParams):
                         f"DEFUN {cmd!r} does not contain {contains!r}"
                     )
 
-    def require_logmsg(self, msgid: str) -> None:
+    def has_defun(self, cmd: str, contains: Optional[str] = None) -> bool:
+        """
+        Wrap :py:meth:`require_defun`, but return a bool rather than throwing
+        an exception.
+
+        This wrapper is "the other way around" because the exception thrown
+        above contains additional information beyond what can be conveyed in a
+        ``bool``.
+        """
+        try:
+            self.require_defun(cmd, contains)
+            return True
+        except FRRRequirementNotMet:
+            return False
+
+    def has_logmsg(self, msgid: str) -> bool:
         """
         Check that a log message exists in this FRR version by looking up its
         unique ID in ``frr.xref``.
+
+        :param msgid: ID (``XXXXX-XXXXX``) of the log message to look for.
+        """
+        return msgid in (self.frr.xrefs or {}).get("refs", {})
+
+    def require_logmsg(self, msgid: str) -> None:
+        """
+        Wrap :py:meth:`has_logmsg` and raise exception if given log message
+        does not exist in this FRR version.
 
         :param msgid: ID (``XXXXX-XXXXX``) of the log message to look for.
         :raises FRRRequirementNotMet: if the log message is not found.  This
             causes the test to be skipped, but can be caught (e.g. if there
             are multiple alternatives to check.)
         """
-        if msgid not in (self.frr.xrefs or {}).get("refs", {}):
+        if not self.has_logmsg(msgid):
             raise FRRRequirementNotMet(f"missing log message {msgid!r}")
 
     def requirements(self) -> None:

@@ -11,6 +11,7 @@ from typing import (
     Callable,
     List,
     Literal,
+    Optional,
     Set,
     Tuple,
     Union,
@@ -21,6 +22,7 @@ from .. import jinlinja
 
 if typing.TYPE_CHECKING:
     from .. import toponom
+    from .params import FRRParams
 
 jenv = jinlinja.InlineEnv()
 
@@ -52,6 +54,7 @@ jenv.register_templates(_templates.items())
 class TemplateUtils:
     router: "toponom.Router"
     daemon: str
+    params: "FRRParams"
 
     def static_route_for(
         self,
@@ -95,3 +98,23 @@ class TemplateUtils:
                 queue.append((nbr, nbr_path))
 
         raise RuntimeError(f"no route for {dst!r} on {self.router!r}")
+
+    def has_defun(self, cmd: str, contains: Optional[str] = None) -> bool:
+        """
+        Expose :py:meth:`FRRParams.has_defun` for template use.
+
+        :param cmd: Name of the command as defined in the C source, i.e.
+            second argument to `DEFUN` macro.  Generally ends in ``_cmd``.
+        :param contains: String that must appear in the command's syntax
+            definition (use if some new option is added to an existing
+            command.)
+        """
+        return self.params.has_defun(cmd, contains)
+
+    def has_logmsg(self, msgid: str) -> bool:
+        """
+        Expose :py:meth:`FRRParams.has_logmsg` for template use.
+
+        :param msgid: ID (``XXXXX-XXXXX``) of the log message to look for.
+        """
+        return self.params.has_logmsg(msgid)
