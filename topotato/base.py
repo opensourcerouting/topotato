@@ -33,6 +33,7 @@ from typing import (
 import pytest
 import _pytest
 from _pytest import nodes
+from _pytest.outcomes import Failed, Skipped
 
 # from _pytest.mark.structures import Mark
 
@@ -442,7 +443,7 @@ class InstanceStartup(TopotatoItem):
         # pylint: disable=protected-access
         try:
             tcls.netinst = tcls.obj._setup(self.session, tcls.nodeid).prepare()
-        except Exception as e:
+        except (Exception, Failed, Skipped) as e:
             e.topotato_node = self
             self.parent.skipall = e
             raise
@@ -457,7 +458,7 @@ class InstanceStartup(TopotatoItem):
             e.topotato_node = self
             self.parent.skipall = e
             raise
-        except Exception as e:
+        except (Exception, Failed, Skipped) as e:
             e.topotato_node = self
             self.parent.skipall = e
             raise
@@ -744,7 +745,7 @@ class TopotatoClass(_pytest.python.Class):
     The actual instance of our test class.
     """
 
-    skipall: Optional[Exception]
+    skipall: Optional[Exception | Failed | Skipped]
 
     starting_ts: float
     started_ts: float
