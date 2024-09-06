@@ -225,10 +225,15 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
         get the *one* interfaces of this node that goes to "other"
 
         If there is more than one interface towards `other`, this throws
-        `AssertionError`.
+        an exception.
         """
         ifaces = self.ifaces_to(other)
-        assert len(ifaces) == 1
+        if not ifaces:
+            raise ValueError(f"{self.name!r} has no link to {other!r}")
+        if len(ifaces) > 1:
+            raise ValueError(
+                f"{self.name!r} has {len(ifaces)} links to {other!r}, expected exactly 1"
+            )
         return ifaces[0]
 
     def iface_peer(self, other: str, via=Optional["LAN"]) -> "LinkIface":
