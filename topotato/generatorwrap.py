@@ -5,14 +5,12 @@
 Wrap generator functions & raise exceptions if a generator is never used.
 """
 
-import sys
 import functools
 import traceback
 import inspect
-import gc
+import warnings
 from types import TracebackType
 from typing import (
-    Any,
     Callable,
     Generator,
     Generic,
@@ -23,26 +21,8 @@ from typing import (
 )
 
 
-class GeneratorDeletedUnused(Exception):
-    """
-    Exception raised from :py:meth:`GeneratorWrapper.__del__` if the generator
-    never actually ran.
-
-    Note that exceptions raised from __del__ are handled through
-    sys.unraisablehook since __del__ is called asynchronously and exceptions
-    are normally printed but ignored there.
-    """
-
-    origin: List[str]
-    """
-    Formatted string traceback for the generator's call location.
-
-    Not saving FrameInfo/related here since the frame continues executing
-    after the call site and these objects would change due to that.
-    """
-
-    def __init__(self, origin: List[str]):
-        self.origin = origin
+class GeneratorChecksWarning(UserWarning):
+    pass
 
 
 class GeneratorsUnused(Exception):
@@ -51,56 +31,38 @@ class GeneratorsUnused(Exception):
     :py:class:`GeneratorChecks` ``with`` context.
     """
 
-    exceptions: List[GeneratorDeletedUnused]
+    generators: List[Generator]
 
-    def __init__(self, exceptions: List[GeneratorDeletedUnused]):
+    def __init__(self, generators: List[Generator]):
         super().__init__()
-        self.exceptions = exceptions
+        self.generators = generators
 
     def __str__(self):
-        items = "\n===\n".join(
-            e.origin[-1].rstrip("\n ") for e in self.exceptions
-        ).replace("\n", "\n  ")
-        return f'{len(self.exceptions)} generators were invoked but never executed (forgotten "yield from"?):\n  {items}'
+        items = "\n===\n".join(g._loc[-1] for g in self.generators).replace(
+            "\n", "\n  "
+        )
+        return f'{len(self.generators)} generators were invoked but never executed (forgotten "yield from"?):\n  {items}'
 
 
 class GeneratorChecks:
     """
-    Context manager to collect raised :py:class:`GeneratorDeletedUnused`.
-
-    Since __del__ goes to sys.unraisablehook, this context manager places
-    itself into that hook for the duration of its ``with`` block.  All
-    GeneratorDeletedUnused exceptions are collected and then raised at the
-    end of the context.
+    Context manager to track called but not iterated GeneratorWrapper.
     """
 
-    _prev_hook: Optional[Callable[[Any], Any]] = None
+    _active: List
     """
-    Original sys.unraisablehook to restore after.
+    Calling a GeneratorWrapper-wrapped iterator adds it here, iterating over it
+    removes it.  At the end of the context, this list needs to be empty or we
+    raise an exception.
     """
-    _errs: List[GeneratorDeletedUnused]
-    """
-    Accumulated exceptions, if any.
-    """
+
+    _ctxstack: List["GeneratorChecks"] = []
 
     def __init__(self):
-        self._errs = []
-
-    def _unraisable(self, args) -> None:
-        """
-        Handler to be installed into sys.unraisablehook.
-        """
-        assert self._prev_hook
-
-        if isinstance(args.exc_value, GeneratorDeletedUnused):
-            self._errs.append(args.exc_value)
-            return
-
-        self._prev_hook(args)
+        self._active = []
 
     def __enter__(self):
-        self._prev_hook = sys.unraisablehook
-        sys.unraisablehook = self._unraisable
+        GeneratorChecks._ctxstack.insert(0, self)
         return self
 
     def __exit__(
@@ -109,19 +71,13 @@ class GeneratorChecks:
         exc_value: Optional[BaseException],
         tb: Optional[TracebackType],
     ):
-        assert self._prev_hook
-
-        gc.collect()
-        sys.unraisablehook = self._prev_hook
-        self._prev_hook = None
-
         if exc_type is not None:
             return
 
-        if not self._errs:
-            return
+        assert GeneratorChecks._ctxstack.pop(0) == self
 
-        raise GeneratorsUnused(self._errs)
+        if self._active:
+            raise GeneratorsUnused(self._active)
 
 
 TG = TypeVar("TG", bound=Generator)
@@ -138,7 +94,7 @@ class GeneratorWrapper(Generic[TG]):
             yield foo - 1
 
     When the generator is later _called_ but not actually iterated over, it
-    will raise :py:class:`GeneratorDeletedUnused` from its __del__ method.
+    will register itself on the innermost :py:class:`GeneratorChecks` context.
     These should be collected like this::
 
         with GeneratorChecks():
@@ -154,31 +110,31 @@ class GeneratorWrapper(Generic[TG]):
     """
     Original generator object to forward __iter__ to.
     """
-    _run: bool
-    """
-    Has this generator actually been iterated over?  (Not necessarily to completion.)
-    """
     _loc: List[str]
     """
     Location of call to pass to :py:class:`GeneratorDeletedUnused`, see there.
     """
+    _gchk: Optional[GeneratorChecks]
 
     def __init__(self, wraps: TG, loc: List[str]):
         self._wraps = wraps
         self._loc = loc
-        self._run = False
+
+        if GeneratorChecks._ctxstack:
+            self._gchk = GeneratorChecks._ctxstack[0]
+            self._gchk._active.append(self)
+        else:
+            self._gchk = None
+            warnings.warn(
+                "GeneratorWrapper-wrapped generator invoked without active GeneratorChecks",
+                GeneratorChecksWarning,
+            )
 
     def __iter__(self):
-        self._run = True
-        del self._loc
+        if self._gchk:
+            self._gchk._active.remove(self)
+            self._gchk = None
         return self._wraps.__iter__()
-
-    def __del__(self):
-        if self._run:
-            return
-        if isinstance(self._wraps, GeneratorWrapper):
-            self._wraps._run = True
-        raise GeneratorDeletedUnused(self._loc)
 
     @classmethod
     def apply(cls, function: Callable[..., TG]) -> Callable[..., TG]:

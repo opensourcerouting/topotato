@@ -6,7 +6,12 @@ basic tests for topotato.generatorwrap
 """
 
 import pytest
-from topotato.generatorwrap import GeneratorChecks, GeneratorWrapper, GeneratorsUnused
+from topotato.generatorwrap import (
+    GeneratorChecks,
+    GeneratorWrapper,
+    GeneratorsUnused,
+    GeneratorChecksWarning,
+)
 
 
 def ref_gen_nowrap():
@@ -23,10 +28,17 @@ def both_gens(request):
     return request.param
 
 
+def test_no_context_warn():
+    with pytest.warns(GeneratorChecksWarning):
+        assert list(ref_gen_wrap()) == [1, 2, 3]
+
+
+@pytest.mark.filterwarnings("ignore::topotato.generatorwrap.GeneratorChecksWarning")
 def test_still_functional(both_gens):
     assert list(both_gens()) == [1, 2, 3]
 
 
+@pytest.mark.filterwarnings("ignore::topotato.generatorwrap.GeneratorChecksWarning")
 def test_sending(both_gens):
     gen = both_gens()
     itr = iter(gen)
@@ -59,7 +71,7 @@ def test_wrapped_multifail():
         with GeneratorChecks() as checks:
             ref_gen_wrap()
             ref_gen_wrap()
-            assert len(checks._errs) == 2
+            assert len(checks._active) == 2
 
 
 class GeneratorMethod:
@@ -78,6 +90,7 @@ class GeneratorMethod:
         yield 3
 
 
+@pytest.mark.filterwarnings("ignore::topotato.generatorwrap.GeneratorChecksWarning")
 def test_method_wrap():
     assert list(GeneratorMethod().gen1()) == [1]
     assert list(GeneratorMethod.gen2()) == [2]
