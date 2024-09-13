@@ -31,10 +31,9 @@ except ImportError:
     from typing_extensions import Literal  # type: ignore
 
 from scapy.packet import Packet  # type: ignore
-import pytest
 
 from .utils import json_cmp, text_rich_cmp, deindent
-from .base import TopotatoItem, TopotatoFunction, skiptrace
+from .base import TopotatoItem, TopotatoFunction, skiptrace, SkipMode
 from .livescapy import TimedScapy
 from .frr.livelog import LogMessage
 from .timeline import TimingParams
@@ -69,6 +68,8 @@ class TopotatoAssertion(TopotatoItem):
     Common base for assertions (test items that do NOT modify state)
     """
 
+    cascade_failures = SkipMode.SkipThis
+
 
 class TopotatoModifier(TopotatoItem):
     """
@@ -78,6 +79,8 @@ class TopotatoModifier(TopotatoItem):
     item is a dependency for future assertions.  If an assertion fails, the
     test continues.  If a modifier fails, the remainder of the test is skipped.
     """
+
+    cascade_failures = SkipMode.SkipThisAndLater
 
 
 class TimedMixin:
@@ -456,9 +459,6 @@ class _DaemonControl(TopotatoModifier):
         pass
 
     def runtest(self):
-        if self.skipall:
-            pytest.skip(self.skipall)
-
         router = self.instance.routers[self._rtr.name]
         self.do(router)
 

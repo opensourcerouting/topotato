@@ -9,10 +9,10 @@ aspects of this are defined in this module (:py:mod:`topotato.base`).
 import os
 import inspect
 from collections import OrderedDict
-import functools
 import time
 import logging
 import string
+from enum import Enum
 
 import typing
 from typing import (
@@ -144,6 +144,29 @@ class ItemGroup(list["TopotatoItem"]):
             item.skipchecks.append(fn)
 
 
+class SkipMode(Enum):
+    """
+    Behavior regarding failures in earlier/later topotato test items.
+    """
+
+    DontSkip = 0
+    """
+    Always execute this test item, even if earlier items had problems.
+    """
+
+    SkipThis = 1
+    """
+    Skip this test item if something before it cascade-failed, but don't
+    cascade failures from this item.
+    """
+
+    SkipThisAndLater = 2
+    """
+    Skip this test item if something before it cascade-failed, and also make
+    failures in this test item cascade to later items.
+    """
+
+
 # false warning on get_closest_marker()
 # pylint: disable=abstract-method
 class TopotatoItem(nodes.Item):
@@ -169,6 +192,14 @@ class TopotatoItem(nodes.Item):
     Filtered heavily to condense down useful information.
     """
 
+    cascade_failures: ClassVar[SkipMode] = SkipMode.SkipThis
+    """
+    Refer to :py:class:`SkipMode`.  Normal test items derived from
+    :py:class:`.assertions.TopotatoAssertion` or
+    :py:class:`.assertions.TopotatoModifier` needn't worry about this since
+    those two set it correctly.
+    """
+
     nodeid_children_sep: Optional[str] = None
 
     _obj: "TestBase"
@@ -182,9 +213,6 @@ class TopotatoItem(nodes.Item):
     Running network instance this item belongs to.
     """
     timeline: "Timeline"
-
-    # TBD: replace/rework skipping functionality
-    skipall = None
 
     skipchecks: List[Callable[["TopotatoItem"], None]]
     """
@@ -308,12 +336,9 @@ class TopotatoItem(nodes.Item):
             # pylint: disable=attribute-defined-outside-init
             fn.started_ts = time.time()
 
-        tcls = self.getparent(TopotatoClass)
-        if tcls.skipall:
-            raise TopotatoEarlierFailSkip(tcls.skipall.topotato_node) from tcls.skipall
-
-        self.instance = tcls.netinst
-        self.timeline = self.instance.timeline
+        with _SkipMgr(self) as tcls:
+            self.instance = tcls.netinst
+            self.timeline = self.instance.timeline
 
     # pylint: disable=unused-argument
     @pytest.hookimpl()
@@ -327,15 +352,11 @@ class TopotatoItem(nodes.Item):
         """
         Called by pytest in the "call" stage (pytest_runtest_call)
         """
-        testinst = self.getparent(TopotatoClass)
-        if testinst.skipall:
-            raise TopotatoEarlierFailSkip(
-                testinst.skipall.topotato_node
-            ) from testinst.skipall
-        for check in self.skipchecks:
-            check(self)
+        with _SkipMgr(self):
+            for check in self.skipchecks:
+                check(self)
 
-        self.session.config.hook.pytest_topotato_run(item=self, testfunc=self)
+            self.session.config.hook.pytest_topotato_run(item=self, testfunc=self)
 
     def sleep(self, step=None, until=None):
         obj = self
@@ -460,6 +481,47 @@ class TopotatoItem(nodes.Item):
         return res
 
 
+class _SkipMgr:
+    """
+    Simple context manager used by :py:class:`TopotatoItem` to make errors
+    skip later test items on the same network.
+    """
+
+    _item: TopotatoItem
+    _cls: "TopotatoClass"
+
+    def __init__(self, item: TopotatoItem):
+        tcls = item.getparent(TopotatoClass)
+        assert tcls is not None
+
+        self._item = item
+        self._cls = tcls
+
+    def __enter__(self) -> "TopotatoClass":
+        if self._item.cascade_failures == SkipMode.DontSkip:
+            return self._cls
+        if self._cls.skipall:
+            raise TopotatoEarlierFailSkip(self._cls.skipall_node) from self._cls.skipall
+        return self._cls
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        tb: Optional["TracebackType"],
+    ) -> None:
+        if exc_value is None:
+            return
+        if isinstance(exc_value, Skipped):
+            return
+        if not isinstance(exc_value, (Exception, Failed)):
+            return
+
+        if self._item.cascade_failures == SkipMode.SkipThisAndLater:
+            self._cls.skipall_node = self._item
+            self._cls.skipall = exc_value
+
+
 # false warning on get_closest_marker()
 # pylint: disable=abstract-method
 class InstanceStartup(TopotatoItem):
@@ -468,6 +530,8 @@ class InstanceStartup(TopotatoItem):
 
     Includes starting tshark and checking all daemons are running.
     """
+
+    cascade_failures = SkipMode.SkipThisAndLater
 
     commands: OrderedDict
 
@@ -481,29 +545,18 @@ class InstanceStartup(TopotatoItem):
         return fspath, float("-inf"), "startup"
 
     def setup(self):
-        tcls = self.getparent(TopotatoClass)
-        # pylint: disable=protected-access
-        try:
+        # this needs to happen before TopotatoItem.setup, since that accesses
+        # tcls.netinst
+        with _SkipMgr(self) as tcls:
+            # pylint: disable=protected-access
             tcls.netinst = tcls.obj._setup(self.session, tcls.nodeid).prepare()
-        except (Exception, Failed, Skipped) as e:
-            e.topotato_node = self
-            self.parent.skipall = e
-            raise
         super().setup()
 
     @endtrace
     @skiptrace
     def runtest(self):
-        try:
+        with _SkipMgr(self):
             self.parent.do_start()
-        except TopotatoFail as e:
-            e.topotato_node = self
-            self.parent.skipall = e
-            raise
-        except (Exception, Failed, Skipped) as e:
-            e.topotato_node = self
-            self.parent.skipall = e
-            raise
 
 
 # false warning on get_closest_marker()
@@ -516,6 +569,9 @@ class InstanceShutdown(TopotatoItem):
     orderly fashion (otherwise you get truncated pcap files.)
     """
 
+    # kinda irrelevant here
+    cascade_failures = SkipMode.DontSkip
+
     def __init__(self, **kwargs):
         super().__init__(name="shutdown", **kwargs)
 
@@ -525,9 +581,8 @@ class InstanceShutdown(TopotatoItem):
         fspath, _, _ = tcls.reportinfo()
         return fspath, float("inf"), "shutdown"
 
-    def runtest(self):
-        testfunc = functools.partial(self.parent.do_stop, self)
-        self.session.config.hook.pytest_topotato_run(item=self, testfunc=testfunc)
+    def __call__(self):
+        self.parent.do_stop(self)
 
 
 class TestBase:
@@ -787,6 +842,7 @@ class TopotatoClass(_pytest.python.Class):
     """
 
     skipall: Optional[Exception | Failed | Skipped]
+    skipall_node: Optional[TopotatoItem]
 
     starting_ts: float
     started_ts: float
@@ -841,9 +897,6 @@ class TopotatoClass(_pytest.python.Class):
             yield InstanceShutdown.from_parent(self)
 
     def do_start(self):
-        if self.skipall:
-            pytest.skip(self.skipall)
-
         self.starting_ts = time.time()
 
         netinst = self.netinst
