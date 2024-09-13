@@ -98,9 +98,7 @@ class NetworkInstance(topobase.NetworkInstance):
             if cur is None:
                 result.error("%s is required to run on Linux systems", name)
 
-        ip_ver = subprocess.check_output([cls._exec.get("ip") or "ip", "-V"]).decode(
-            "UTF-8"
-        )
+        ip_ver = subprocess.check_output([cls._exec("ip"), "-V"]).decode("UTF-8")
         ip_ver_m = re.search(r"iproute2-((?:ss)?[\d\.]+)", ip_ver)
         if ip_ver_m and ip_ver_m.group(1).startswith("ss"):
             ver = ip_ver_m.group(1)
@@ -120,7 +118,7 @@ class NetworkInstance(topobase.NetworkInstance):
             _logger.warning(
                 "cannot parse iproute2 version %r from %r",
                 ip_ver,
-                cls._exec.get("ip") or "ip",
+                cls._exec("ip"),
             )
 
     class BaseNS(topobase.CallableEnvMixin, LinuxNamespace, topobase.BaseNS):
@@ -153,7 +151,7 @@ class NetworkInstance(topobase.NetworkInstance):
 
         def start(self):
             super().start()
-            self.check_call([self._exec.get("ip", "ip"), "link", "set", "lo", "up"])
+            self.check_call([self._exec("ip"), "link", "set", "lo", "up"])
 
         def end_prep(self):
             pass
@@ -184,7 +182,7 @@ class NetworkInstance(topobase.NetworkInstance):
 
             def ip_r_call(extra=None):
                 text = self.check_output(
-                    [self._exec.get("ip", "ip"), "-%d" % af, "-j", "route", "list"]
+                    [self._exec("ip"), "-%d" % af, "-j", "route", "list"]
                     + (extra or [])
                 )
                 text = self.iproute_json_re.sub(rb'"type":"\1"', text)
@@ -332,7 +330,7 @@ class NetworkInstance(topobase.NetworkInstance):
             ifn = ifname(self.name, iface.ifname)
             self.instance.switch_ns.check_call(
                 [
-                    str(self._exec.get("ip", "ip")),
+                    self._exec("ip"),
                     "link",
                     "set",
                     ifn,
@@ -409,7 +407,7 @@ class NetworkInstance(topobase.NetworkInstance):
                 self.bridges.append(brname)
                 self.switch_ns.check_call(
                     [
-                        self._exec.get("ip", "ip"),
+                        self._exec("ip"),
                         "link",
                         "add",
                         "name",
@@ -422,7 +420,7 @@ class NetworkInstance(topobase.NetworkInstance):
                 )
                 self.switch_ns.check_call(
                     [
-                        self._exec.get("ip", "ip"),
+                        self._exec("ip"),
                         "link",
                         "set",
                         ifname(link.a.endpoint.name, link.a.ifname),
@@ -433,7 +431,7 @@ class NetworkInstance(topobase.NetworkInstance):
                 )
                 self.switch_ns.check_call(
                     [
-                        self._exec.get("ip", "ip"),
+                        self._exec("ip"),
                         "link",
                         "set",
                         ifname(link.b.endpoint.name, link.b.ifname),
@@ -448,7 +446,7 @@ class NetworkInstance(topobase.NetworkInstance):
             self.bridges.append(brname)
             self.switch_ns.check_call(
                 [
-                    self._exec.get("ip", "ip"),
+                    self._exec("ip"),
                     "link",
                     "add",
                     "name",
@@ -462,7 +460,7 @@ class NetworkInstance(topobase.NetworkInstance):
             for iface in lan.ifaces:
                 self.switch_ns.check_call(
                     [
-                        self._exec.get("ip", "ip"),
+                        self._exec("ip"),
                         "link",
                         "set",
                         ifname(iface.other.endpoint.name, iface.other.ifname),

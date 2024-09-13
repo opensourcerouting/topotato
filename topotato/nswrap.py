@@ -14,7 +14,7 @@ import errno
 from typing import List, ClassVar
 
 from .defer import subprocess
-from .utils import LockedFile
+from .utils import LockedFile, PathDict
 
 _libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
 
@@ -93,11 +93,13 @@ class LinuxNamespace:
     name: str
     pid: int
 
-    _exec = {
-        "unshare": None,
-        "nsenter": None,
-        "tini": None,
-    }
+    _exec = PathDict(
+        {
+            "unshare": None,
+            "nsenter": None,
+            "tini": None,
+        }
+    )
 
     taskdir: ClassVar[str] = "/tmp/topotato"
 
@@ -123,14 +125,14 @@ class LinuxNamespace:
 
         self.process = subprocess.Popen(
             [
-                self._exec.get("unshare", "unshare"),
+                self._exec("unshare"),
                 "-u",
                 "-m",
                 "-n",
                 "-p",
                 "-f",
                 "--mount-proc",
-                self._exec.get("tini", "tini"),
+                self._exec("tini"),
                 "-g",
                 sys.executable,
                 "--",
@@ -200,7 +202,7 @@ class LinuxNamespace:
 
     def prefix(self, kwargs) -> List[str]:
         ret = [
-            str(self._exec.get("nsenter", "nsenter")),
+            self._exec("nsenter"),
             "-t",
             str(self.pid),
             "-m",

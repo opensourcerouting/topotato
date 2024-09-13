@@ -140,6 +140,11 @@ def apply_kwargs_maybe(func: Callable[P, T], **args) -> Callable[P, T]:
     return functools.partial(func, **existing)
 
 
+class PathDict(dict[str, Optional[str]]):
+    def __call__(self, k: str) -> str:
+        return self.get(k) or k
+
+
 class json_cmp_result:
     "json_cmp result class for better assertion messages"
 
