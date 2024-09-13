@@ -9,6 +9,7 @@ and virtual router wrappers.  The :py:mod:`topotato.osdep` module selects the
 appropriate implementation at runtime.  For type checking, only the methods
 and attributes defined here should be used outside OS-specific code.
 """
+# pylint: disable=unused-argument
 
 from abc import ABC, abstractmethod
 import os
@@ -36,7 +37,7 @@ if typing.TYPE_CHECKING:
     from .timeline import Timeline
 
 
-class BaseNS(ABC):
+class BaseNS:
     """
     Common interface to a virtual host/router.
 
@@ -54,13 +55,12 @@ class BaseNS(ABC):
     def __init__(self, _instance: "NetworkInstance", name: str) -> None:
         pass
 
-    @abstractmethod
     def tempfile(self, name: str) -> str:
         """
         Get a path for a temporary file.
         """
+        return ""
 
-    @abstractmethod
     def start(self) -> None:
         """
         Start this virtual system.
@@ -80,13 +80,11 @@ class BaseNS(ABC):
            rework/remove "failed" parameter.
         """
 
-    @abstractmethod
     def end_prep(self) -> None:
         """
         Prepare for shutdown.
         """
 
-    @abstractmethod
     def end(self) -> None:
         """
         Stop this virtual system.
@@ -122,8 +120,8 @@ class RouterNS(BaseNS):
         """
         Retrieve state for HTML test report.
         """
+        return None
 
-    @abstractmethod
     def routes(
         self, af: Union[Literal[4], Literal[6]] = 4, local=False
     ) -> Dict[str, Any]:
@@ -134,8 +132,8 @@ class RouterNS(BaseNS):
 
            Implement a type/protocol for the return value.
         """
+        return {}
 
-    @abstractmethod
     def link_set(self, iface: "toponom.LinkIface", state: bool) -> None:
         """
         Set one of this systems interfaces up or down.
