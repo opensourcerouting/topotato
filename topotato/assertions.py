@@ -157,21 +157,20 @@ class AssertKernelRoutes(TimedMixin, TopotatoAssertion):
     af: ClassVar[Union[Literal[4], Literal[6]]]
     default_delay = 0.1
 
-    # pylint does not understand that from_parent is our __init__
     _rtr: str
     _routes: dict
     _local: bool
 
-    # pylint: disable=arguments-differ,too-many-arguments,protected-access
-    @classmethod
-    def from_parent(cls, parent, name, rtr, routes, *, local=False, **kwargs):
-        name = "%s:%s/routes-v%d" % (name, rtr, cls.af)
-        self = super().from_parent(parent, name=name, **kwargs)
+    posargs = ["rtr", "routes"]
+
+    # pylint: disable=too-many-arguments
+    def __init__(self, *, name, rtr, routes, local=False, **kwargs):
+        name = "%s:%s/routes-v%d" % (name, rtr, self.af)
+        super().__init__(name=name, **kwargs)
 
         self._rtr = rtr
         self._routes = routes
         self._local = local
-        return self
 
     def __call__(self):
         router = self.instance.routers[self._rtr]
@@ -224,7 +223,6 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
 
     commands: OrderedDict
 
-    # pylint does not understand that from_parent is our __init__
     _rtr: str
     _daemon: str
     _command: str
@@ -232,11 +230,12 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
 
     default_delay = 0.1
 
-    # pylint: disable=arguments-differ,too-many-arguments,protected-access
-    @classmethod
-    def from_parent(
-        cls,
-        parent,
+    posargs = ["rtr", "daemon", "command", "compare"]
+
+    # pylint: disable=too-many-arguments
+    def __init__(
+        self,
+        *,
         name,
         rtr,
         daemon,
@@ -254,16 +253,15 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
             name,
             rtr.name,
             daemon,
-            cls._nodename,
+            self._nodename,
             command_cleaned,
         )
-        self = super().from_parent(parent, name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
 
         self._rtr = rtr
         self._daemon = daemon
-        self._command = cls._cmdprefix + command
+        self._command = self._cmdprefix + command
         self._compare = compare
-        return self
 
     def __call__(self):
         router = self.instance.routers[self._rtr.name]
@@ -317,7 +315,6 @@ class ReconfigureFRR(AssertVtysh):
 
 
 class AssertPacket(TimedMixin, TopotatoAssertion):
-    # pylint does not understand that from_parent is our __init__
     _link: str
     _pkt: Any
     _argtypes: List[Type[Packet]]
@@ -325,11 +322,12 @@ class AssertPacket(TimedMixin, TopotatoAssertion):
 
     matched: Optional[Any]
 
-    # pylint: disable=arguments-differ,protected-access,too-many-arguments
-    @classmethod
-    def from_parent(cls, parent, name, link, pkt, expect_pkt=True, **kwargs) -> "AssertPacket":  # type: ignore
+    posargs = ["link", "pkt", "expect_pkt"]
+
+    # pylint: disable=too-many-arguments
+    def __init__(self, *, name, link, pkt, expect_pkt=True, **kwargs):
         name = "%s:%s/packet" % (name, link)
-        self = cast(AssertPacket, super().from_parent(parent, name=name, **kwargs))
+        super().__init__(name=name, **kwargs)
 
         self._link = link
         self._pkt = pkt
@@ -350,8 +348,6 @@ class AssertPacket(TimedMixin, TopotatoAssertion):
                     % (self._pkt, arg, argtype)
                 )
             self._argtypes.append(argtype)
-
-        return self
 
     def __call__(self):
         for element in self.timeline.run_timing(self._timing):
@@ -391,7 +387,6 @@ class AssertPacket(TimedMixin, TopotatoAssertion):
 
 
 class AssertLog(TimedMixin, TopotatoAssertion):
-    # pylint does not understand that from_parent is our __init__
     _rtr: str
     _daemon: str
     _pkt: Any
@@ -399,17 +394,17 @@ class AssertLog(TimedMixin, TopotatoAssertion):
 
     matched: Optional[Any]
 
+    posargs = ["rtr", "daemon", "msg"]
+
     # pylint: disable=arguments-differ,protected-access,too-many-arguments
-    @classmethod
-    def from_parent(cls, parent, name, rtr, daemon, msg, **kwargs) -> "AssertLog":  # type: ignore
+    def __init__(self, *, name, rtr, daemon, msg, **kwargs):
         name = "%s:%s/%s/log" % (name, rtr.name, daemon)
-        self = cast(AssertLog, super().from_parent(parent, name=name, **kwargs))
+        super().__init__(name=name, **kwargs)
 
         self._rtr = rtr
         self._daemon = daemon
         self._msg = msg
         self.matched = None
-        return self
 
     @skiptrace
     def __call__(self):
@@ -438,14 +433,6 @@ class AssertLog(TimedMixin, TopotatoAssertion):
 
 
 class Delay(TimedMixin, TopotatoAssertion):
-    # pylint: disable=arguments-differ,protected-access,too-many-arguments
-    @classmethod
-    def from_parent(cls, parent, name, **kwargs) -> "Delay":  # type: ignore
-        name = "%s" % (name,)
-        self = cast(Delay, super().from_parent(parent, name=name, **kwargs))
-
-        return self
-
     @skiptrace
     def __call__(self):
         for _ in self.timeline.run_timing(self._timing):
@@ -453,26 +440,17 @@ class Delay(TimedMixin, TopotatoAssertion):
 
 
 class _DaemonControl(TopotatoModifier):
-    # pylint does not understand that from_parent is our __init__
     _rtr: str
     _daemon: str
 
     op_name: ClassVar[str]
+    posargs = ["rtr", "daemon"]
 
-    # pylint: disable=arguments-differ,protected-access
-    @classmethod
-    def from_parent(cls, parent, name, rtr, daemon, **kwargs) -> "DaemonControl":  # type: ignore
-        self = cast(
-            _DaemonControl,
-            super().from_parent(
-                parent,
-                name="%s:%s/%s/%s" % (name, rtr.name, daemon, cls.op_name),
-                **kwargs,
-            ),
-        )
+    def __init__(self, *, name, rtr, daemon, **kwargs):
+        name = "%s:%s/%s/%s" % (name, rtr.name, daemon, self.op_name)
+        super().__init__(name=name, **kwargs)
         self._rtr = rtr
         self._daemon = daemon
-        return self
 
     def do(self, router):
         pass
@@ -504,9 +482,10 @@ class ModifyLinkStatus(TopotatoModifier):
     _iface: str
     _state: bool
 
-    # pylint: disable=arguments-differ,protected-access,too-many-arguments
-    @classmethod
-    def from_parent(cls, parent, name, rtr, iface, state, **kwargs):
+    posargs = ["rtr", "iface", "state"]
+
+    # pylint: disable=too-many-arguments
+    def __init__(self, *, name, rtr, iface, state, **kwargs):
         name = "%s:%s/link[%s (%s) -> %s]" % (
             name,
             rtr.name,
@@ -514,12 +493,11 @@ class ModifyLinkStatus(TopotatoModifier):
             iface.other.endpoint.name,
             "UP" if state else "DOWN",
         )
-        self = super().from_parent(parent, name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
 
         self._rtr = rtr
         self._iface = iface
         self._state = state
-        return self
 
     def __call__(self):
         router = self.instance.routers[self._rtr.name]
@@ -542,20 +520,17 @@ class BackgroundCommand:
         _rtr: str
         _cmdobj: "BackgroundCommand"
 
-        # pylint: disable=arguments-differ,protected-access
-        @classmethod
-        def from_parent(cls, parent, name, cmdobj, **kwargs):
+        def __init__(self, *, name, cmdobj, **kwargs):
             name = '%s:%s/exec["%s" (%s)]' % (
                 name,
                 cmdobj._rtr.name,
                 cmdobj._cmd,
-                cls.__name__,
+                self.__class__.__name__,
             )
-            self = super().from_parent(parent, name=name, **kwargs)
+            super().__init__(name=name, **kwargs)
 
             self._rtr = cmdobj._rtr
             self._cmdobj = cmdobj
-            return self
 
     class Start(Action):
         # pylint: disable=consider-using-with
@@ -586,8 +561,8 @@ class BackgroundCommand:
 
     @skiptrace
     def start(self):
-        yield from self.Start.make(self)
+        yield from self.Start.make(cmdobj=self)
 
     @skiptrace
     def wait(self):
-        yield from self.Wait.make(self)
+        yield from self.Wait.make(cmdobj=self)

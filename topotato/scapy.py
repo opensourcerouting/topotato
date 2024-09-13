@@ -12,7 +12,6 @@ from typing import (
     cast,
     Any,
     Optional,
-    Self,
 )
 
 import pytest
@@ -47,16 +46,14 @@ class ScapySend(TopotatoModifier):
     _repeat: Optional[int]
     _interval: Optional[float]
 
-    # pylint: disable=arguments-differ,protected-access,too-many-arguments
-    @classmethod
-    def from_parent(cls, parent, name, rtr, iface, pkt, *, repeat=None, interval=None):
+    posargs = ["rtr", "iface", "pkt"]
+
+    # pylint: disable=too-many-arguments
+    def __init__(self, *, name, rtr, iface, pkt, repeat=None, interval=None, **kwargs):
         path = "/".join([l.__name__ for l in pkt.layers()])
-        self = cast(
-            Self,
-            super().from_parent(
-                parent, name="%s:%s/scapy[%s/%s]" % (name, rtr.name, iface, path)
-            ),
-        )
+        name = "%s:%s/scapy[%s/%s]" % (name, rtr.name, iface, path)
+        super().__init__(name=name, **kwargs)
+
         self._rtr = rtr
         self._iface = iface
         self._repeat = repeat
@@ -69,7 +66,6 @@ class ScapySend(TopotatoModifier):
             pkt = Ether() / pkt
 
         self._pkt = pkt
-        return self
 
     def __call__(self):
         if scapy_exc:

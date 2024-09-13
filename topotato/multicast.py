@@ -82,9 +82,8 @@ class MulticastReceiver:
         group_opt: Optional[int] = None
         source_opt: Optional[int] = None
 
-        # pylint: disable=arguments-differ,protected-access,too-many-arguments
-        @classmethod
-        def from_parent(cls, parent, name, cmdobj, group, source=None):
+        # pylint: disable=too-many-arguments
+        def __init__(self, *, name, cmdobj, group, source=None, **kwargs):
             _group = ipaddress.ip_address(group)
             _source = source and ipaddress.ip_address(source)
             assert _source is None or _source.version == _group.version
@@ -93,16 +92,15 @@ class MulticastReceiver:
                 name,
                 cmdobj._rtr.name,
                 cmdobj._iface.ifname,
-                cls.__name__.lower(),
+                self.__class__.__name__.lower(),
                 _source or "*",
                 _group,
             )
-            self = super().from_parent(parent, name=name)
+            super().__init__(name=name, **kwargs)
             self._cmdobj = cmdobj
             self._rtr = cmdobj._rtr
             self._group = _group
             self._source = _source
-            return self
 
         def __call__(self):
             router = self.instance.routers[self._rtr.name]
@@ -143,16 +141,16 @@ class MulticastReceiver:
 
     @skiptrace
     def join(self, group, source=None):
-        yield from self.Join.make(self, group, source)
+        yield from self.Join.make(cmdobj=self, group=group, source=source)
 
     @skiptrace
     def leave(self, group, source=None):
-        yield from self.Leave.make(self, group, source)
+        yield from self.Leave.make(cmdobj=self, group=group, source=source)
 
     @skiptrace
     def block(self, group, source):
-        yield from self.Block.make(self, group, source)
+        yield from self.Block.make(cmdobj=self, group=group, source=source)
 
     @skiptrace
     def unblock(self, group, source):
-        yield from self.Unblock.make(self, group, source)
+        yield from self.Unblock.make(cmdobj=self, group=group, source=source)

@@ -51,15 +51,13 @@ class ExaBGP:
         _rtr: str
         _cmdobj: "ExaBGP"
 
-        # pylint: disable=arguments-differ,protected-access
-        @classmethod
-        def from_parent(cls, parent, name, cmdobj):
+        def __init__(self, *, name, cmdobj, **kwargs):
+            cls = self.__class__
             name = f"{name}:{cmdobj._rtr.name} {cmdobj.__class__.__name__} ({cls.__name__})"
-            self = super().from_parent(parent, name=name)
+            super().__init__(name=name, **kwargs)
 
             self._rtr = cmdobj._rtr
             self._cmdobj = cmdobj
-            return self
 
         def is_cli_ok(self):
             self._cmdobj.proc_cli.communicate()
@@ -180,12 +178,9 @@ class ExaBGP:
     class Execute(Action):
         _cmd: str
 
-        # pylint: disable=arguments-differ,too-many-arguments,protected-access
-        @classmethod
-        def from_parent(cls, parent, name, cmdobj, cmd: str):  # type: ignore
-            self = super().from_parent(parent, name=name, cmdobj=cmdobj)
+        def __init__(self, *, cmd: str, **kwargs):
+            super().__init__(**kwargs)
             self._cmd = cmd
-            return self
 
         # pylint: disable=consider-using-with
         def __call__(self):
@@ -224,12 +219,12 @@ class ExaBGP:
 
     @skiptrace
     def start(self):
-        yield from self.Start.make(self)
+        yield from self.Start.make(cmdobj=self)
 
     @skiptrace
     def execute(self, cmd):
-        yield from self.Execute.make(self, cmd)
+        yield from self.Execute.make(cmdobj=self, cmd=cmd)
 
     @skiptrace
     def stop(self):
-        yield from self.Stop.make(self)
+        yield from self.Stop.make(cmdobj=self)

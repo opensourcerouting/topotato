@@ -196,32 +196,37 @@ class TopotatoItem(nodes.Item):
     this test item is skipped.
     """
 
-    # pylint: disable=protected-access
-    @classmethod
-    def from_parent(
-        cls: Type["TopotatoItem"], parent: nodes.Node, *args, **kw
-    ) -> "TopotatoItem":
-        """
-        pytest's replacement for the constructor.  Supposedly less fragile.
+    posargs: ClassVar[List[str]] = []
 
-        Do not call this directly, use :py:meth:`make`.
-        """
-
-        name = kw.pop("name")
-
+    def __init__(self, *, name: str, parent: nodes.Node, codeloc=None, **kw):
         nodeid = None
         child_sep = getattr(parent, "nodeid_children_sep", None)
         if child_sep:
             nodeid = parent.nodeid + child_sep + name
-        self: TopotatoItem = cast(
-            "TopotatoItem", super().from_parent(parent, name=name, nodeid=nodeid, **kw)
-        )
+
+        super().__init__(parent=parent, name=name, nodeid=nodeid, **kw)
+        self.skipchecks = []
+        self._codeloc = codeloc
 
         tparent = self.getparent(TopotatoClass)
         assert tparent is not None
-
         self._obj = tparent.obj
-        return self
+
+    @classmethod
+    def from_parent(
+        cls: Type["TopotatoItem"], parent: nodes.Node, *args, **kw
+    ) -> "TopotatoItem":
+        if len(args) > len(cls.posargs):
+            raise TopotatoUnhandledArgs(f"too many positional args for {cls.__name__}")
+
+        for i, arg in enumerate(args):
+            if cls.posargs[i] in kw:
+                raise TopotatoUnhandledArgs(
+                    f"duplicate argument {cls.posargs[i]!r} for {cls.__name__}"
+                )
+            kw[cls.posargs[i]] = arg
+
+        return super().from_parent(parent=parent, **kw)
 
     @classmethod
     @GeneratorWrapper.apply
@@ -269,9 +274,9 @@ class TopotatoItem(nodes.Item):
         cls: Type["TopotatoItem"], namesuffix, codeloc, *args, **kwargs
     ) -> Generator[Optional["TopotatoItem"], Tuple["TopotatoClass", str], ItemGroup]:
         parent, _ = yield None
-        self = cls.from_parent(parent, namesuffix, *args, **kwargs)
-        self.skipchecks = []
-        self._codeloc = codeloc
+        self = cls.from_parent(
+            parent, name=namesuffix, codeloc=codeloc, *args, **kwargs
+        )
         yield self
 
         return ItemGroup([self])
@@ -285,6 +290,7 @@ class TopotatoItem(nodes.Item):
         pytest hook-in that makes all the other topotato objects appear.
         """
         if hasattr(obj, "_topotato_makeitem"):
+            # pylint: disable=protected-access
             if inspect.ismethod(obj._topotato_makeitem):
                 _logger.debug("_topotato_makeitem(%r, %r, %r)", collector, name, obj)
                 return obj._topotato_makeitem(collector, name, obj)
@@ -462,11 +468,8 @@ class InstanceStartup(TopotatoItem):
 
     commands: OrderedDict
 
-    # pylint: disable=arguments-differ
-    @classmethod
-    def from_parent(cls, parent):
-        self = super().from_parent(parent, name="startup")
-        return self
+    def __init__(self, **kwargs):
+        super().__init__(name="startup", **kwargs)
 
     def reportinfo(self):
         tcls = self.getparent(TopotatoClass)
@@ -510,11 +513,8 @@ class InstanceShutdown(TopotatoItem):
     orderly fashion (otherwise you get truncated pcap files.)
     """
 
-    # pylint: disable=arguments-differ
-    @classmethod
-    def from_parent(cls, parent):
-        self = super().from_parent(parent, name="shutdown")
-        return self
+    def __init__(self, **kwargs):
+        super().__init__(name="shutdown", **kwargs)
 
     def reportinfo(self):
         tcls = self.getparent(TopotatoClass)
