@@ -307,13 +307,13 @@ class LiveLog(MiniPollee):
         """
         if self._wrfd is not None:
             self._wrfd.close()
-            self._wrfd = None
+            self._wrfd = None  # type: ignore[assignment]
 
     def close(self):
         assert self._wrfd is None
         if self._rdfd is not None:
             self._rdfd.close()
-            self._rdfd = None
+            self._rdfd = None  # type: ignore[assignment]
 
     def readable(self):
         """
@@ -332,7 +332,7 @@ class LiveLog(MiniPollee):
             if len(rddata) == 0:
                 yield LogClosed(self._router.name, self._daemon)
                 self._rdfd.close()
-                self._rdfd = None
+                self._rdfd = None  # type: ignore[assignment]
                 return
 
             logmsg = LogMessage(self._router, self._daemon, rddata)

@@ -17,8 +17,8 @@ from typing import (
     Dict,
     Generator,
     List,
+    Mapping,
     Optional,
-    Sequence,
     Tuple,
     Type,
     Union,
@@ -136,7 +136,7 @@ name_order = {
 }
 
 
-def name_to_tuple(name: str) -> Sequence[Union[str, int]]:
+def name_to_tuple(name: str) -> Tuple[Union[str, int], ...]:
     """
     convert string "abc123def456ghi" to ("abc",123,"def",456,"ghi") for sorting
 
@@ -171,7 +171,7 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
     name: str
     ifaces: List["LinkIface"]
 
-    sortkey: Tuple[Any]
+    sortkey: Tuple[Any, ...]
     num_default: int
     num_explicit: Optional[int]
     dotname: str
@@ -727,7 +727,7 @@ class Network:
                 j += 1
 
     def auto_num(self):
-        def do_auto(items: Dict[str, NOMLinked]):
+        def do_auto(items: Mapping[str, NOMLinked]):
             if not items:
                 return
 
@@ -760,8 +760,8 @@ class Network:
     def auto_ifnames(self):
         for r in self.routers.values():
             r.auto_ifnames()
-        for r in self.lans.values():
-            r.auto_ifnames()
+        for l in self.lans.values():
+            l.auto_ifnames()
 
     def auto_ip4(self):
         if self.noauto_v4:
@@ -770,8 +770,8 @@ class Network:
         if self.lo_v4:
             for r in self.routers.values():
                 r.auto_lo4()
-        for r in self.lans.values():
-            r.auto_ip4()
+        for l in self.lans.values():
+            l.auto_ip4()
         for links in self.links.values():
             for link in links:
                 link.a.auto_ip4()
@@ -784,8 +784,8 @@ class Network:
         if self.lo_v6:
             for r in self.routers.values():
                 r.auto_lo6()
-        for r in self.lans.values():
-            r.auto_ip6()
+        for l in self.lans.values():
+            l.auto_ip6()
         for links in self.links.values():
             for link in links:
                 link.a.auto_ip6()
@@ -819,8 +819,8 @@ class Network:
         for r in self.routers.values():
             r.dot(out)
         out += ["  } "]
-        for r in self.lans.values():
-            r.dot(out)
+        for l in self.lans.values():
+            l.dot(out)
         for links in self.links.values():
             for link in links:
                 link.dot(out)

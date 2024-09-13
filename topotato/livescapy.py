@@ -73,6 +73,8 @@ class LiveScapy(MiniPollee):
 
     def readable(self):
         maxdelay = time.time() + 0.1
+        if self._sock is None:
+            return
 
         while time.time() < maxdelay:
             try:
@@ -93,6 +95,7 @@ class LiveScapy(MiniPollee):
             yield TimedScapy(pkt)
 
     def close(self):
+        assert self._sock is not None
         self._sock.close()
         self._sock = None
 

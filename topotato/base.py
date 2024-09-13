@@ -48,6 +48,8 @@ from .generatorwrap import GeneratorWrapper, GeneratorChecks
 from .network import TopotatoNetwork
 
 if typing.TYPE_CHECKING:
+    from types import TracebackType
+
     from _pytest._code.code import ExceptionInfo, TracebackEntry, Traceback
     from _pytest.python import Function
 
@@ -354,6 +356,7 @@ class TopotatoItem(nodes.Item):
         deadline = min(abs_until, abs_delay)
 
         tinst = self.getparent(TopotatoClass)
+        assert tinst is not None
         tinst.netinst.timeline.sleep(deadline - time.time())
 
     def reportinfo(self):  # -> Tuple[Union[py.path.local, str], int, str]:
@@ -379,6 +382,7 @@ class TopotatoItem(nodes.Item):
         tb = excinfo.traceback
         newtb: List["TracebackEntry"] = []
         for entry in reversed(tb):
+            # pylint: disable=protected-access
             if entry._rawentry.tb_frame.f_code in endtrace:
                 break
             if entry._rawentry.tb_frame.f_code in skiptrace:
@@ -409,7 +413,11 @@ class TopotatoItem(nodes.Item):
                 self.tb_lineno = codeloc.lineno
                 self.tb_next = nexttb
 
-        ftb = FakeTraceback(self._codeloc, excinfo.traceback[0]._rawentry)
+        # pylint: disable=protected-access
+        ftb = cast(
+            "TracebackType",
+            FakeTraceback(self._codeloc, excinfo.traceback[0]._rawentry),
+        )
         excinfo.traceback.insert(0, _pytest._code.code.TracebackEntry(ftb))
 
         if self.config.getoption("fulltrace", False):
@@ -476,7 +484,9 @@ class InstanceStartup(TopotatoItem):
         return self
 
     def reportinfo(self):
-        fspath, _, _ = self.getparent(TopotatoClass).reportinfo()
+        tcls = self.getparent(TopotatoClass)
+        assert tcls is not None
+        fspath, _, _ = tcls.reportinfo()
         return fspath, float("-inf"), "startup"
 
     def setup(self):
@@ -522,7 +532,9 @@ class InstanceShutdown(TopotatoItem):
         return self
 
     def reportinfo(self):
-        fspath, _, _ = self.getparent(TopotatoClass).reportinfo()
+        tcls = self.getparent(TopotatoClass)
+        assert tcls is not None
+        fspath, _, _ = tcls.reportinfo()
         return fspath, float("inf"), "shutdown"
 
     def runtest(self):
@@ -869,7 +881,7 @@ class TopotatoClass(_pytest.python.Class):
         netinst.timeline.sleep(0.2)
         # netinst.status()
 
-        failed = []
+        failed = []  # List[Tuple[str, str]]
         for rtr in netinst.network.routers.keys():
             router = netinst.routers[rtr]
             router.start_post(netinst.timeline, failed)
@@ -877,8 +889,8 @@ class TopotatoClass(_pytest.python.Class):
         if len(failed) > 0:
             netinst.timeline.sleep(0)
             if len(failed) == 1:
-                router, daemon = failed[0]
-                raise TopotatoDaemonCrash(daemon=daemon, router=router)
+                rname, daemon = failed[0]
+                raise TopotatoDaemonCrash(daemon=daemon, router=rname)
 
             routers = ",".join(set(i[0] for i in failed))
             daemons = ",".join(set(i[1] for i in failed))

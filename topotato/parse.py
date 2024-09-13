@@ -194,7 +194,7 @@ class Topology:
         Common code for horizontal & vertical link lines.
         """
 
-        routers: List[Tuple["Topology.Item", "Topology.Router"]]
+        routers: List[Tuple["Topology.BoxMerge", Optional["Topology.Token"]]]
 
         def __init__(self, token):
             super().__init__(token)
@@ -249,6 +249,7 @@ class Topology:
             for r in items:
                 if not r.y1 <= self.y1 < r.y2:
                     continue
+                assert isinstance(r, Topology.BoxMerge)
                 if r.x2 == self.x1:
                     self.routers.append((r, self.left))
                 elif r.x1 == self.x2:
@@ -295,6 +296,7 @@ class Topology:
             for r in items:
                 if not r.x1 <= self.xmain < r.x2:
                     continue
+                assert isinstance(r, Topology.BoxMerge)
                 if r.y2 == self.y1:
                     self.routers.append((r, self.top))
                 elif r.y1 == self.y2:
@@ -412,7 +414,7 @@ class Topology:
 
 
 def test():
-    topo = """
+    topostr = """
 
     [    ](eth0)------[ r2 ]
     [ r1 ]
@@ -426,7 +428,7 @@ def test():
 
     """
 
-    topo = Topology(topo)
+    topo = Topology(topostr)
 
     # pylint: disable=import-outside-toplevel
     from pprint import pprint

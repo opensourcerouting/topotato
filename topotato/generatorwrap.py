@@ -31,9 +31,9 @@ class GeneratorsUnused(Exception):
     :py:class:`GeneratorChecks` ``with`` context.
     """
 
-    generators: List[Generator]
+    generators: List["GeneratorWrapper"]
 
-    def __init__(self, generators: List[Generator]):
+    def __init__(self, generators: List["GeneratorWrapper"]):
         super().__init__()
         self.generators = generators
 

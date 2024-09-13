@@ -145,6 +145,7 @@ class LinuxNamespace:
         )
         # wait for child to tell us it's ready...
         # (match sys.stdout.write("\n") below)
+        assert self.process.stdout is not None
         self.process.stdout.read(1)
 
         self.pid = find_child(self.process.pid)

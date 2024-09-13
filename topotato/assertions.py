@@ -146,7 +146,8 @@ class TimedMixin:
         return [finalize]
 
     def relative_start(self):
-        fn = self.getparent(TopotatoFunction)
+        fn = cast(TopotatoItem, self).getparent(TopotatoFunction)
+        assert fn is not None
         return fn.started_ts
 
 
@@ -300,6 +301,7 @@ class AssertVtysh(TopotatoAssertion, TimedMixin):
                 out[-1].match_for.append(self)
                 break
         else:
+            assert result is not None
             raise result
 
     @property
@@ -430,9 +432,10 @@ class AssertLog(TopotatoAssertion, TimedMixin):
             msg.match_for.append(self)
             break
         else:
-            detail = self._msg
-            if isinstance(detail, re.Pattern):
-                detail = detail.pattern
+            if isinstance(self._msg, re.Pattern):
+                detail = cast(str, self._msg.pattern)
+            else:
+                detail = cast(str, self._msg)
             raise TopotatoLogFail(detail)
 
 
@@ -529,6 +532,9 @@ class BackgroundCommand:
     """
     run sth in bg
     """
+
+    tmpfile: Any
+    proc: Any
 
     def __init__(self, rtr, cmd):
         self._rtr = rtr

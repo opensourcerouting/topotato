@@ -11,7 +11,11 @@ Only Bootstrap & Candidate RP messages right now (because I needed those...)
 import socket
 import struct
 from enum import Enum
-from typing import ClassVar, Dict
+from typing import (
+    ClassVar,
+    Dict,
+    Type,
+)
 
 from scapy.packet import bind_layers, Packet  # type: ignore
 from scapy.fields import (  # type: ignore
@@ -181,7 +185,7 @@ class PIM_Hello_Option(Packet):
     def extract_padding(self, s):
         return b"", s
 
-    _reg: ClassVar[Dict[int, "PIM_Hello_Option"]] = {}
+    _reg: ClassVar[Dict[int, Type["PIM_Hello_Option"]]] = {}
 
     @classmethod
     def register_variant(cls):
@@ -190,7 +194,7 @@ class PIM_Hello_Option(Packet):
     @classmethod
     def dispatch_hook(cls, *args, pkt=None, **kargs):
         if pkt:
-            tmp_type = struct.unpack(pkt[:2], ">H")[0]
+            tmp_type = struct.unpack(">H", pkt[:2])[0]
             return cls._reg.get(tmp_type, cls)
         return cls
 
