@@ -208,29 +208,14 @@ class TopotatoItem(nodes.Item):
         """
 
         name = kw.pop("name")
-        finalize = []
-
-        for base in cls.__mro__:
-            consumer = base.__dict__.get("consume_kwargs")
-            if not consumer:
-                continue
-            # pylint: disable=unnecessary-dunder-call
-            consumer = consumer.__get__(None, cls)
-            finalize.extend(consumer(kw))
-
-        if args or kw:
-            raise TopotatoUnhandledArgs("leftover arguments: %r, %r" % (args, kw))
 
         nodeid = None
         child_sep = getattr(parent, "nodeid_children_sep", None)
         if child_sep:
             nodeid = parent.nodeid + child_sep + name
         self: TopotatoItem = cast(
-            "TopotatoItem", super().from_parent(parent, name=name, nodeid=nodeid)
+            "TopotatoItem", super().from_parent(parent, name=name, nodeid=nodeid, **kw)
         )
-
-        for fin in finalize:
-            fin(self)
 
         tparent = self.getparent(TopotatoClass)
         assert tparent is not None

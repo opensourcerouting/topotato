@@ -122,8 +122,8 @@ class TimedMixin:
     Maximum time to wait on this assertions.
     """
 
-    @classmethod
-    def consume_kwargs(cls, kwargs):
+    def __init__(self, **kwargs):
+        cls = self.__class__
         if cls.default_delay is None:
             if "delay" in kwargs:
                 raise TopotatoUnhandledArgs(
@@ -133,17 +133,15 @@ class TimedMixin:
         delay = kwargs.pop("delay", cls.default_delay)
         maxwait = kwargs.pop("maxwait", cls.default_maxwait)
 
-        timing = TimingParams(delay, maxwait)
+        super().__init__(**kwargs)
 
-        def finalize(self):
-            # pylint: disable=protected-access
-            self._timing = timing.anchor(self.relative_start)
+        self._timing = TimingParams(delay, maxwait)
+        self._timing.anchor(self.relative_start)
 
-            fn = self.getparent(TopotatoFunction)
-            if fn.include_startup:
-                self._timing.full_history = True
-
-        return [finalize]
+        fn = cast(TopotatoItem, self).getparent(TopotatoFunction)
+        assert fn is not None
+        if fn.include_startup:
+            self._timing.full_history = True
 
     def relative_start(self):
         fn = cast(TopotatoItem, self).getparent(TopotatoFunction)
@@ -151,7 +149,7 @@ class TimedMixin:
         return fn.started_ts
 
 
-class AssertKernelRoutes(TopotatoAssertion, TimedMixin):
+class AssertKernelRoutes(TimedMixin, TopotatoAssertion):
     """
     Common code for v4/v6 kernel routing table check.
     """
@@ -220,7 +218,7 @@ class AssertKernelRoutesV6(AssertKernelRoutes):
     af = 6
 
 
-class AssertVtysh(TopotatoAssertion, TimedMixin):
+class AssertVtysh(TimedMixin, TopotatoAssertion):
     _nodename = "vtysh"
     _cmdprefix = ""
 
@@ -318,7 +316,7 @@ class ReconfigureFRR(AssertVtysh):
     _cmdprefix = "enable\nconfigure\n"
 
 
-class AssertPacket(TopotatoAssertion, TimedMixin):
+class AssertPacket(TimedMixin, TopotatoAssertion):
     # pylint does not understand that from_parent is our __init__
     _link: str
     _pkt: Any
@@ -392,7 +390,7 @@ class AssertPacket(TopotatoAssertion, TimedMixin):
                 )
 
 
-class AssertLog(TopotatoAssertion, TimedMixin):
+class AssertLog(TimedMixin, TopotatoAssertion):
     # pylint does not understand that from_parent is our __init__
     _rtr: str
     _daemon: str
@@ -439,7 +437,7 @@ class AssertLog(TopotatoAssertion, TimedMixin):
             raise TopotatoLogFail(detail)
 
 
-class Delay(TopotatoAssertion, TimedMixin):
+class Delay(TimedMixin, TopotatoAssertion):
     # pylint: disable=arguments-differ,protected-access,too-many-arguments
     @classmethod
     def from_parent(cls, parent, name, **kwargs) -> "Delay":  # type: ignore
