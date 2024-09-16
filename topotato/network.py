@@ -25,6 +25,7 @@ if typing.TYPE_CHECKING:
     from . import toponom
     from .types import ISession
     from .frr.core import FRRSetup
+    from .pretty import PrettyInstance
 
 
 _logger = logging.getLogger(__name__)
@@ -57,6 +58,8 @@ class TopotatoNetwork(NetworkInstance):
     timeline: Timeline
     session: "ISession"
     nodeid: str
+    pretty: "PrettyInstance"
+    reports: List[Any]
 
     _network: ClassVar["toponom.Network"]
 

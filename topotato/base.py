@@ -55,6 +55,7 @@ if typing.TYPE_CHECKING:
 
     from .toponom import Network
     from .timeline import Timeline
+    from .pretty import PrettyItem
 
 _logger = logging.getLogger(__name__)
 
@@ -178,6 +179,8 @@ class TopotatoItem(nodes.Item):
     The various assertions are subclasses of this, and instances are handed
     to pytest to do its thing.
     """
+
+    pretty: "PrettyItem"
 
     _codeloc: Optional[inspect.FrameInfo]
     """
