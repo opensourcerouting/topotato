@@ -179,13 +179,6 @@ class TopotatoItem(nodes.Item):
     to pytest to do its thing.
     """
 
-    parent: "TopotatoClass"
-    """
-    Part of pytest, but in general nodes may have `None` as a parent.  This
-    causes false errors in mypy, so this is here to state that `parent` is
-    never `None` (and always a `TopotatoClass`)
-    """
-
     _codeloc: Optional[inspect.FrameInfo]
     """
     Test source code location that resulted in the creation of this item.
@@ -208,6 +201,10 @@ class TopotatoItem(nodes.Item):
     instance of WhateverTestClass defined in test_something.py
     """
 
+    cls_node: "TopotatoClass"
+    """
+    The pytest node created for the :py:class:`TestBase` subclass.
+    """
     instance: "TopotatoNetwork"
     """
     Running network instance this item belongs to.
@@ -236,9 +233,10 @@ class TopotatoItem(nodes.Item):
         self.skipchecks = []
         self._codeloc = codeloc
 
-        tparent = self.getparent(TopotatoClass)
-        assert tparent is not None
-        self._obj = tparent.obj
+        self.cls_node = cast(TopotatoClass, self.getparent(TopotatoClass))
+        if self.cls_node is None:
+            raise RuntimeError("TopotatoItem without parent TopotatoClass?!")
+        self._obj = self.cls_node.obj
 
     @classmethod
     def from_parent(
@@ -336,8 +334,8 @@ class TopotatoItem(nodes.Item):
             # pylint: disable=attribute-defined-outside-init
             fn.started_ts = time.time()
 
-        with _SkipMgr(self) as tcls:
-            self.instance = tcls.netinst
+        with _SkipMgr(self):
+            self.instance = self.cls_node.netinst
             self.timeline = self.instance.timeline
 
     # pylint: disable=unused-argument
@@ -367,9 +365,7 @@ class TopotatoItem(nodes.Item):
         abs_delay = time.time() + (step or float("inf"))
         deadline = min(abs_until, abs_delay)
 
-        tinst = self.getparent(TopotatoClass)
-        assert tinst is not None
-        tinst.netinst.timeline.sleep(deadline - time.time())
+        self.timeline.sleep(deadline - time.time())
 
     def reportinfo(self):  # -> Tuple[Union[py.path.local, str], int, str]:
         """
@@ -488,21 +484,17 @@ class _SkipMgr:
     """
 
     _item: TopotatoItem
-    _cls: "TopotatoClass"
 
     def __init__(self, item: TopotatoItem):
-        tcls = item.getparent(TopotatoClass)
-        assert tcls is not None
-
         self._item = item
-        self._cls = tcls
 
-    def __enter__(self) -> "TopotatoClass":
+    def __enter__(self) -> None:
         if self._item.cascade_failures == SkipMode.DontSkip:
-            return self._cls
-        if self._cls.skipall:
-            raise TopotatoEarlierFailSkip(self._cls.skipall_node) from self._cls.skipall
-        return self._cls
+            return
+        if self._item.cls_node.skipall:
+            raise TopotatoEarlierFailSkip(
+                self._item.cls_node.skipall_node
+            ) from self._item.cls_node.skipall
 
     def __exit__(
         self,
@@ -518,8 +510,8 @@ class _SkipMgr:
             return
 
         if self._item.cascade_failures == SkipMode.SkipThisAndLater:
-            self._cls.skipall_node = self._item
-            self._cls.skipall = exc_value
+            self._item.cls_node.skipall_node = self._item
+            self._item.cls_node.skipall = exc_value
 
 
 # false warning on get_closest_marker()
@@ -539,24 +531,24 @@ class InstanceStartup(TopotatoItem):
         super().__init__(name="startup", **kwargs)
 
     def reportinfo(self):
-        tcls = self.getparent(TopotatoClass)
-        assert tcls is not None
-        fspath, _, _ = tcls.reportinfo()
+        fspath, _, _ = self.cls_node.reportinfo()
         return fspath, float("-inf"), "startup"
 
     def setup(self):
         # this needs to happen before TopotatoItem.setup, since that accesses
-        # tcls.netinst
-        with _SkipMgr(self) as tcls:
+        # cls_node.netinst
+        with _SkipMgr(self):
             # pylint: disable=protected-access
-            tcls.netinst = tcls.obj._setup(self.session, tcls.nodeid).prepare()
+            self.cls_node.netinst = self.cls_node.obj._setup(
+                self.session, self.cls_node.nodeid
+            ).prepare()
         super().setup()
 
     @endtrace
     @skiptrace
     def runtest(self):
         with _SkipMgr(self):
-            self.parent.do_start()
+            self.cls_node.do_start()
 
 
 # false warning on get_closest_marker()
@@ -576,13 +568,11 @@ class InstanceShutdown(TopotatoItem):
         super().__init__(name="shutdown", **kwargs)
 
     def reportinfo(self):
-        tcls = self.getparent(TopotatoClass)
-        assert tcls is not None
-        fspath, _, _ = tcls.reportinfo()
+        fspath, _, _ = self.cls_node.reportinfo()
         return fspath, float("inf"), "shutdown"
 
     def __call__(self):
-        self.parent.do_stop(self)
+        self.cls_node.do_stop(self)
 
 
 class TestBase:

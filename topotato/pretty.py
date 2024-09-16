@@ -408,7 +408,7 @@ class PrettyStartup(PrettyTopotato, matches=base.InstanceStartup):
     def when_call(self, call, result):
         super().when_call(call, result)
 
-        self.instance.ts_rel = self.item.parent.starting_ts
+        self.instance.ts_rel = self.item.cls_node.starting_ts
 
     def files(self):
         dot = self.instance.network.dot()

@@ -145,7 +145,7 @@ def pytest_collection(session):
 
         # TODO: refactor for FRRNetworkInstance removal / FRRConfigs rework
         for item in topologies():
-            name = item.parent.nodeid
+            name = item.cls_node.nodeid
 
             cfgsetup = item._obj.instancefn.configs
             cfgs = cfgsetup.cfgclass(cfgsetup.net, session.frr)
@@ -165,7 +165,7 @@ def pytest_collection(session):
 
         # TODO: refactor for FRRNetworkInstance removal / FRRConfigs rework
         for item in topologies():
-            name = item.parent.nodeid
+            name = item.cls_node.nodeid
             if path[0] != name:
                 continue
 
@@ -193,7 +193,7 @@ def pytest_collection(session):
         which = session.config.getoption("--show-topology")
 
         for item in topologies():
-            name = item.parent.nodeid
+            name = item.cls_node.nodeid
             if name != which:
                 continue
 

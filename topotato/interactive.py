@@ -103,7 +103,7 @@ class Interactive:
             session.items = []
             for item in allitems:
                 if isinstance(item, TopotatoItem) and item.name == "startup":
-                    sys.stdout.write(f"    {item.parent.nodeid}\n")
+                    sys.stdout.write(f"    {item.cls_node.nodeid}\n")
                     session.items.append(item)
 
             sys.stdout.write("\n")
