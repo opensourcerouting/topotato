@@ -357,6 +357,9 @@ class TopotatoItem(nodes.Item):
         Return the location the test item was yield-generated from, rather
         than some place deep in the topotato logic.
         """
+        if self._codeloc is None:
+            return "???", 0, self.name
+
         fspath = self._codeloc.filename
         lineno = self._codeloc.lineno
         return fspath, lineno, self.name
@@ -392,7 +395,7 @@ class TopotatoItem(nodes.Item):
         if reprcls:
             return reprcls(excinfo)
 
-        if not hasattr(self, "_codeloc"):
+        if getattr(self, "_codeloc", None) is None:
             return super().repr_failure(excinfo)
 
         if isinstance(excinfo.value, _pytest.fixtures.FixtureLookupError):
