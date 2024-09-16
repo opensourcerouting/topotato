@@ -348,6 +348,16 @@ class TimedVtysh(TimedElement):
     This is used to know when to stop running the Timeline event poller.
     """
 
+    __slots__ = [
+        "_ts",
+        "rtrname",
+        "daemon",
+        "cmd",
+        "retcode",
+        "text",
+        "last",
+    ]
+
     # pylint: disable=too-many-arguments
     def __init__(
         self,

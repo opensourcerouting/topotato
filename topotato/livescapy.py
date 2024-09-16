@@ -20,6 +20,10 @@ _logger = logging.getLogger(__name__)
 
 
 class TimedScapy(TimedElement):
+    __slots__ = [
+        "_pkt",
+    ]
+
     def __init__(self, pkt):
         super().__init__()
         self._pkt = pkt

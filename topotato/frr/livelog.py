@@ -111,6 +111,19 @@ class LogMessage(TimedElement):
     router: "FRRRouterNS"
     daemon: str
 
+    __slots__ = [
+        "header_fields",
+        "arghdrlen",
+        "args",
+        "rawtext",
+        "text",
+        "uid",
+        "_ts",
+        "_prio",
+        "router",
+        "daemon",
+    ]
+
     # mypy doesn't work with dynamic namedtuple
     @typing.no_type_check
     def __init__(self, router: "FRRRouterNS", daemon: str, rawmsg: bytes):

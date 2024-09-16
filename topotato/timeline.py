@@ -221,6 +221,10 @@ class TimedElement(ABC):
     If this object satisfied some test condition, the test item is recorded here.
     """
 
+    __slots__ = [
+        "match_for",
+    ]
+
     def __init__(self):
         super().__init__()
         self.match_for = []
