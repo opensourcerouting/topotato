@@ -308,6 +308,7 @@ class FRRSetup:
 
 class _FRRConfigProtocol(Protocol):
     daemons: Collection[str]
+    configs: Dict[str, str]
 
     def want_daemon(self, daemon: str) -> bool: ...
 
@@ -607,9 +608,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
             )
         if vtysh.returncode != 0:
             # terminated by signal
-            raise subprocess.CalledProcessError(
-                vtysh.returncode, vtysh.args, vtysh.stdout, vtysh.stderr
-            )
+            raise subprocess.CalledProcessError(vtysh.returncode, vtysh.args, out, err)
 
     def adjust_cmdline(self, daemon: str, args: List[str]):
         pass

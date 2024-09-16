@@ -23,6 +23,7 @@ import binascii
 
 import typing
 from typing import (
+    cast,
     Any,
     Callable,
     ClassVar,
@@ -93,9 +94,9 @@ class PotatoolSession(WatchedSession):
         if cls.want_sess is None:
             if len(cls.running) == 1:
                 # if there is only 1 running session, it is selected by default
-                cls.sel_sess = list(cls.running.values())[0]
+                cls.sel_sess = cast(PotatoolSession, list(cls.running.values())[0])
         elif cls.want_sess in cls.running:
-            cls.sel_sess = cls.running[cls.want_sess]
+            cls.sel_sess = cast(PotatoolSession, cls.running[cls.want_sess])
 
         if cls.sel_sess is not None:
             if cls.want_rtr in cls.sel_sess.routers:
@@ -164,8 +165,8 @@ class PotatoolSession(WatchedSession):
         return cls.apply(cmdname, cmd, words)
 
     @classmethod
-    def _fillkwargs(cls, cmdname, argspec, hints):
-        kwargs = {}
+    def _fillkwargs(cls, cmdname, argspec, hints) -> Dict[str, Any]:
+        kwargs: Dict[str, Any] = {}
         for kwname in argspec.kwonlyargs:
             hint = hints.get(kwname)
             hint, optional = typing_is_optional(hint)
@@ -452,7 +453,7 @@ def main():
         readline.read_history_file(histfile)
         hist_len = readline.get_current_history_length()
     except FileNotFoundError:
-        with open(histfile, "wb") as fd:
+        with open(histfile, "wb") as _:
             pass
         hist_len = 0
 
@@ -500,7 +501,7 @@ def main():
             )
             if PotatoolSession.sel_rtr is not None:
                 state += (
-                    " \033[38;5;118m%s \033[38;5;246m(\033[38;5;252m%d\033[38;5;246m)"
+                    " \033[38;5;118m%s \033[38;5;246m(\033[38;5;252m%r\033[38;5;246m)"
                     % (PotatoolSession.sel_rtr.name, PotatoolSession.sel_rtr.pid)
                 )
             elif PotatoolSession.want_rtr is not None:

@@ -11,13 +11,18 @@ from pathlib import Path
 import tempfile
 import time
 
-from typing import Optional
+import typing
+from typing import Optional, cast
 
 from jinja2 import Environment
 
 from topotato.assertions import TopotatoModifier
 from topotato.base import skiptrace
 from topotato.toponom import Router
+
+if typing.TYPE_CHECKING:
+    from ..topobase import CallableNS
+    import subprocess
 
 
 jenv = Environment(
@@ -39,6 +44,12 @@ class ExaBGP:
     >>> yield from self.peer.stop()
     """
 
+    _rtr: Router
+
+    proc: "subprocess.Popen"
+    proc_cli: "subprocess.Popen"
+    path: str
+
     def __init__(
         self, rtr: Router, conf: str, custom_environment: Optional[str] = None
     ):
@@ -48,7 +59,7 @@ class ExaBGP:
         self._env = custom_environment
 
     class Action(TopotatoModifier):
-        _rtr: str
+        _rtr: "Router"
         _cmdobj: "ExaBGP"
 
         def __init__(self, *, name, cmdobj, **kwargs):
@@ -80,7 +91,7 @@ class ExaBGP:
             self.validate()
             self.run()
 
-        def prepare_files(self):
+        def prepare_files(self) -> str:
             timestr = time.strftime("%Y%m%d-%H%M%S")
             tempdir = tempfile.mkdtemp(prefix=f"exabgp-{timestr}-")
             cli_dir = os.path.join(tempdir, "run")
@@ -139,7 +150,7 @@ class ExaBGP:
             return tempdir
 
         def validate(self):
-            router = self.instance.routers[self._rtr.name]
+            router = cast("CallableNS", self.instance.routers[self._rtr.name])
             path = self._cmdobj.path
             self._cmdobj.proc_cli = router.popen(
                 [
@@ -158,7 +169,7 @@ class ExaBGP:
             self.is_cli_ok()
 
         def run(self):
-            router = self.instance.routers[self._rtr.name]
+            router = cast("CallableNS", self.instance.routers[self._rtr.name])
             path = self._cmdobj.path
             self._cmdobj.proc = router.popen(
                 [
@@ -186,7 +197,7 @@ class ExaBGP:
         def __call__(self):
             self.is_bgp_daemon_running()
 
-            router = self.instance.routers[self._rtr.name]
+            router = cast("CallableNS", self.instance.routers[self._rtr.name])
             path = self._cmdobj.path
 
             self._cmdobj.proc_cli = router.popen(
@@ -207,7 +218,7 @@ class ExaBGP:
         def __call__(self):
             self.is_bgp_daemon_running()
 
-            router = self.instance.routers[self._rtr.name]
+            router = cast("CallableNS", self.instance.routers[self._rtr.name])
 
             path = self._cmdobj.path
             self._cmdobj.proc_cli = router.popen(

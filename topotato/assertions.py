@@ -15,6 +15,7 @@ import re
 import inspect
 from collections import OrderedDict
 
+import typing
 from typing import (
     cast,
     Any,
@@ -45,6 +46,10 @@ from .exceptions import (
     TopotatoRouteCompareFail,
     TopotatoUnhandledArgs,
 )
+
+if typing.TYPE_CHECKING:
+    from .frr.core import FRRRouterNS
+    from . import toponom, topobase
 
 __all__ = [
     "AssertKernelRoutesV4",
@@ -226,7 +231,7 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
 
     commands: OrderedDict
 
-    _rtr: str
+    _rtr: "toponom.Router"
     _daemon: str
     _command: str
     _compare: Optional[str]
@@ -267,7 +272,7 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
         self._compare = compare
 
     def __call__(self):
-        router = self.instance.routers[self._rtr.name]
+        router = cast("FRRRouterNS", self.instance.routers[self._rtr.name])
 
         for _ in self.timeline.run_tick(self._timing):
             _, out, rc = router.vtysh_polled(self.timeline, self._daemon, self._command)
@@ -443,7 +448,7 @@ class Delay(TimedMixin, TopotatoAssertion):
 
 
 class _DaemonControl(TopotatoModifier):
-    _rtr: str
+    _rtr: "toponom.Router"
     _daemon: str
 
     op_name: ClassVar[str]
@@ -479,7 +484,7 @@ class DaemonStop(_DaemonControl):
 
 class ModifyLinkStatus(TopotatoModifier):
     _rtr: Any
-    _iface: str
+    _iface: "toponom.LinkIface"
     _state: bool
 
     posargs = ["rtr", "iface", "state"]
@@ -509,6 +514,8 @@ class BackgroundCommand:
     run sth in bg
     """
 
+    _rtr: "toponom.Router"
+
     tmpfile: Any
     proc: Any
 
@@ -517,7 +524,7 @@ class BackgroundCommand:
         self._cmd = cmd
 
     class Action(TopotatoModifier):
-        _rtr: str
+        _rtr: "toponom.Router"
         _cmdobj: "BackgroundCommand"
 
         def __init__(self, *, name, cmdobj, **kwargs):
@@ -535,7 +542,7 @@ class BackgroundCommand:
     class Start(Action):
         # pylint: disable=consider-using-with
         def __call__(self):
-            router = self.instance.routers[self._rtr.name]
+            router = cast("topobase.CallableNS", self.instance.routers[self._rtr.name])
 
             ifd = open("/dev/null", "rb")
             self._cmdobj.tmpfile = tmpfile = tempfile.TemporaryFile()

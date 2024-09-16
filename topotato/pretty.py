@@ -16,7 +16,16 @@ import tempfile
 import logging
 from xml.etree import ElementTree
 
-from typing import ClassVar, Dict, List, Type, Optional
+import typing
+from typing import (
+    cast,
+    ClassVar,
+    Dict,
+    List,
+    Type,
+    Optional,
+    BinaryIO,
+)
 
 import pytest
 import docutils.core
@@ -28,6 +37,9 @@ from .defer import subprocess, spawn
 from .utils import exec_find, deindent, get_dir
 from .scapy import ScapySend
 from .pcapng import Sink, SectionHeader
+
+if typing.TYPE_CHECKING:
+    from .network import TopotatoNetwork
 
 
 _logger = logging.getLogger(__name__)
@@ -71,6 +83,8 @@ jenv.filters["docrender"] = _docrender
 
 
 class PrettyExtraFile:
+    filename: Optional[str]
+
     # pylint: disable=too-many-arguments
     def __init__(self, owner, name, ext, mimetype, data):
         self.owner = owner
@@ -292,6 +306,8 @@ class PrettyInstance(list):
 
             basedir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+            assert lcov.filename is not None
+
             genhtml_cmd = [
                 os.path.join(basedir, "vendor/genhtml"),
                 "-q",
@@ -387,6 +403,7 @@ class PrettyTopotatoFunc(PrettyItem, matches=base.TopotatoFunction):
 
 class PrettyTopotato(PrettyItem, matches=base.TopotatoItem):
     idx: Optional[int]
+    instance: Optional["TopotatoNetwork"]
 
     def __init__(self, prettysession, item):
         super().__init__(prettysession, item)
@@ -403,6 +420,8 @@ class PrettyTopotato(PrettyItem, matches=base.TopotatoItem):
         assert hasattr(self.item, "instance")
         self.instance = self.item.instance
 
+        assert self.instance is not None
+
         if not hasattr(self.instance, "pretty"):
             self.instance.pretty = PrettyInstance(self.prettysession, self.instance)
         self.instance.pretty.append(self)
@@ -411,17 +430,14 @@ class PrettyTopotato(PrettyItem, matches=base.TopotatoItem):
 class PrettyStartup(PrettyTopotato, matches=base.InstanceStartup):
     toposvg: bytes
 
-    # pylint: disable=consider-using-with
-    def when_call(self, call, result):
-        super().when_call(call, result)
-
-        self.instance.ts_rel = self.item.cls_node.starting_ts
-
     def files(self):
+        assert self.instance is not None
+
         dot = self.instance.network.dot()
         yield PrettyExtraFile(self, "dotfile", ".dot", "text/plain; charset=utf-8", dot)
 
         if self.prettysession.exec_dot:
+            # pylint: disable=consider-using-with
             graphviz = subprocess.Popen(
                 [self.prettysession.exec_dot, "-Tsvg", "-o/dev/stdout"],
                 stdin=subprocess.PIPE,
@@ -457,11 +473,13 @@ class PrettyShutdown(PrettyTopotato, matches=base.InstanceShutdown):
             self._report_task = None
 
     def _report(self):
+        assert self.instance is not None
+
         # FIXME: flush scapy sockets / timeline(final=True)!
 
         # TODO: move this to TopotatoClass?
         with tempfile.NamedTemporaryFile(prefix="topotato", suffix=".pcapng") as fd:
-            pcapng = Sink(fd, "=")
+            pcapng = Sink(cast(BinaryIO, fd), "=")
 
             shdr = SectionHeader()
             pcapng.write(shdr)

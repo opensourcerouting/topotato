@@ -198,11 +198,12 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
 
     def auto_ifnames(self):
         for i in self.ifaces:
-            if i.ifname is None:
+            # pylint: disable=protected-access
+            if i._ifname is None:
                 ifname = "%s-%s" % (self.name, i.other.endpoint.name)
                 if i.link.parallel_num != 0:
                     ifname += "-%d" % (i.link.parallel_num)
-                i.ifname = ifname
+                i._ifname = ifname
             # pylint: disable=protected-access
             if i._macaddr is None:
                 typecode = 0xBC if isinstance(i.other.endpoint, LAN) else 0xFE
@@ -476,17 +477,17 @@ class LinkIface(NOMNode):
 
     other: "LinkIface"
     endpoint: NOMLinked
-    ifname: Optional[str]
     ip4: IPPrefixIfaceList
     ip6: IPPrefixIfaceList
 
+    _ifname: Optional[str]
     _macaddr: Optional[str]
 
     def __init__(self, network, link, endpoint):
         super().__init__(network)
         self.link = link
         self.endpoint = endpoint
-        self.ifname = None
+        self._ifname = None
         self._macaddr = None
         self.ip4 = IPPrefixIfaceList(4)
         self.ip6 = IPPrefixIfaceList(6)
@@ -494,6 +495,14 @@ class LinkIface(NOMNode):
 
     def __repr__(self):
         return "%r:%r" % (self.endpoint, self.ifname)
+
+    @property
+    def ifname(self) -> str:
+        if self._ifname is None:
+            raise RuntimeError(
+                f"{self!r} (on {self.endpoint!r}): access to ifname before interfaces have been named"
+            )
+        return self._ifname
 
     @property
     def macaddr(self) -> str:
@@ -577,10 +586,10 @@ class Link(NOMNode):
 
         self.a = LinkIface(network, self, a_ep)
         if a_detail:
-            self.a.ifname = a_detail.m.group(1)
+            self.a._ifname = a_detail.m.group(1)
         self.b = LinkIface(network, self, b_ep)
         if b_detail:
-            self.b.ifname = b_detail.m.group(1)
+            self.b._ifname = b_detail.m.group(1)
 
         self.a.other = self.b
         self.b.other = self.a

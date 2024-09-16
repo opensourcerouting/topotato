@@ -439,7 +439,7 @@ class TopotatoItem(nodes.Item):
         # see comment in pytest
         Path = _pytest.pathlib.Path
         try:
-            abspath = Path(os.getcwd()) != Path(str(self.config.invocation_dir))
+            abspath = Path(os.getcwd()) != Path(str(self.config.invocation_params.dir))
         except OSError:
             abspath = True
 
@@ -744,7 +744,6 @@ class TopotatoFunction(nodes.Collector, _pytest.python.PyobjMixin):
     def from_hook(cls, obj, collector, name, include_startup=False):
         self = super().from_parent(collector, name=name)
         self._obj = obj._call
-        self._obj_raw = obj
         self.include_startup = include_startup
 
         return self
@@ -878,7 +877,7 @@ class TopotatoClass(_pytest.python.Class):
         if not first:
             yield InstanceShutdown.from_parent(self)
 
-    def do_start(self):
+    def do_start(self) -> None:
         self.starting_ts = time.time()
 
         netinst = self.netinst
@@ -887,7 +886,7 @@ class TopotatoClass(_pytest.python.Class):
         tcname = "".join(
             ch if ch in string.ascii_letters + string.digits else "_" for ch in tcname
         )
-        netinst.lcov_args.extend(
+        netinst.lcov_args.extend(  # type: ignore[attr-defined]
             [
                 "-t",
                 tcname,
@@ -904,7 +903,7 @@ class TopotatoClass(_pytest.python.Class):
         netinst.timeline.sleep(0.2)
         # netinst.status()
 
-        failed = []  # List[Tuple[str, str]]
+        failed: List[Tuple[str, str]] = []
         for rtr in netinst.network.routers.keys():
             router = netinst.routers[rtr]
             router.start_post(netinst.timeline, failed)
@@ -921,7 +920,7 @@ class TopotatoClass(_pytest.python.Class):
 
         self.started_ts = time.time()
 
-        for ifname, sock in netinst.scapys.items():
+        for ifname, sock in netinst.scapys.items():  # type: ignore[attr-defined]
             netinst.timeline.install(LiveScapy(ifname, sock))
 
     @staticmethod

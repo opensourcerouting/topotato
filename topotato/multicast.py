@@ -9,10 +9,14 @@ import ipaddress
 import socket
 import struct
 
+import typing
 from typing import Any, Optional
 
 from .base import skiptrace
 from .assertions import TopotatoModifier
+
+if typing.TYPE_CHECKING:
+    from . import toponom
 
 
 __all__ = [
@@ -58,6 +62,9 @@ class MulticastReceiver:
     Join an IP (v4/v6) multicast group on a specified host and interface.
     """
 
+    _rtr: "toponom.Router"
+    _iface: "toponom.LinkIface"
+
     def __init__(self, rtr, iface):
         self._rtr = rtr
         self._iface = iface
@@ -74,7 +81,7 @@ class MulticastReceiver:
         return self._sock, self._ifindex
 
     class Action(TopotatoModifier):
-        _rtr: str
+        _rtr: "toponom.Router"
         _cmdobj: "MulticastReceiver"
         _group: Any
         _source: Any

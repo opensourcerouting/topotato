@@ -45,6 +45,8 @@ class NetworkInstance(topobase.NetworkInstance):
         a netns with some extra functions for topotato
         """
 
+        instance: "NetworkInstance"
+
         def __init__(self, instance, name):
             super().__init__(name)
             self.instance = instance
@@ -156,6 +158,8 @@ class NetworkInstance(topobase.NetworkInstance):
             """
             super().start()
 
+            assert self.instance.switch_ns is not None
+
             for ip4 in self.instance.network.routers[self.name].lo_ip4:
                 self.check_call(["ifconfig", "lo0", "inet", "alias", str(ip4)])
             for ip6 in self.instance.network.routers[self.name].lo_ip6:
@@ -204,6 +208,8 @@ class NetworkInstance(topobase.NetworkInstance):
             down inside the router.  matches an unplugged LAN cable pretty
             well.
             """
+            assert self.instance.switch_ns is not None
+
             ifn = ifname(self.name, iface.ifname)
             self.instance.switch_ns.check_call(
                 ["ifconfig", ifn, "up" if state else "down"]
@@ -231,6 +237,7 @@ class NetworkInstance(topobase.NetworkInstance):
         also add the various interfaces to the bridges in the switch-NS, and
         finally start up dumpcap for a pcap file.
         """
+        assert self.switch_ns is not None
 
         self.switch_ns.start()
         for rns in self.routers.values():
@@ -328,6 +335,8 @@ class NetworkInstance(topobase.NetworkInstance):
             rns.start_run()
 
     def stop(self):
+        assert self.switch_ns is not None
+
         for rtr in self.routers.values():
             rtr.end_prep()
         for rtr in self.routers.values():

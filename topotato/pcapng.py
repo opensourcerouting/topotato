@@ -34,7 +34,7 @@ from typing import (
 )
 
 
-_EndianType = Union[Literal["<"], Literal[">"]]
+_EndianType = Union[Literal["<"], Literal[">"], Literal["="]]
 
 
 def _pad(data: bytes) -> bytes:

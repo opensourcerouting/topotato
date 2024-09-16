@@ -356,7 +356,10 @@ To modify & run a test item, replace "yield from X.make(...)" with
             self.show_instance_for_stop(item.instance)
 
         def _yield_from(iterator):
-            tests = item.getparent(TopotatoFunction).collect_iter(iter(iterator))
+            assert isinstance(item, TopotatoItem)
+            func_node = item.getparent(TopotatoFunction)
+            assert func_node is not None
+            tests = func_node.collect_iter(iter(iterator))
 
             for value in tests:
                 value.instance = item.instance

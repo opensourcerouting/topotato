@@ -170,7 +170,9 @@ class TopotatoEarlierFailSkip(TopotatoSkipped):
         self.failed_node = failed_node
 
     def __str__(self):
-        sub_id = self.failed_node.nodeid.removeprefix(self.failed_node.parent.nodeid)
+        fno = self.failed_node
+        parentnodeid = fno.parent.nodeid if fno.parent else ""
+        sub_id = fno.nodeid.removeprefix(parentnodeid)
         try:
             cause = self.__cause__.__class__.__name__
         except AttributeError:

@@ -16,8 +16,6 @@ class FreeBSDJail:
 
     def __init__(self, name):
         self.name = name
-        self.process = None
-        self.jid = None
 
     def start(self):
         # pylint: disable=consider-using-with
@@ -37,10 +35,14 @@ class FreeBSDJail:
             stdout=subprocess.PIPE,
             shell=False,
         )
+        assert self.process.stdout is not None
+
         self.jid = int(self.process.stdout.readline())
         self.process.stdout.readline()
 
     def end(self):
+        assert self.process.stdin is not None
+
         subprocess.check_call(["jail", "-r", "%d" % self.jid])
 
         self.process.stdin.close()

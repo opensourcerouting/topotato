@@ -274,6 +274,8 @@ class NetworkInstance(topobase.NetworkInstance):
             """
             super().start()
 
+            assert self.instance.switch_ns is not None
+
             calls = []
             calls.extend(proc_write("/proc/sys/net/ipv4/ip_forward", "1"))
             calls.extend(proc_write("/proc/sys/net/ipv6/conf/all/forwarding", "1"))
@@ -381,6 +383,8 @@ class NetworkInstance(topobase.NetworkInstance):
 
         also add the various interfaces to the bridges in the switch-NS.
         """
+
+        assert self.switch_ns is not None
 
         self.switch_ns.start()
         for rns in self.routers.values():
@@ -497,6 +501,8 @@ class NetworkInstance(topobase.NetworkInstance):
 
         if have_gcov:
             self._covdatafile = self.tempfile("lcov-data")
+            assert self._covdatafile is not None
+
             # pylint: disable=consider-using-with
             self._lcov = subprocess.Popen(
                 [
@@ -518,6 +524,8 @@ class NetworkInstance(topobase.NetworkInstance):
         return self._covdatafile
 
     def stop(self):
+        assert self.switch_ns is not None
+
         for rns in self.routers.values():
             rns.end_prep()
         for rns in self.routers.values():
@@ -526,6 +534,8 @@ class NetworkInstance(topobase.NetworkInstance):
         self._gcov_collect()
 
     def status(self):
+        assert self.switch_ns is not None
+
         self.switch_ns.status()
         for rns in self.routers.values():
             rns.status()
