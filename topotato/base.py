@@ -359,17 +359,6 @@ class TopotatoItem(nodes.Item):
 
             self.session.config.hook.pytest_topotato_run(item=self, testfunc=self)
 
-    def sleep(self, step=None, until=None):
-        obj = self
-        while getattr(obj, "started_ts", None) is None:
-            obj = obj.parent
-
-        abs_until = obj.started_ts + (until or float("inf"))
-        abs_delay = time.time() + (step or float("inf"))
-        deadline = min(abs_until, abs_delay)
-
-        self.timeline.sleep(deadline - time.time())
-
     def reportinfo(self):  # -> Tuple[Union[py.path.local, str], int, str]:
         """
         Specialize pytest's location information for this test.
