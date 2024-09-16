@@ -21,6 +21,7 @@ import typing
 from typing import (
     cast,
     Any,
+    Callable,
     ClassVar,
     Collection,
     Dict,
@@ -56,7 +57,6 @@ from ..exceptions import (
 )
 from ..pcapng import Context
 from ..network import TopotatoNetwork
-from ..topobase import CallableNS
 from ..control import TargetSection
 from .exceptions import FRRStartupVtyshConfigFail
 
@@ -473,7 +473,7 @@ class FRRInvalidConfigFail(TopotatoFail):
 
 
 # pylint: disable=too-many-ancestors,too-many-instance-attributes
-class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
+class FRRRouterNS(TopotatoNetwork.RouterNS):
     """
     Add a bunch of FRR daemons on top of an (OS-dependent) RouterNS
     """
@@ -489,6 +489,10 @@ class FRRRouterNS(TopotatoNetwork.RouterNS, CallableNS):
     livelogs: Dict[str, LiveLog]
     frrconfpath: str
     merged_cfg: str
+
+    # hack to fix CallableNS foo...  really needs some improvement
+    check_call: Callable[..., None]
+    popen: Callable[..., "subprocess.Popen"]
 
     def __init__(
         self,
