@@ -199,7 +199,7 @@ class PrettyInstance(list):
 
     _filename_sub = re.compile(r"[^a-zA-Z0-9]")
 
-    # pylint: disable=too-many-locals,protected-access,possibly-unused-variable,too-many-statements
+    # pylint: disable=too-many-locals,protected-access,possibly-unused-variable,too-many-statements,too-many-branches
     def report(self):
         topotatocls = self[0].item.getparent(base.TopotatoClass)
         nodeid = topotatocls.nodeid
@@ -249,8 +249,15 @@ class PrettyInstance(list):
 
         # remove doctype / xml / ... decls
         ElementTree.register_namespace("", "http://www.w3.org/2000/svg")
-        toposvg = ElementTree.fromstring(self[0].toposvg)
-        toposvg = ElementTree.tostring(toposvg).decode("UTF-8")
+        try:
+            toposvgp = ElementTree.fromstring(self[0].toposvg)
+            toposvg = ElementTree.tostring(toposvgp).decode("UTF-8")
+        except ElementTree.ParseError as e:
+            _logger.error(
+                "failed to process graphviz network diagram SVG as XML: %r", e
+            )
+            _logger.error("SVG data: %r", self[0].toposvg)
+            toposvg = ""
 
         data["timed"] = items[-1]._jsdata
         if items[-1]._pdml:
@@ -430,7 +437,7 @@ class PrettyStartup(PrettyTopotato, matches=base.InstanceStartup):
                 self, "dotfilesvg", ".svg", "image/svg+xml", self.toposvg
             )
         else:
-            self.toposvg = None
+            self.toposvg = b""
 
 
 class PrettyShutdown(PrettyTopotato, matches=base.InstanceShutdown):
