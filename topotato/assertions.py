@@ -19,6 +19,7 @@ import typing
 from typing import (
     cast,
     Any,
+    Callable,
     ClassVar,
     List,
     Optional,
@@ -235,8 +236,12 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
     _daemon: str
     _command: str
     _compare: Optional[str]
+    _filters: List[Callable[[str], str]]
 
     default_delay = 0.1
+    default_filters = [
+        lambda t: deindent(t, trim=True),
+    ]
 
     posargs = ["rtr", "daemon", "command", "compare"]
 
@@ -249,6 +254,7 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
         daemon,
         command,
         compare=None,
+        filters=None,
         **kwargs,
     ):
         command_cleaned = command
@@ -270,6 +276,7 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
         self._daemon = daemon
         self._command = self._cmdprefix + command
         self._compare = compare
+        self._filters = filters or self.default_filters
 
     def __call__(self):
         router = cast("FRRRouterNS", self.instance.routers[self._rtr.name])
@@ -289,7 +296,8 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
                 if isinstance(self._compare, type(None)):
                     pass
                 elif isinstance(self._compare, str):
-                    text = deindent(text, trim=True)
+                    for filterfn in self._filters:
+                        text = filterfn(text)
                     result = text_rich_cmp(
                         router._configs,
                         text,
