@@ -167,6 +167,11 @@ class SkipMode(Enum):
     failures in this test item cascade to later items.
     """
 
+    SkipThisAndLaterHard = 3
+    """
+    As previous, but Skipping this item cascades as well.
+    """
+
 
 # false warning on get_closest_marker()
 # pylint: disable=abstract-method
@@ -496,14 +501,18 @@ class _SkipMgr:
     ) -> None:
         if exc_value is None:
             return
-        if isinstance(exc_value, Skipped):
+
+        if not isinstance(exc_value, (Exception, Failed, Skipped)):
             return
-        if not isinstance(exc_value, (Exception, Failed)):
+        if self._item.cascade_failures in [SkipMode.DontSkip, SkipMode.SkipThis]:
+            return
+        if self._item.cascade_failures in [SkipMode.SkipThisAndLater] and isinstance(
+            exc_value, Skipped
+        ):
             return
 
-        if self._item.cascade_failures == SkipMode.SkipThisAndLater:
-            self._item.cls_node.skipall_node = self._item
-            self._item.cls_node.skipall = exc_value
+        self._item.cls_node.skipall_node = self._item
+        self._item.cls_node.skipall = exc_value
 
 
 # false warning on get_closest_marker()
@@ -515,7 +524,7 @@ class InstanceStartup(TopotatoItem):
     Includes starting tshark and checking all daemons are running.
     """
 
-    cascade_failures = SkipMode.SkipThisAndLater
+    cascade_failures = SkipMode.SkipThisAndLaterHard
 
     commands: OrderedDict
 
@@ -562,6 +571,15 @@ class InstanceShutdown(TopotatoItem):
     def reportinfo(self):
         fspath, _, _ = self.cls_node.reportinfo()
         return fspath, float("inf"), "shutdown"
+
+    def setup(self):
+        # specifically skip shutdown only if startup failed
+        if isinstance(self.cls_node.skipall_node, InstanceStartup):
+            raise TopotatoEarlierFailSkip(
+                self.cls_node.skipall_node
+            ) from self.cls_node.skipall
+
+        super().setup()
 
     def __call__(self):
         self.cls_node.do_stop(self)
@@ -834,6 +852,7 @@ class TopotatoClass(_pytest.python.Class):
     def from_hook(cls, obj, collector, name):
         self = super().from_parent(collector, name=name)
         self._obj = obj
+        self.skipall_node = None
         self.skipall = None
 
         # TODO: automatically add a bunch of markers for test requirements.
