@@ -41,8 +41,10 @@ class FRRStartupVtyshConfigFail(TopotatoFail):
         self.config = config
         super().__init__()
 
-    def __str__(self):
+    def __repr__(self) -> str:
         return f"{self.router}/startup-config-load"
+
+    __str__ = __repr__
 
     @attr.s(eq=False, auto_attribs=True)
     class TopotatoRepr(TerminalRepr):

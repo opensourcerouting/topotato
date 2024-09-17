@@ -69,10 +69,12 @@ class TopotatoDaemonErrors(TopotatoFail):
         self.cmdline = cmdline
         super().__init__()
 
-    def __str__(self):
+    def __repr__(self) -> str:
         if self.cmdline:
             return f"{self.router}/{self.daemon}: {self.cmdline}"
         return f"{self.router}/{self.daemon}"
+
+    __str__ = __repr__
 
     @attr.s(eq=False, auto_attribs=True)
     class TopotatoRepr(TerminalRepr):
@@ -169,7 +171,7 @@ class TopotatoEarlierFailSkip(TopotatoSkipped):
         super().__init__(*args, **kwargs)
         self.failed_node = failed_node
 
-    def __str__(self):
+    def __repr__(self) -> str:
         fno = self.failed_node
         parentnodeid = fno.parent.nodeid if fno.parent else ""
         sub_id = fno.nodeid.removeprefix(parentnodeid)
@@ -178,6 +180,8 @@ class TopotatoEarlierFailSkip(TopotatoSkipped):
         except AttributeError:
             cause = "???"
         return f"{cause} in {sub_id}"
+
+    __str__ = __repr__
 
 
 # test coding errors

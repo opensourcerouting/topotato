@@ -187,12 +187,12 @@ class FRRSetup:
     def pytest_topotato_envcheck(cls, session: "ISession", result: EnvcheckResult):
         frrpath = get_dir(session, "--frr-builddir", "frr_builddir")
 
-        session.frr = cls(frrpath, result)
+        session.frr = cast(Self, cls(frrpath, result))
         cls.setups[None] = session.frr
 
         for section in session.control.typed_sections.get(TargetFRRSection, []):
             _logger.debug("additional loading %r", section)
-            setup = cls(os.path.expanduser(section.builddir), result)
+            setup = cast(Self, cls(os.path.expanduser(section.builddir), result))
             cls.setups[section.name] = setup
 
     def __init__(self, frrpath: str, result: EnvcheckResult):
@@ -468,8 +468,10 @@ class FRRInvalidConfigFail(TopotatoFail):
         self.errmsg = errmsg
         super().__init__()
 
-    def __str__(self):
+    def __repr__(self) -> str:
         return f"{self.router}/{self.daemon}: {self.errmsg}"
+
+    __str__ = __repr__
 
 
 # pylint: disable=too-many-ancestors,too-many-instance-attributes
