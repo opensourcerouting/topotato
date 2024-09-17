@@ -7,6 +7,7 @@ Basic IPv4 RIP test.
 TBD: incomplete.
 """
 
+import re
 from topotato.v1 import *
 
 
@@ -81,6 +82,12 @@ class Configs(FRRConfigs):
     ip route 10.104.0.0/16 10.103.0.4
     #% endblock
     """
+
+
+def strip_header(text):
+    if m := re.match(r"""^Codes:.+?\n\n""", text, re.MULTILINE | re.DOTALL):
+        return text[m.end():]
+    return text
 
 
 class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
@@ -162,11 +169,6 @@ class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
         )
 
         compare = r"""
-            Codes: R - RIP, C - connected, S - Static, O - OSPF, B - BGP
-            Sub-codes:
-                  (n) - normal, (s) - static, (d) - default, (r) - redistribute,
-                  (i) - interface
-
                  Network            Next Hop         Metric From            Tag Time
             R(n) 10.103.0.0/16      193.1.1.2             3 193.1.1.2         0 $$[0-9:]+$$
             R(n) 10.104.0.0/16      193.1.1.2             3 193.1.1.2         0 $$[0-9:]+$$
@@ -175,14 +177,9 @@ class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
             C(i) 193.1.1.0/26       0.0.0.0               1 self              0
             R(n) 193.1.2.0/26       193.1.1.2             2 193.1.1.2         0 $$[0-9:]+$$
         """
-        yield from AssertVtysh.make(r1, "ripd", "show ip rip", compare, maxwait=10.0)
+        yield from AssertVtysh.make(r1, "ripd", "show ip rip", compare, maxwait=10.0, filters=[strip_header])
 
         compare = r"""
-            Codes: R - RIP, C - connected, S - Static, O - OSPF, B - BGP
-            Sub-codes:
-                  (n) - normal, (s) - static, (d) - default, (r) - redistribute,
-                  (i) - interface
-
                  Network            Next Hop         Metric From            Tag Time
             R(n) 10.103.0.0/16      193.1.2.3             2 193.1.2.3         0 $$[0-9:]+$$
             R(n) 10.104.0.0/16      193.1.2.3             2 193.1.2.3         0 $$[0-9:]+$$
@@ -191,14 +188,9 @@ class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
             C(i) 193.1.1.0/26       0.0.0.0               1 self              0
             C(i) 193.1.2.0/26       0.0.0.0               1 self              0
         """
-        yield from AssertVtysh.make(r2, "ripd", "show ip rip", compare, maxwait=10.0)
+        yield from AssertVtysh.make(r2, "ripd", "show ip rip", compare, maxwait=10.0, filters=[strip_header])
 
         compare = r"""
-            Codes: R - RIP, C - connected, S - Static, O - OSPF, B - BGP
-            Sub-codes:
-                  (n) - normal, (s) - static, (d) - default, (r) - redistribute,
-                  (i) - interface
-
                  Network            Next Hop         Metric From            Tag Time
             C(r) 10.103.0.0/16      0.0.0.0               1 self              0
             S(r) 10.104.0.0/16      10.103.0.4            1 self              0
@@ -207,4 +199,4 @@ class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
             R(n) 193.1.1.0/26       193.1.2.2             2 193.1.2.2         0 $$[0-9:]+$$
             C(i) 193.1.2.0/26       0.0.0.0               1 self              0
         """
-        yield from AssertVtysh.make(r3, "ripd", "show ip rip", compare, maxwait=10.0)
+        yield from AssertVtysh.make(r3, "ripd", "show ip rip", compare, maxwait=10.0, filters=[strip_header])
