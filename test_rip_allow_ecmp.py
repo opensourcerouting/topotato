@@ -49,6 +49,9 @@ class Configs(FRRConfigs):
     #% endblock
     """
 
+    def requirements(self):
+        self.require_defun("rip_allow_ecmp_cmd", "MULTIPATH_NUM")
+
 
 class RIPAllowECMP(TestBase, AutoFixture, topo=topology, configs=Configs):
     def ecmp_nexthops(self, *routers):

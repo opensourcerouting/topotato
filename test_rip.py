@@ -114,7 +114,7 @@ class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
                 r1-stub3
               Routing Information Sources:
                 Gateway          BadPackets BadRoutes  Distance Last Update
-                193.1.1.2                 0         0       120    $$[0-9:]+$$
+                193.1.1.2 $$\s*$$ 0         0       120 $$\s*[0-9:]+$$
               Distance: (default is 120)
         """
         yield from AssertVtysh.make(
@@ -138,8 +138,8 @@ class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
                 193.1.2.0/24
               Routing Information Sources:
                 Gateway          BadPackets BadRoutes  Distance Last Update
-                193.1.1.1                 0         0       120    $$[0-9:]+$$
-                193.1.2.3                 0         0       120    $$[0-9:]+$$
+                193.1.1.1 $$\s*$$ 0         0       120 $$\s*[0-9:]+$$
+                193.1.2.3 $$\s*$$ 0         0       120 $$\s*[0-9:]+$$
               Distance: (default is 120)
         """
         yield from AssertVtysh.make(
@@ -161,7 +161,7 @@ class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
                 193.1.2.0/24
               Routing Information Sources:
                 Gateway          BadPackets BadRoutes  Distance Last Update
-                193.1.2.2                 0         0       120    $$[0-9:]+$$
+                193.1.2.2 $$\s*$$ 0         0       120 $$\s*[0-9:]+$$
               Distance: (default is 120)
         """
         yield from AssertVtysh.make(
