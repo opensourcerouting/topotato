@@ -134,13 +134,12 @@ class NetworkInstance(topobase.NetworkInstance):
             rb'(?<!:)"(anycast|broadcast|unicast|local|multicast|throw|unreachable|prohibit|blackhole|nat)"'
         )
 
-        def __init__(self, _instance, name: str):
-            super().__init__(name)
-            self.instance = _instance
-            self.tempdir = _instance.tempfile(name)
+        def __init__(self, *, instance: "NetworkInstance", name: str):
+            super().__init__(instance=instance, name=name)
+            self.tempdir = instance.tempfile(name)
             os.mkdir(self.tempdir)
             _logger.debug(
-                "%r temp-subdir for %r created: %s", _instance, self, self.tempdir
+                "%r temp-subdir for %r created: %s", instance, self, self.tempdir
             )
 
         def __repr__(self):

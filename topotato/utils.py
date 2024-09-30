@@ -140,6 +140,31 @@ def apply_kwargs_maybe(func: Callable[P, T], **args) -> Callable[P, T]:
     return functools.partial(func, **existing)
 
 
+def self_or_kwarg(
+    self: object, kw: Dict[str, Any], argname: str, fieldname: Optional[str] = None
+) -> None:
+    """
+    Cooperative `__init__` helper, for multiple constructors setting the same field.
+
+    Handles an `__init__` parameter named `argname` assigned to `fieldname`
+    (default same as `argname`.)  It should either already be set on `self`
+    (and not be in `kw` anymore), or be in `kw` (in which case it's removed
+    from `kw` and assigned on `self`.)
+    """
+
+    fieldname = fieldname if fieldname is not None else argname
+
+    if hasattr(self, fieldname):
+        if argname in kw:
+            raise TypeError(
+                f"parameter {argname!r} given argument {kw[argname]!r} but already set on self (to {getattr(self, fieldname)!r}"
+            )
+    else:
+        if argname not in kw:
+            raise TypeError(f"missing argument for parameter {argname!r}")
+        setattr(self, fieldname, kw.pop(argname))
+
+
 class PathDict(dict[str, Optional[str]]):
     def __call__(self, k: str) -> str:
         return self.get(k) or k

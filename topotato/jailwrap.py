@@ -8,14 +8,17 @@ FreeBSD jail abstractions.
 import subprocess
 import time
 
+from .utils import self_or_kwarg
+
 
 class FreeBSDJail:
     name: str
     process: subprocess.Popen
     jid: int
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, **kw):
+        self_or_kwarg(self, kw, "name")
+        super().__init__(**kw)
 
     def start(self):
         # pylint: disable=consider-using-with
@@ -65,7 +68,7 @@ class FreeBSDJail:
 
 # pylint: disable=duplicate-code
 if __name__ == "__main__":
-    ns = FreeBSDJail("test")
+    ns = FreeBSDJail(name="test")
     ns.start()
     ns.check_call(["ifconfig", "-a"])
     ns.check_call(["/bin/sh", "-c", "sleep 3"])

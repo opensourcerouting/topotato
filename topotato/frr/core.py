@@ -503,7 +503,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         frr: FRRSetup,
         configs: _FRRConfigProtocol,
     ):
-        super().__init__(instance, name)
+        super().__init__(instance=instance, name=name)
         self._configs = configs
         self.frr = frr
         self.logfiles = {}

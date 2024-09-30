@@ -47,9 +47,8 @@ class NetworkInstance(topobase.NetworkInstance):
 
         instance: "NetworkInstance"
 
-        def __init__(self, instance, name):
-            super().__init__(name)
-            self.instance = instance
+        def __init__(self, *, instance: "NetworkInstance", name: str):
+            super().__init__(instance=instance, name=name)
             self.tempdir = instance.tempfile(name)
             os.mkdir(self.tempdir)
 

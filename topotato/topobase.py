@@ -27,6 +27,8 @@ from typing import (
 )
 from typing_extensions import Protocol
 
+from .utils import self_or_kwarg
+
 if typing.TYPE_CHECKING:
     from typing import (
         Self,
@@ -52,8 +54,11 @@ class BaseNS:
 
     instance: "NetworkInstance"
 
-    def __init__(self, _instance: "NetworkInstance", name: str) -> None:
-        pass
+    def __init__(self, *, instance: "NetworkInstance", **kw) -> None:
+        self.instance = instance
+        self_or_kwarg(self, kw, "name")
+
+        super().__init__(**kw)
 
     def tempfile(self, name: str) -> str:
         """
@@ -231,7 +236,7 @@ class NetworkInstance(ABC):
         for specific virtual routers.  This enables that.
         """
         # pylint: disable=abstract-class-instantiated
-        return self.RouterNS(self, name)  # type: ignore
+        return self.RouterNS(instance=self, name=name)  # type: ignore
 
     @abstractmethod
     def tempfile(self, name: str) -> str:
@@ -244,7 +249,7 @@ class NetworkInstance(ABC):
         Execute setup (create switch & router objects) for this network instance.
         """
         # pylint: disable=abstract-class-instantiated
-        self.switch_ns = self.SwitchyNS(self, "switch-ns")  # type: ignore
+        self.switch_ns = self.SwitchyNS(instance=self, name="switch-ns")
 
         # self.routers is immutable, assign as a whole
         routers = {}

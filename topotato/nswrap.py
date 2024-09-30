@@ -19,7 +19,7 @@ from typing import (
 )
 
 from .defer import subprocess
-from .utils import LockedFile, PathDict
+from .utils import LockedFile, PathDict, self_or_kwarg
 
 _libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
 
@@ -123,9 +123,12 @@ class LinuxNamespace:
     )
 
     taskdir: ClassVar[str] = "/tmp/topotato"
+    process: Optional[subprocess.Popen]
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, **kw):
+        self_or_kwarg(self, kw, "name")
+        super().__init__(**kw)
+
         self.process = None
 
     def start(self):
@@ -216,6 +219,8 @@ class LinuxNamespace:
         if self.process is None:
             return
 
+        assert self.process.stdin
+
         self.process.stdin.write(b"\n")
         self.process.stdin.close()
         self.process.wait()
@@ -286,7 +291,7 @@ class LinuxNamespace:
 
 # pylint: disable=duplicate-code
 def test():
-    ns = LinuxNamespace("test")
+    ns = LinuxNamespace(name="test")
     ns.start()
     ns.check_call(["ip", "addr", "list"])
     with ns:

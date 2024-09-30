@@ -169,4 +169,4 @@ class Host(TopotatoParams):
 
     def instantiate(self):
         # pylint: disable=abstract-class-instantiated
-        return HostNS(self.instance, self.name)
+        return HostNS(instance=self.instance, name=self.name)
