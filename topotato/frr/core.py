@@ -792,33 +792,33 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         if daemon == "vtysh":
             return self.vtysh_exec(timeline, cmds, timeout)
 
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
         fn = self.tempfile("run/%s.vty" % (daemon))
 
-        sock.connect(fn)
-        peercred = sock.getsockopt(
-            socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3I")
-        )
-        pid, _, _ = struct.unpack("3I", peercred)
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0) as sock:
+            sock.connect(fn)
+            peercred = sock.getsockopt(
+                socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3I")
+            )
+            pid, _, _ = struct.unpack("3I", peercred)
 
-        cmds = [c.strip() for c in cmds.splitlines() if c.strip() != ""]
+            cmds = [c.strip() for c in cmds.splitlines() if c.strip() != ""]
 
-        # TODO: refactor
-        vpoll = VtyshPoll(self.name, daemon, sock, cmds)
+            # TODO: refactor
+            vpoll = VtyshPoll(self.name, daemon, sock, cmds)
 
-        output = []
-        retcode = None
+            output = []
+            retcode = None
 
-        with timeline.with_pollee(vpoll) as poller:
-            vpoll.send_cmd()
+            with timeline.with_pollee(vpoll) as poller:
+                vpoll.send_cmd()
 
-            end = time.time() + timeout
-            for event in poller.run_iter(end):
-                if not isinstance(event, TimedVtysh):
-                    continue
-                output.append(event)
-                retcode = event.retcode
-                if event.last:
-                    break
+                end = time.time() + timeout
+                for event in poller.run_iter(end):
+                    if not isinstance(event, TimedVtysh):
+                        continue
+                    output.append(event)
+                    retcode = event.retcode
+                    if event.last:
+                        break
 
         return (pid, output, retcode)
