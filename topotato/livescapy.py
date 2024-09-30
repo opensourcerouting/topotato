@@ -71,7 +71,7 @@ class LiveScapy(MiniPollee):
         self._sock = sock
 
     def fileno(self):
-        if self._sock is None:
+        if self._sock is None or self._sock.fileno() == -1:
             return None
         return self._sock.fileno()
 

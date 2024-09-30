@@ -75,8 +75,11 @@ class MulticastReceiver:
     def _get_sock_ifindex(self, router, af):
         if not self._sock:
             with router:
-                self._sock = socket.socket(af, socket.SOCK_DGRAM, 0)
-                self._ifindex = socket.if_nametoindex(self._iface.ifname)
+                with router.ctx_until_stop(
+                    socket.socket(af, socket.SOCK_DGRAM, 0)
+                ) as sock:
+                    self._sock = sock
+                    self._ifindex = socket.if_nametoindex(self._iface.ifname)
 
         return self._sock, self._ifindex
 

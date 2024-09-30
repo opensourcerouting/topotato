@@ -13,10 +13,14 @@ and attributes defined here should be used outside OS-specific code.
 
 from abc import ABC, abstractmethod
 import os
+import weakref
+import warnings
 import typing
 from typing import (
     cast,
     Any,
+    Callable,
+    ContextManager,
     Dict,
     List,
     Literal,
@@ -39,6 +43,83 @@ if typing.TYPE_CHECKING:
     from .timeline import Timeline
 
 
+class _ContextAtexit:
+    """
+    Context Manager wrapper to hold things until a virtual system stops.
+
+    Used primarily for sockets in a virtual system.  Refer to
+    :py:meth:`BaseNS.ctx_until_stop`.
+    """
+
+    ns: "BaseNS"
+
+    hold: Callable[[], Optional[ContextManager]]
+    """
+    Either a regular closure, or a weakref, to get the wrapped context manager.
+    Using a weakref allows the wrapped context object's lifetime to end earlier.
+    """
+
+    exit_on_exception: bool
+
+    _strong_ref: Optional[ContextManager]
+    """
+    Used only during the span between ``__init__`` and ``__exit__``.
+    """
+
+    def __init__(
+        self,
+        ns: "BaseNS",
+        context: ContextManager,
+        *,
+        exit_on_exception=True,
+        weak=False,
+    ):
+        self.ns = ns
+        self._strong_ref = context
+        self.exit_on_exception = exit_on_exception
+
+        if weak:
+            self.hold = weakref.ref(context)
+        else:
+            self.hold = lambda: context
+
+    def __enter__(self):
+        assert self._strong_ref is not None
+
+        return self._strong_ref.__enter__()
+
+    def __exit__(self, exc_type, exc_value, tb):
+        assert self._strong_ref is not None
+
+        if self.exit_on_exception and exc_value is not None:
+            self._strong_ref.__exit__(exc_type, exc_value, tb)
+        else:
+            self.ns.atexit(self)
+
+        # context manager may now drop if weak=True
+        self._strong_ref = None
+
+    def __call__(self):
+        assert self._strong_ref is None
+
+        context = self.hold()
+        if context is None:
+            # weakref gone away
+            return
+        context.__exit__(None, None, None)
+
+
+class AtexitExceptionIgnoredWarning(UserWarning):
+    """
+    :py:mod:`warnings` category for exceptions ignored during router atexit.
+
+    Exceptions from a router's :py:meth:`BaseNS.atexit` functions shouldn't
+    prevent other atexit functions from running (or really abort things
+    in general.)  They're therefore converted to warnings of this category
+    (much like exceptions during normal ``atexit`` or ``__del__``.)
+    """
+
+
 class BaseNS:
     """
     Common interface to a virtual host/router.
@@ -53,12 +134,14 @@ class BaseNS:
     """
 
     instance: "NetworkInstance"
+    _atexit: List[Callable[[], None]]
 
     def __init__(self, *, instance: "NetworkInstance", **kw) -> None:
         self.instance = instance
         self_or_kwarg(self, kw, "name")
 
         super().__init__(**kw)
+        self._atexit = []
 
     def tempfile(self, name: str) -> str:
         """
@@ -93,7 +176,78 @@ class BaseNS:
     def end(self) -> None:
         """
         Stop this virtual system.
+
+        .. warning::
+
+           This should call :py:meth:`_do_atexit`, but currently doesn't.
+           Needs a cleanup pass on sequencing of things between
+           :py:meth:`end_prep`, :py:meth:`end`, and MRO/super() call order.
+
+           (The main concern is losing important logs/events on shutdown if
+           closing things too early.)
         """
+
+    def _do_atexit(self) -> None:
+        for atexit in self._atexit:
+            try:
+                atexit()
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                filename, lineno, module_globals = "<???>", 0, {}
+
+                tb = e.__traceback__
+                if tb:
+                    while tb.tb_next:
+                        tb = tb.tb_next
+
+                    filename = tb.tb_frame.f_code.co_filename
+                    lineno = tb.tb_frame.f_lineno
+                    module_globals = tb.tb_frame.f_globals
+                    del tb
+
+                warnings.warn_explicit(
+                    f"Exception during atexit: {e!r}",
+                    AtexitExceptionIgnoredWarning,
+                    filename=filename,
+                    lineno=lineno,
+                    module_globals=module_globals,
+                )
+
+    def atexit(self, fn: Callable[[], None]):
+        """
+        Call given function when this system stops.
+
+        Exceptions from the function are converted into warnings of category
+        :py:class:`AtexitExceptionIgnoredWarning`, i.e. won't crash out.
+        """
+        self._atexit.insert(0, fn)
+
+    def ctx_until_stop(
+        self, context: ContextManager, *, exit_on_exception=True, weak=False
+    ):
+        """
+        Wrap a context manager and keep it alive until this system stops.
+
+        Use like::
+
+            with router.ctx_until_stop(socket(...)) as sock:
+                sock.connect(...)
+
+        The socket will then be closed when router is stopped, or will be
+        immediately closed if an exception occurs inside the ``with`` block.
+
+        :param ContextManager context: context manager to wrap.
+        :param bool exit_on_exception: if True (default), clean up the context
+            manager immediately if an exception happens in the ``with`` block.
+            If False, the context manager always lives until the router shuts
+            down.
+        :param bool weak: use a weak reference to hold the context manager.
+            May be useful to allow some object to go out of scope earlier.
+        :return: a context manager wrapping the original one, with the same
+            return value from ``__enter__``.
+        """
+        return _ContextAtexit(
+            self, context, exit_on_exception=exit_on_exception, weak=weak
+        )
 
 
 class SwitchyNS(BaseNS):

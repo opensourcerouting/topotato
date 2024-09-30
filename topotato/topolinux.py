@@ -480,8 +480,11 @@ class NetworkInstance(topobase.NetworkInstance):
             for br in self.bridges:
                 args.extend(["-i", br])
 
-                self.scapys[br] = scapy.config.conf.L2socket(iface=br)
-                os.set_blocking(self.scapys[br].fileno(), False)
+                with self.switch_ns.ctx_until_stop(
+                    scapy.config.conf.L2socket(iface=br)
+                ) as sock:
+                    self.scapys[br] = sock
+                    os.set_blocking(sock.fileno(), False)
 
         self.switch_ns.start_run()
         for rns in self.routers.values():
@@ -528,7 +531,10 @@ class NetworkInstance(topobase.NetworkInstance):
         for rns in self.routers.values():
             rns.end_prep()
         for rns in self.routers.values():
+            rns._do_atexit()
             rns.end()
+
+        self.switch_ns._do_atexit()
         self.switch_ns.end()
         self._gcov_collect()
 
