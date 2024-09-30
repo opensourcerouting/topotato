@@ -46,6 +46,7 @@ from .exceptions import (
 from .livescapy import LiveScapy
 from .generatorwrap import GeneratorWrapper, GeneratorChecks
 from .network import TopotatoNetwork
+from .leaks import FDState, FDDelta, fdinfo
 
 if typing.TYPE_CHECKING:
     from types import TracebackType
@@ -536,6 +537,8 @@ class InstanceStartup(TopotatoItem):
         return fspath, float("-inf"), "startup"
 
     def setup(self):
+        self.cls_node.fdstate_start = FDState()
+
         # this needs to happen before TopotatoItem.setup, since that accesses
         # cls_node.netinst
         with _SkipMgr(self):
@@ -583,6 +586,18 @@ class InstanceShutdown(TopotatoItem):
 
     def __call__(self):
         self.cls_node.do_stop(self)
+
+        fdstate_end = FDState()
+        delta = FDDelta(self.cls_node.fdstate_start, fdstate_end)
+
+        if delta:
+            _logger.error("FD leaks detected:")
+            for fd in sorted(delta.closed):
+                _logger.error("FD %4d closed", fd)
+            for fd in sorted(delta.changed):
+                _logger.error("FD %4d differs, now: %s", fd, fdinfo(fd))
+            for fd in sorted(delta.opened):
+                _logger.error("FD %4d opened: %s", fd, fdinfo(fd))
 
 
 class TestBase:
@@ -846,6 +861,8 @@ class TopotatoClass(_pytest.python.Class):
     starting_ts: float
     started_ts: float
     netinst: "TopotatoNetwork"
+
+    fdstate_start: FDState
 
     # pylint: disable=protected-access
     @classmethod

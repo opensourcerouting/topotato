@@ -7,11 +7,16 @@ Base wrapper around Linux network namespaces
 import sys
 import os
 import time
+import fcntl
 import ctypes
 import ctypes.util
 import errno
 
-from typing import List, ClassVar
+from typing import (
+    ClassVar,
+    List,
+    Optional,
+)
 
 from .defer import subprocess
 from .utils import LockedFile, PathDict
@@ -29,6 +34,13 @@ _unshare.restype = ctypes.c_int
 CLONE_NEWNS = 0x00020000
 CLONE_NEWNET = 0x40000000
 
+_nstypes = {
+    CLONE_NEWNS: "mnt",
+    CLONE_NEWNET: "net",
+}
+
+NS_GET_NSTYPE = (0xB7 << 8) | 0x03
+
 
 def setns(nsfd: int, nstype: int = 0):
     ret = _setns(nsfd, nstype)
@@ -42,6 +54,15 @@ def unshare(nstype: int = 0):
     if ret != 0:
         _errno = ctypes.get_errno()
         raise OSError(_errno, os.strerror(_errno))
+
+
+def getnstype(fd: int) -> Optional[str]:
+    try:
+        nstype = fcntl.ioctl(fd, NS_GET_NSTYPE)
+    except OSError:
+        return None
+
+    return _nstypes.get(nstype, hex(nstype))
 
 
 class LinuxNamespaceJoinFailed(SystemError):
