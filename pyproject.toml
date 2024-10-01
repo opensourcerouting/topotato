@@ -1,0 +1,17 @@
+[mypy]
+python_version = 3.8
+check_untyped_defs = true
+
+[tool.pylint.main]
+py-version = "3.8"
+
+[tool.pylint."messages control"]
+disable = [
+	"too-few-public-methods",
+	"invalid-name",
+	"missing-class-docstring",
+	"missing-function-docstring",
+	"line-too-long",
+	"consider-using-f-string",
+	"useless-option-value"
+]

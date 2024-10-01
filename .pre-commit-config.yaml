@@ -21,7 +21,7 @@ repos:
 
     -   id: mypy
         name: mypy
-        entry: mypy --check-untyped-defs -p topotato
+        entry: mypy -p topotato
         language: system
         types:
         -   python

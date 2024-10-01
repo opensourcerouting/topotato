@@ -167,7 +167,7 @@ class Control:
     """
 
     typed_sections: _ControlSectionTypeDict
-    targets: Dict[str | None, "TargetSection"]
+    targets: Dict[Union[str, None], "TargetSection"]
 
     def __init__(self, session):
         self.session = session

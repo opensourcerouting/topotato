@@ -32,6 +32,7 @@ from typing import (
     Optional,
     Self,
     Tuple,
+    Union,
 )
 from typing_extensions import Protocol
 
@@ -161,7 +162,7 @@ class FRRSetup:
     is mildly security relevant.)
     """
 
-    setups: ClassVar[Dict[str | None, Self]] = {}
+    setups: ClassVar[Dict[Union[str, None], Self]] = {}
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: frrpath={self.frrpath}>"

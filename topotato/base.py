@@ -855,7 +855,7 @@ class TopotatoClass(_pytest.python.Class):
     The actual instance of our test class.
     """
 
-    skipall: Optional[Exception | Failed | Skipped]
+    skipall: Optional[Union[Exception, Failed, Skipped]]
     skipall_node: Optional[TopotatoItem]
 
     starting_ts: float
