@@ -29,8 +29,18 @@ except ImportError:
 
 import pytest
 
-import scapy.all  # type: ignore
-import scapy.config  # type: ignore
+import scapy.arch  # type: ignore[import-untyped]
+
+# this is here for 2 reasons (and needs to be before "import scapy.all":
+# - topotato neither needs nor wants scapy to use any nameservers, the list
+#   *should* be empty
+# - scapy prints a confusing message if it can't read resolv.conf
+#   ("Could not retrieve the OS's nameserver !")
+scapy.arch.read_nameservers = lambda: []
+
+# pylint: disable=wrong-import-position
+import scapy.all  # type: ignore[import-untyped]
+import scapy.config  # type: ignore[import-untyped]
 
 from .defer import subprocess
 from .utils import exec_find, EnvcheckResult
