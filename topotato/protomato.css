@@ -40,6 +40,8 @@
 --font-mono: "Inconsolata", monospace;
 --font-mono-narrow: "Inconsolata Semi Condensed", monospace;
 --font-mono-narrower: "Inconsolata Condensed", monospace;
+
+--xwarn-crosshatch: #DDD;
 }
 
 /* --- */
@@ -338,11 +340,33 @@ svg {
 	white-space:pre-wrap;
 }
 
+.logmsg.prio-error.xwarn > span {
+	background-attachment:fixed;
+	background-image: repeating-linear-gradient(
+		135deg,
+		#fba,
+		#fba 23.14213452px,
+		var(--xwarn-crosshatch) 23.14213452px,
+		var(--xwarn-crosshatch) 28.28427124px
+	);
+	font-weight:normal;
+}
 .logmsg.prio-error > span {
 	background-color: #fba;
 	font-weight: 500;
 }
 .logmsg.prio-error .logtext {
+}
+.logmsg.prio-warn.xwarn > span {
+	background-attachment:fixed;
+	background-image: repeating-linear-gradient(
+		135deg,
+		#fca,
+		#fca 23.14213452px,
+		var(--xwarn-crosshatch) 23.14213452px,
+		var(--xwarn-crosshatch) 28.28427124px
+	);
+	font-weight:normal;
 }
 .logmsg.prio-warn > span {
 	background-color: #fca;
