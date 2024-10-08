@@ -7,6 +7,7 @@ Parameters (i.e. configs) for an FRR router.
 
 import logging
 import typing
+import re
 from typing import (
     Any,
     ClassVar,
@@ -14,6 +15,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Union,
 )
 
 from ..network import (
@@ -151,7 +153,9 @@ class FRRParams(TopotatoParams):
         # pylint: disable=abstract-class-instantiated
         return FRRRouterNS(self.instance, self.name, self.frr, self)  # type: ignore[abstract]
 
-    def require_defun(self, cmd: str, contains: Optional[str] = None) -> None:
+    def require_defun(
+        self, cmd: str, contains: Optional[Union[str, re.Pattern]] = None
+    ) -> None:
         """
         Check that a particular CLI command exists in this FRR version, for
         use in :py:meth:`requirements`.  Commands are looked up in FRR's
@@ -170,8 +174,10 @@ class FRRParams(TopotatoParams):
         if defun is None:
             raise FRRRequirementNotMet(f"missing DEFUN {cmd!r}")
         if contains is not None:
+            if not isinstance(contains, re.Pattern):
+                contains = re.compile(re.escape(contains))
             for on_daemon in defun.values():
-                if contains not in on_daemon["string"]:
+                if not contains.search(on_daemon["string"]):
                     raise FRRRequirementNotMet(
                         f"DEFUN {cmd!r} does not contain {contains!r}"
                     )
