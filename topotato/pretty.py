@@ -85,7 +85,7 @@ jenv.filters["docrender"] = _docrender
 class PrettyExtraFile:
     filename: Optional[str]
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(self, owner, name, ext, mimetype, data):
         self.owner = owner
         self.name = name

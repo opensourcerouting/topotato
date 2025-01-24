@@ -580,7 +580,7 @@ class Link(NOMNode):
     parallel_num: int
     global_num: int
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(self, network, a_ep, a_detail, b_ep, b_detail):
         super().__init__(network)
 

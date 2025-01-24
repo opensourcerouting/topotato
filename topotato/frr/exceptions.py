@@ -30,7 +30,7 @@ class FRRStartupVtyshConfigFail(TopotatoFail):
     stdout: str
     stderr: str
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self, router: str, returncode: int, stdout: str, stderr: str, config: str
     ):
