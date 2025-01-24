@@ -41,6 +41,12 @@ class NetnsL2Socket(conf.L2socket):
     _tls.send_socket = None
 
     def __init__(self, *args, **kwargs):
+        # scapy buffers interface data, which is now invalid because wrong ns
+        if hasattr(conf, "ifaces") and hasattr(conf.ifaces, "reload"):
+            conf.ifaces.reload()
+
+        # this causes exceptions during shutdown if the interface is gone
+        kwargs["promisc"] = False
         super().__init__(*args, **kwargs)
 
         with socket.socket() as ipsock:

@@ -426,6 +426,8 @@ class NetworkInstance(topobase.NetworkInstance):
                         "name",
                         brname,
                         "up",
+                        "promisc",
+                        "on",
                         "type",
                         "bridge",
                     ]
