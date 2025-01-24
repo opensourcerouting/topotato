@@ -137,7 +137,7 @@ def apply_kwargs_maybe(func: Callable[P, T], **args) -> Callable[P, T]:
     sig = inspect.signature(func)
     argnames = frozenset(sig.parameters.keys())
     existing = {name: value for name, value in args.items() if name in argnames}
-    return functools.partial(func, **existing)
+    return functools.partial(func, *[], **existing)
 
 
 def self_or_kwarg(
