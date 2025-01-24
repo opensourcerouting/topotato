@@ -12,15 +12,16 @@ import errno
 import threading
 from fcntl import ioctl
 
-import scapy.fields  # type: ignore
-import scapy.layers.l2  # type: ignore
-from scapy.config import conf  # type: ignore
+import scapy.fields  # type: ignore[import-untyped]
+import scapy.arch.linux  # type: ignore[import-untyped]
+import scapy.layers.l2  # type: ignore[import-untyped]
+from scapy.config import conf  # type: ignore[import-untyped]
 
 SIOCGIFADDR = 0x8915
 
 
 # pylint: disable=too-many-ancestors
-class NetnsL2Socket(conf.L2socket):
+class NetnsL2Socket(scapy.arch.linux.L2Socket):
     """
     scapy L2socket, but with fixups when switching network namespaces
 
@@ -84,7 +85,7 @@ class _SourceMACFixup:
     def i2h(self, pkt, x):
         return scapy.layers.l2.MACField.i2h(self, pkt, x)
 
-    scapy.layers.l2.SourceMACField.i2h = i2h
+    scapy.layers.l2.SourceMACField.i2h = i2h  # type: ignore
 
     def i2m(self, pkt, x):
         if x is None:
@@ -93,7 +94,7 @@ class _SourceMACFixup:
                 return nsock.ins.getsockname()[4]
         return scapy.layers.l2.MACField.i2m(self, pkt, self.i2h(pkt, x))
 
-    scapy.layers.l2.SourceMACField.i2m = i2m
+    scapy.layers.l2.SourceMACField.i2m = i2m  # type: ignore
 
 
 class _SourceIPFixup:
@@ -104,7 +105,7 @@ class _SourceIPFixup:
     def i2h(self, pkt, x):
         return scapy.fields.IPField.i2h(self, pkt, x)
 
-    scapy.fields.SourceIPField.i2h = i2h
+    scapy.fields.SourceIPField.i2h = i2h  # type: ignore
 
     def i2m(self, pkt, x):
         if x is None:
@@ -113,4 +114,4 @@ class _SourceIPFixup:
                 return nsock._local_ipv4
         return scapy.fields.IPField.i2m(self, pkt, self.i2h(pkt, x))
 
-    scapy.fields.SourceIPField.i2m = i2m
+    scapy.fields.SourceIPField.i2m = i2m  # type: ignore

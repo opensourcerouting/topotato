@@ -40,8 +40,8 @@ scapy.arch.read_nameservers = lambda: []
 
 # pylint: disable=wrong-import-position
 import scapy.all  # type: ignore[import-untyped]
-import scapy.config  # type: ignore[import-untyped]
 
+from .scapyext.netnssock import NetnsL2Socket
 from .defer import subprocess
 from .utils import exec_find, EnvcheckResult
 from .nswrap import LinuxNamespace
@@ -353,7 +353,7 @@ class NetworkInstance(topobase.NetworkInstance):
     switch_ns: Optional[SwitchyNS]
     routers: Dict[str, RouterNS]
     bridges: List[str]
-    scapys: Dict[str, scapy.config.conf.L2socket]
+    scapys: Dict[str, NetnsL2Socket]
 
     # TODO: none of the coverage stuff belongs in here.  but it works, and
     # right now (2023-09-28) that matters more than getting it to "perfect".
@@ -492,9 +492,7 @@ class NetworkInstance(topobase.NetworkInstance):
             for br in self.bridges:
                 args.extend(["-i", br])
 
-                with self.switch_ns.ctx_until_stop(
-                    scapy.config.conf.L2socket(iface=br)
-                ) as sock:
+                with self.switch_ns.ctx_until_stop(NetnsL2Socket(iface=br)) as sock:
                     self.scapys[br] = sock
                     os.set_blocking(sock.fileno(), False)
 
