@@ -6,6 +6,9 @@ Test network for topotato.
 """
 
 import logging
+import itertools
+import os
+import re
 import typing
 from typing import (
     cast,
@@ -79,6 +82,8 @@ class TopotatoNetwork(NetworkInstance):
     instances, which matches the behavior implied by the type annotations.
     """
 
+    tempdir: str
+
     def __repr__(self):
         return f"{self.__class__.__name__}(..., {self.nodeid!r})"
 
@@ -91,6 +96,28 @@ class TopotatoNetwork(NetworkInstance):
         self.session = session
         self.timeline = Timeline()
         self._params = {}
+
+        taskdir = session.interactive_session.taskdir
+        # AF_UNIX has a pretty short path name limit, hence the [:32] here
+        basename = re.sub("[^0-9a-zA-Z]", "_", nodeid.rsplit(":", 1)[-1])[:32]
+
+        for suffix in itertools.chain([""], range(0, 100)):
+            self.tempdir = os.path.join(taskdir, basename + str(suffix))
+            try:
+                os.mkdir(self.tempdir)
+            except OSError:
+                continue
+            break
+
+        else:
+            # this will fail, the point is to raise the exception
+            self.tempdir = os.path.join(taskdir, basename)
+            os.mkdir(self.tempdir)
+
+        os.chmod(self.tempdir, 0o755)
+        _logger.debug("%r tempdir created: %s", self, self.tempdir)
+
+        self.environ["GCOV_PREFIX"] = self.gcov_dir = self.tempfile("gcov")
 
         for name in self._network.routers.keys():
             if name in self.__class__.__annotations__:
@@ -121,6 +148,9 @@ class TopotatoNetwork(NetworkInstance):
         cls._network = topo.net
         if params is not None:
             cls._defaultparams = params
+
+    def tempfile(self, name):
+        return os.path.join(self.tempdir, name)
 
 
 class TopotatoParams:

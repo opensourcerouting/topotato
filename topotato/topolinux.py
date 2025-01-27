@@ -11,7 +11,6 @@ import os
 import sys
 import shlex
 import re
-import tempfile
 import time
 import logging
 
@@ -374,16 +373,6 @@ class NetworkInstance(topobase.NetworkInstance):
         super().__init__(network)
         self.bridges = []
         self.lcov_args = []
-
-        # pylint: disable=consider-using-with
-        self.tempdir = tempfile.TemporaryDirectory()
-        os.chmod(self.tempdir.name, 0o755)
-        _logger.debug("%r tempdir created: %s", self, self.tempdir.name)
-
-        self.environ["GCOV_PREFIX"] = self.gcov_dir = self.tempfile("gcov")
-
-    def tempfile(self, name):
-        return os.path.join(self.tempdir.name, name)
 
     # pylint: disable=too-many-branches
     def start(self):

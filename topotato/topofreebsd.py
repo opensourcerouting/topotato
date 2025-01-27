@@ -8,7 +8,6 @@ FreeBSD implementation of topotato instances, based on jailwrap
 
 import os
 import time
-import tempfile
 import json
 
 from typing import (
@@ -220,14 +219,9 @@ class NetworkInstance(topobase.NetworkInstance):
     bridges: List[str]
     pcapfile: Optional[str]
 
+    # pylint: disable=useless-super-delegation
     def __init__(self, network):
         super().__init__(network)
-        # pylint: disable=consider-using-with
-        self.tempdir = tempfile.TemporaryDirectory()
-        os.chmod(self.tempdir.name, 0o755)
-
-    def tempfile(self, name):
-        return os.path.join(self.tempdir.name, name)
 
     def start(self):
         """
