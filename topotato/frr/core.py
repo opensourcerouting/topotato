@@ -110,7 +110,7 @@ class FRRSetup:
     List of FRR daemons topotato knows about.  The daemons available are a
     subset of this, determined by reading ``Makefile`` from the FRR build.
     """
-    daemons_all.extend("zebra staticd mgmtd".split())
+    daemons_all.extend("mgmtd zebra staticd".split())
     daemons_all.extend("bgpd ripd ripngd ospfd ospf6d isisd fabricd babeld".split())
     daemons_all.extend("eigrpd pimd pim6d ldpd nhrpd sharpd pathd pbrd".split())
     daemons_all.extend("bfdd vrrpd".split())
