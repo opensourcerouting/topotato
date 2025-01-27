@@ -168,19 +168,20 @@ class PIMTopo2Test(TestBase, AutoFixture, topo=topology, configs=Configs):
         """Check proper BFD profile propagates from PIM to BFD."""
         # pim_basic_topo2/test_pim_basic_topo2.py::test_pim_bfd_profile()
 
-        expect = [
-            JSONCompareListKeyedDict("peer"),
-            {
-                "peer": str(r2.iface_to("sw1").ip4[0].ip),
-                "receive-interval": 250,
-                "transmit-interval": 250,
-            },
-        ]
+        def expect(rtr, timer):
+            return [
+                JSONCompareListKeyedDict("peer"),
+                {
+                    "peer": str(rtr.iface_to("sw1").ip4[0].ip),
+                    "receive-interval": timer,
+                    "transmit-interval": timer,
+                },
+            ]
+
         yield from AssertVtysh.make(
-            r1, "bfdd", "enable\nshow bfd peers json", expect, maxwait=3.0
+            r1, "bfdd", "enable\nshow bfd peers json", expect(r2, 250), maxwait=3.0
         )
 
-        expect[1]["peer"] = str(r1.iface_to("sw1").ip4[0].ip)
         yield from AssertVtysh.make(
-            r2, "bfdd", "enable\nshow bfd peers json", expect, maxwait=3.0
+            r2, "bfdd", "enable\nshow bfd peers json", expect(r1, 300), maxwait=3.0
         )
