@@ -789,6 +789,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
 
         return (None, [timed], proc.returncode)
 
+    # pylint: disable=too-many-locals
     def vtysh_polled(self, timeline: Timeline, daemon, cmds, timeout=5.0):
         if daemon == "vtysh":
             return self.vtysh_exec(timeline, cmds, timeout)
@@ -796,7 +797,21 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         fn = self.tempfile("run/%s.vty" % (daemon))
 
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0) as sock:
-            sock.connect(fn)
+            try:
+                sock.connect(fn)
+            except OSError as e:
+                e.add_note(
+                    f"while attempting to connect to {daemon} on {self.name} ({fn!r})"
+                )
+
+                if getattr(e, "args") == "AF_UNIX path too long":
+                    tmpdir = os.environ.get("TMPDIR")
+                    raise FRRSetupError(
+                        f"environment misconfigured (temporary path too long): {fn!r} (TMPDIR={tmpdir})"
+                    ) from e
+
+                raise
+
             peercred = sock.getsockopt(
                 socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3I")
             )
