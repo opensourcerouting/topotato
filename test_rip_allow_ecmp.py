@@ -10,6 +10,7 @@ __topotests_replaces__ = {
 
 # pylint: disable=invalid-name, missing-class-docstring, missing-function-docstring, line-too-long, consider-using-f-string, wildcard-import, unused-wildcard-import, f-string-without-interpolation
 
+import re
 from topotato.v1 import *
 
 
@@ -50,7 +51,7 @@ class Configs(FRRConfigs):
     """
 
     def requirements(self):
-        self.require_defun("rip_allow_ecmp_cmd", "MULTIPATH_NUM")
+        self.require_defun("rip_allow_ecmp_cmd", re.compile(r"MULTIPATH_NUM|\(1-256\)"))
 
 
 class RIPAllowECMP(TestBase, AutoFixture, topo=topology, configs=Configs):
