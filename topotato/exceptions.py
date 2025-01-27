@@ -191,3 +191,9 @@ class TopotatoUnhandledArgs(TypeError):
     """
     Unexpected arguments in "yield from AssertXyz.make()"
     """
+
+
+class TopotatoInvalidArg(TypeError):
+    """
+    Some value passed to a test isn't as expected.
+    """

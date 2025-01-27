@@ -46,6 +46,7 @@ from .exceptions import (
     TopotatoPacketFail,
     TopotatoRouteCompareFail,
     TopotatoUnhandledArgs,
+    TopotatoInvalidArg,
 )
 
 if typing.TYPE_CHECKING:
@@ -257,6 +258,9 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
         filters=None,
         **kwargs,
     ):
+        if not isinstance(compare, (str, dict, list, type(None))):
+            raise TopotatoInvalidArg(f"invalid input to AssertVtysh: {compare!r}")
+
         command_cleaned = command
         command_cleaned = re.sub(r"(?m)^[\s\n]+", "", command_cleaned)
         command_cleaned = re.sub(r"\s+\n", "\n", command_cleaned)
@@ -304,7 +308,7 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
                         self._compare,
                         "output from %s" % (self._command),
                     )
-                elif isinstance(self._compare, dict):
+                else:
                     diff = json_cmp(json.loads(text), self._compare)
                     if diff is not None:
                         result = TopotatoCLICompareFail(str(diff))
