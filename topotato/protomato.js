@@ -742,6 +742,9 @@ function pdml_get_attr(item, key, attr = "show", idx = 0) {
 	var result = pdml_get(item, key, idx);
 	return result === null ? null : result.getAttribute(attr);
 }
+function pdml_get_attr_bool(item, key, attr = "show", idx = 0) {
+	return ["1", "True", "true"].includes(pdml_get_attr(item, key, attr, idx));
+}
 
 function pdml_get_value(item, key, idx = 0) {
 	var result = pdml_get(item, key, idx);
@@ -863,15 +866,15 @@ const protocols = {
 
 		let flags = pdml_get(proto, "tcp.flags");
 		let flag_arr = new Array();
-		if (pdml_get_attr(flags, "tcp.flags.syn") == "1")
+		if (pdml_get_attr_bool(flags, "tcp.flags.syn"))
 			flag_arr.push("SYN");
-		if (pdml_get_attr(flags, "tcp.flags.fin") == "1")
+		if (pdml_get_attr_bool(flags, "tcp.flags.fin"))
 			flag_arr.push("FIN");
-		if (pdml_get_attr(flags, "tcp.flags.reset") == "1")
+		if (pdml_get_attr_bool(flags, "tcp.flags.reset"))
 			flag_arr.push("RST");
 
 		if (flag_arr.length) {
-			if (pdml_get_attr(flags, "tcp.flags.ack") == "1")
+			if (pdml_get_attr_bool(flags, "tcp.flags.ack"))
 				flag_arr.push("ACK");
 
 			elem.textContent += " [" + flag_arr.join(", ") + "]";
