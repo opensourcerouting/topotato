@@ -147,6 +147,7 @@ class LinuxNamespace:
             }
         )
 
+        # pylint: disable=subprocess-popen-preexec-fn
         self.process = subprocess.Popen(
             [
                 self._exec("unshare"),
@@ -168,6 +169,7 @@ class LinuxNamespace:
             stdout=subprocess.PIPE,
             shell=False,
             env=env,
+            preexec_fn=os.setpgrp,
         )
         # wait for child to tell us it's ready...
         # (match sys.stdout.write("\n") below)
