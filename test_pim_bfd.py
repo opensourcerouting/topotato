@@ -59,63 +59,71 @@ class Configs(FRRConfigs):
 
 
 class PIMBFDTest(TestBase, AutoFixture, topo=topology, configs=Configs):
+    @staticmethod
+    def expect_neighbor(rtr, ifname, peer, deadline):
+        js = {
+            ifname: {
+                str(peer.ip4[0].ip): JSONCompareIgnoreContent(),
+            },
+        }
+        yield from AssertVtysh.make(
+            rtr, "pimd", "show ip pim neighbor json", js, maxwait=deadline
+        )
+
+    @staticmethod
+    def expect_neighbor_down(rtr, ifname, peer, deadline):
+        js = {
+            ifname: {
+                str(peer.ip4[0].ip): None,
+            },
+        }
+        yield from AssertVtysh.make(
+            rtr, "pimd", "show ip pim neighbor json", js, maxwait=deadline
+        )
+
+    @staticmethod
+    def expect_bfd_peer(rtr, peer, deadline):
+        js = [
+            {
+                "peer": str(peer.ip4[0].ip),
+                "status": "up",
+            }
+        ]
+        yield from AssertVtysh.make(
+            rtr, "bfdd", "enable\nshow bfd peers json", js, maxwait=deadline
+        )
+
+
     @topotatofunc
-    def test(self, topo, r1, r2, r3, r4):
-        def expect_neighbor(rtr, ifname, peer, deadline):
-            js = {
-                ifname: {
-                    str(peer.ip4[0].ip): JSONCompareIgnoreContent(),
-                },
-            }
-            yield from AssertVtysh.make(
-                rtr, "pimd", "show ip pim neighbor json", js, maxwait=deadline
-            )
-
-        def expect_neighbor_down(rtr, ifname, peer, deadline):
-            js = {
-                ifname: {
-                    str(peer.ip4[0].ip): None,
-                },
-            }
-            yield from AssertVtysh.make(
-                rtr, "pimd", "show ip pim neighbor json", js, maxwait=deadline
-            )
-
-        def expect_bfd_peer(rtr, peer, deadline):
-            js = [
-                {
-                    "peer": str(peer.ip4[0].ip),
-                    "status": "up",
-                }
-            ]
-            yield from AssertVtysh.make(
-                rtr, "bfdd", "enable\nshow bfd peers json", js, maxwait=deadline
-            )
-
+    def test_init(self, topo, r1, r2, r3, r4):
         # PIM neighbors
-        yield from expect_neighbor(r2, "r2-r1", r1.iface_to("r2"), 5.0)
-        yield from expect_neighbor(r1, "r1-r2", r2.iface_to("r1"), 5.0)
-        yield from expect_neighbor(r2, "r2-r3", r3.iface_to("r2"), 5.0)
-        yield from expect_neighbor(r3, "r3-r2", r2.iface_to("r3"), 5.0)
-        yield from expect_neighbor(r2, "r2-r4", r4.iface_to("r2"), 5.0)
-        yield from expect_neighbor(r4, "r4-r2", r2.iface_to("r4"), 5.0)
+        yield from self.expect_neighbor(r2, "r2-r1", r1.iface_to("r2"), 5.0)
+        yield from self.expect_neighbor(r1, "r1-r2", r2.iface_to("r1"), 5.0)
+        yield from self.expect_neighbor(r2, "r2-r3", r3.iface_to("r2"), 5.0)
+        yield from self.expect_neighbor(r3, "r3-r2", r2.iface_to("r3"), 5.0)
+        yield from self.expect_neighbor(r2, "r2-r4", r4.iface_to("r2"), 5.0)
+        yield from self.expect_neighbor(r4, "r4-r2", r2.iface_to("r4"), 5.0)
 
         # BFD sessions
-        yield from expect_bfd_peer(r2, r1.iface_to("r2"), 6.0)
-        yield from expect_bfd_peer(r1, r2.iface_to("r1"), 6.0)
-        yield from expect_bfd_peer(r2, r3.iface_to("r2"), 6.0)
-        yield from expect_bfd_peer(r3, r2.iface_to("r3"), 6.0)
-        yield from expect_bfd_peer(r2, r4.iface_to("r2"), 6.0)
-        yield from expect_bfd_peer(r4, r2.iface_to("r4"), 6.0)
+        yield from self.expect_bfd_peer(r2, r1.iface_to("r2"), 6.0)
+        yield from self.expect_bfd_peer(r1, r2.iface_to("r1"), 6.0)
+        yield from self.expect_bfd_peer(r2, r3.iface_to("r2"), 6.0)
+        yield from self.expect_bfd_peer(r3, r2.iface_to("r3"), 6.0)
+        yield from self.expect_bfd_peer(r2, r4.iface_to("r2"), 6.0)
+        yield from self.expect_bfd_peer(r4, r2.iface_to("r4"), 6.0)
 
+    @topotatofunc
+    def test_down(self, topo, r1, r2, r3, r4):
         # flip r4 off
         yield from ModifyLinkStatus.make(r4, r4.iface_to("r2"), False)
-        yield from expect_neighbor_down(r2, "r2-r4", r4.iface_to("r2"), 9.0)
+        yield from self.expect_neighbor_down(r2, "r2-r4", r4.iface_to("r2"), 5.0)
 
+    @topotatofunc
+    def test_up(self, topo, r1, r2, r3, r4):
         # and back on
         yield from ModifyLinkStatus.make(r4, r4.iface_to("r2"), True)
-        yield from expect_neighbor(r2, "r2-r4", r4.iface_to("r2"), 12.0)
-        yield from expect_neighbor(r4, "r4-r2", r2.iface_to("r4"), 12.0)
+        yield from self.expect_neighbor(r2, "r2-r4", r4.iface_to("r2"), 5.0)
+        yield from self.expect_neighbor(r4, "r4-r2", r2.iface_to("r4"), 5.0)
 
         js = [
             {
