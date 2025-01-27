@@ -804,7 +804,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
                     f"while attempting to connect to {daemon} on {self.name} ({fn!r})"
                 )
 
-                if getattr(e, "args") == "AF_UNIX path too long":
+                if getattr(e, "args") == ("AF_UNIX path too long",):
                     tmpdir = os.environ.get("TMPDIR")
                     raise FRRSetupError(
                         f"environment misconfigured (temporary path too long): {fn!r} (TMPDIR={tmpdir})"
