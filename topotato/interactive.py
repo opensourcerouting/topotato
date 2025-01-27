@@ -14,6 +14,7 @@ import json
 import pickle
 import binascii
 import re
+import hashlib
 
 import typing
 from typing import (
@@ -35,7 +36,13 @@ if typing.TYPE_CHECKING:
     from .types import ISession
 
 
-taskbasedir = "/tmp/topotato-%s" % os.uname().nodename
+# prevent problems with AF_UNIX's 108 byte path length limit
+_nodename = os.uname().nodename
+if len(_nodename) > 16:
+    _nodename = hashlib.sha256(_nodename.encode("UTF-8")).hexdigest()[:16]
+
+taskbasedir = "/tmp/topotato-" + _nodename
+
 # _interactive_session = pytest.StashKey["Interactive"]()
 
 
