@@ -225,20 +225,6 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
 
             ''', maxwait = 30.0)
 
-        for rtr in topo.routers.keys():
-            yield from AssertKernelRoutesV4.make(rtr, {
-                '10.7.0.0/16':   JSONCompareIgnoreContent(),
-                '10.101.0.0/16': JSONCompareIgnoreContent(),
-                '10.102.0.0/16': JSONCompareIgnoreContent(),
-                '10.103.0.0/16': JSONCompareIgnoreContent(),
-                '10.104.0.0/16': JSONCompareIgnoreContent(),
-                '10.105.0.0/16': JSONCompareIgnoreContent(),
-                '10.255.0.1/32': JSONCompareIgnoreContent(),
-                '10.255.0.2/32': JSONCompareIgnoreContent(),
-                '10.255.0.3/32': JSONCompareIgnoreContent(),
-                '10.255.0.4/32': JSONCompareIgnoreContent(),
-            }, local = True)
-
         yield from AssertVtysh.make(r1, 'ospf6d', 'show ipv6 ospf6 route', r'''
             *N E2 fd00::2/128                    fe80::fc02:ff:febc:300    r1-lan3 00:$$\d+:\d+$$
             *N E2 fd00::3/128                    fe80::fc03:ff:febc:300    r1-lan3 00:$$\d+:\d+$$
@@ -303,6 +289,29 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             *N IA fdbc:5::/64                    ::                        r4-lan6 00:$$\d+:\d+$$
             ''', maxwait = 30.0)
 
+    @topotatofunc
+    def test_initial_kernel(self, topo, r1, r2, r3, r4):
+        """
+        Check that OSPF state matches kernel state
+
+        Short 2s timer for zebra to install things since OSPF state was
+        already confirmed above.  Route nexthops are not checked, only
+        existence.
+        """
+        for rtr in topo.routers.keys():
+            yield from AssertKernelRoutesV4.make(rtr, {
+                '10.7.0.0/16':   JSONCompareIgnoreContent(),
+                '10.101.0.0/16': JSONCompareIgnoreContent(),
+                '10.102.0.0/16': JSONCompareIgnoreContent(),
+                '10.103.0.0/16': JSONCompareIgnoreContent(),
+                '10.104.0.0/16': JSONCompareIgnoreContent(),
+                '10.105.0.0/16': JSONCompareIgnoreContent(),
+                '10.255.0.1/32': JSONCompareIgnoreContent(),
+                '10.255.0.2/32': JSONCompareIgnoreContent(),
+                '10.255.0.3/32': JSONCompareIgnoreContent(),
+                '10.255.0.4/32': JSONCompareIgnoreContent(),
+            }, local = True, maxwait=2.0)
+
         for rtr in topo.routers.keys():
             yield from AssertKernelRoutesV6.make(rtr, {
                 'fd00::1/128': JSONCompareIgnoreContent(),
@@ -314,7 +323,7 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                 'fdbc:3::/64': JSONCompareIgnoreContent(),
                 'fdbc:4::/64': JSONCompareIgnoreContent(),
                 'fdbc:5::/64': JSONCompareIgnoreContent(),
-            }, local = True)
+            }, local = True, maxwait=2.0)
 
 
     @topotatofunc
@@ -339,7 +348,7 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                                        via 10.103.0.2, r1-lan3
 
 
-            ''', maxwait = 45.0)
+            ''', maxwait = 20.0)
 
         yield from AssertVtysh.make(r2, 'ospfd', 'show ip ospf route', r'''
             ============ OSPF network routing table ============
@@ -359,7 +368,7 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                                        via 10.103.0.1, r2-lan3
 
 
-            ''', maxwait = 45.0)
+            ''', maxwait = 20.0)
 
         yield from AssertVtysh.make(r3, 'ospfd', 'show ip ospf route', r'''
             ============ OSPF network routing table ============
@@ -379,7 +388,7 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                                        via 10.7.4.3, r3-r4
 
 
-            ''', maxwait = 45.0)
+            ''', maxwait = 20.0)
 
         yield from AssertVtysh.make(r4, 'ospfd', 'show ip ospf route', r'''
             ============ OSPF network routing table ============
@@ -399,24 +408,7 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                                        via 10.7.3.4, r4-r3
 
 
-            ''', maxwait = 45.0)
-
-        for rtr in [r1, r2]:
-            yield from AssertKernelRoutesV4.make(rtr.name, {
-                '10.101.0.0/16': JSONCompareIgnoreContent(),
-                '10.102.0.0/16': JSONCompareIgnoreContent(),
-                '10.103.0.0/16': JSONCompareIgnoreContent(),
-                '10.255.0.1/32': JSONCompareIgnoreContent(),
-                '10.255.0.2/32': JSONCompareIgnoreContent(),
-            }, local = True)
-        for rtr in [r3, r4]:
-            yield from AssertKernelRoutesV4.make(rtr.name, {
-                '10.7.0.0/16':   JSONCompareIgnoreContent(),
-                '10.104.0.0/16': JSONCompareIgnoreContent(),
-                '10.105.0.0/16': JSONCompareIgnoreContent(),
-                '10.255.0.3/32': JSONCompareIgnoreContent(),
-                '10.255.0.4/32': JSONCompareIgnoreContent(),
-            }, local = True)
+            ''', maxwait = 20.0)
 
 
         yield from AssertVtysh.make(r1, 'ospf6d', 'show ipv6 ospf6 route', r'''
@@ -426,7 +418,7 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
              N E2 fdbc:2::/64                    fe80::fc02:ff:febc:300    r1-lan3 00:$$\d+:\d+$$
             *N IA fdbc:3::/64                    ::                        r1-lan3 00:$$\d+:\d+$$
              N E2 fdbc:3::/64                    fe80::fc02:ff:febc:300    r1-lan3 00:$$\d+:\d+$$
-            ''', maxwait = 45.0)
+            ''', maxwait = 20.0)
 
         yield from AssertVtysh.make(r2, 'ospf6d', 'show ipv6 ospf6 route', r'''
             *N E2 fd00::1/128                    fe80::fc01:ff:febc:300    r2-lan3 00:$$\d+:\d+$$
@@ -435,21 +427,58 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             *N IA fdbc:2::/64                    ::                        r2-lan2 00:$$\d+:\d+$$
             *N IA fdbc:3::/64                    ::                        r2-lan3 00:$$\d+:\d+$$
              N E2 fdbc:3::/64                    fe80::fc01:ff:febc:300    r2-lan3 00:$$\d+:\d+$$
-            ''', maxwait = 45.0)
+            ''', maxwait = 20.0)
 
         yield from AssertVtysh.make(r3, 'ospf6d', 'show ipv6 ospf6 route', r'''
             *N E2 fd00::4/128                    fe80::fc04:ff:fefe:300     r3-r4 00:$$\d+:\d+$$
             *N IA fdbc:4::/64                    ::                        r3-lan4 00:$$\d+:\d+$$
             *N IA fdbc:5::/64                    fe80::fc04:ff:fefe:300     r3-r4 00:$$\d+:\d+$$
              N E2 fdbc:5::/64                    fe80::fc04:ff:fefe:300     r3-r4 00:$$\d+:\d+$$
-            ''', maxwait = 45.0)
+            ''', maxwait = 20.0)
 
         yield from AssertVtysh.make(r4, 'ospf6d', 'show ipv6 ospf6 route', r'''
             *N E2 fd00::3/128                    fe80::fc03:ff:fefe:400     r4-r3 00:$$\d+:\d+$$
             *N IE fdbc:4::/64                    fe80::fc03:ff:fefe:400     r4-r3 00:$$\d+:\d+$$
              N E2 fdbc:4::/64                    fe80::fc03:ff:fefe:400     r4-r3 00:$$\d+:\d+$$
             *N IA fdbc:5::/64                    ::                        r4-lan6 00:$$\d+:\d+$$
-            ''', maxwait = 45.0)
+            ''', maxwait = 20.0)
+
+    @topotatofunc
+    def test_linkdown_kernel(self, topo, r1, r2, r3, r4):
+        """
+        Check that OSPF state matches kernel state again
+
+        Short 2s timer for zebra to install things since OSPF state was
+        already confirmed above.  Route nexthops are not checked, only
+        (non-)existence.
+        """
+        for rtr in [r1, r2]:
+            yield from AssertKernelRoutesV4.make(rtr.name, {
+                '10.101.0.0/16': JSONCompareIgnoreContent(),
+                '10.102.0.0/16': JSONCompareIgnoreContent(),
+                '10.103.0.0/16': JSONCompareIgnoreContent(),
+                '10.255.0.1/32': JSONCompareIgnoreContent(),
+                '10.255.0.2/32': JSONCompareIgnoreContent(),
+                '10.7.0.0/16':   None,
+                '10.104.0.0/16': None,
+                '10.105.0.0/16': None,
+                '10.255.0.3/32': None,
+                '10.255.0.4/32': None,
+            }, local = True, maxwait=2.0)
+
+        for rtr in [r3, r4]:
+            yield from AssertKernelRoutesV4.make(rtr.name, {
+                '10.7.0.0/16':   JSONCompareIgnoreContent(),
+            #    '10.103.0.0/16': JSONCompareIgnoreContent(), - split LAN
+                '10.104.0.0/16': JSONCompareIgnoreContent(),
+                '10.105.0.0/16': JSONCompareIgnoreContent(),
+                '10.255.0.3/32': JSONCompareIgnoreContent(),
+                '10.255.0.4/32': JSONCompareIgnoreContent(),
+                '10.101.0.0/16': None,
+                '10.102.0.0/16': None,
+                '10.255.0.1/32': None,
+                '10.255.0.2/32': None,
+            }, local = True, maxwait=2.0)
 
         for rtr in [r1, r2]:
             yield from AssertKernelRoutesV6.make(rtr.name, {
@@ -458,11 +487,21 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                 'fdbc:1::/64': JSONCompareIgnoreContent(),
                 'fdbc:2::/64': JSONCompareIgnoreContent(),
                 'fdbc:3::/64': JSONCompareIgnoreContent(),
-            }, local = True)
+                'fd00::3/128': None,
+                'fd00::4/128': None,
+                'fdbc:4::/64': None,
+                'fdbc:5::/64': None,
+            }, local = True, maxwait=2.0)
+
         for rtr in [r3, r4]:
             yield from AssertKernelRoutesV6.make(rtr.name, {
                 'fd00::3/128': JSONCompareIgnoreContent(),
                 'fd00::4/128': JSONCompareIgnoreContent(),
+            #    'fdbc:3::/64': JSONCompareIgnoreContent(), - split LAN
                 'fdbc:4::/64': JSONCompareIgnoreContent(),
                 'fdbc:5::/64': JSONCompareIgnoreContent(),
-            }, local = True)
+                'fd00::1/128': None,
+                'fd00::2/128': None,
+                'fdbc:1::/64': None,
+                'fdbc:2::/64': None,
+            }, local = True, maxwait=2.0)
