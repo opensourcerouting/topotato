@@ -47,6 +47,9 @@ class FRRConfigured(RouterFRR):
     debug mld
     #%   endif
     #%   if router.name in ['dut']
+    interface lo
+     ipv6 pim
+    !
     #%     for iface in router.ifaces
     interface {{ iface.ifname }}
      ipv6 pim
@@ -54,6 +57,7 @@ class FRRConfigured(RouterFRR):
      ipv6 mld
     !
     #%     endfor
+    ipv6 pim rp {{ router.lo_ip6[0].ip }}
     #%   endif
     #% endblock
     """
@@ -94,6 +98,35 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
         yield from AssertPacket.make("h1_dut", maxwait=2.0, pkt=expect_pkt)
 
     @topotatofunc
+    def test_asm(self, topo, dut, h1, h2, src):
+        srcaddr = src.iface_to('lan').ip6[0].ip
+
+        yield from self.receiver.join('ff05::1234')
+
+        logchecks = yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1 (*,ff05::1234)] NOINFO => JOIN', maxwait=2.0)
+        @logchecks.skip_on_exception
+        def need_debug_mld(testitem):
+            testitem.instance.dut.require_defun("debug_mld_cmd")
+
+        yield from AssertVtysh.make(dut, "pim6d", "debug show mld interface %s" % (dut.iface_to('h1').ifname))
+
+        ip = IPv6(hlim=255, src=srcaddr, dst="ff05::1234")
+        udp = UDP(sport=9999, dport=9999)
+        yield from ScapySend.make(
+            src,
+            "src-lan",
+            pkt = ip/udp,
+	    repeat = 2,
+	    interval = 0.1,
+        )
+
+        def expect_pkt(ipv6: IPv6, udp: UDP):
+            return ipv6.src == str(srcaddr) and ipv6.dst == 'ff05::1234' \
+                and udp.dport == 9999
+
+        yield from AssertPacket.make("h1_dut", maxwait=2.0, pkt=expect_pkt)
+
+    @topotatofunc
     def test_ssm(self, topo, dut, h1, h2, src):
         """
         Join a (S,G) on MLD and try forwarding a packet on it.
@@ -122,17 +155,6 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
                 and udp.dport == 9999
 
         yield from AssertPacket.make("h1_dut", maxwait=2.0, pkt=expect_pkt)
-
-    @topotatofunc
-    def test_asm(self, topo, dut, h1, h2, src):
-        yield from self.receiver.join('ff05::1234')
-
-        logchecks = yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1 (*,ff05::1234)] NOINFO => JOIN', maxwait=2.0)
-        @logchecks.skip_on_exception
-        def need_debug_mld(testitem):
-            testitem.instance.dut.require_defun("debug_mld_cmd")
-
-        yield from AssertVtysh.make(dut, "pim6d", "debug show mld interface %s" % (dut.iface_to('h1').ifname))
 
     @topotatofunc
     def test_no_rtralert(self, topo, dut, h1, h2, src):
