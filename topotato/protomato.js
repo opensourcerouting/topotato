@@ -172,9 +172,27 @@ const log_keys = {
 	"prio-startup": "s",
 };
 
+const log_rules_setup =  [
+	{ prefix: "h:", field: "rname", ref: obj => obj.data.router },
+	{ prefix: "u:", field: "uid", ref: obj => obj.data.uid },
+	{ prefix: "d:", field: "daemon", ref: obj => obj.data.daemon },
+	{ prefix: "p:", field: "prio", ref: obj => obj.data.prio }
+];
+var log_rules;
+
+function log_empty_rule() {
+	let ret = new Object();
+	for (const setup of log_rules_setup)
+		ret[setup.field] = new Array();
+	return ret;
+}
+
 function log_show(key, sel) {
 	let enabled = {};
 	let cbox = document.getElementById("cf-log");
+
+	let items = sel.split("/");
+	sel = items.shift();
 	if (sel == "-") {
 		cbox.checked = false;
 		for (const classname of Object.keys(log_keys)) {
@@ -192,6 +210,30 @@ function log_show(key, sel) {
 		}
 	}
 
+	log_rules = new Array();
+	for (const rule of items) {
+		let lr = log_empty_rule();
+
+		if (rule.startsWith("+")) {
+			lr.sense = true;
+		} else if (rule.startsWith("-")) {
+			lr.sense = false;
+		} else {
+			continue;
+		}
+
+		for (const detail of rule.substr(1).split(".")) {
+			for (const setup of log_rules_setup) {
+				if (!detail.startsWith(setup.prefix))
+					continue;
+				lr[setup.field].push(detail.substr(setup.prefix.length));
+				break;
+			}
+		}
+
+		log_rules.push(lr);
+	}
+
 	for (let target of Array.from(document.getElementsByClassName("logmsg"))) {
 		var enable = false;
 		var prio = Array.from(target.classList).filter(s => s.startsWith("prio-"))[0];
@@ -202,6 +244,19 @@ function log_show(key, sel) {
 			enable = enabled[prio];
 		else
 			enable = (sel != "-");
+		for (const rule of log_rules) {
+			let match = true;
+			for (const setup of log_rules_setup) {
+				if (rule[setup.field].length == 0)
+					continue;
+				if (!rule[setup.field].includes(setup.ref(target.obj))) {
+					match = false;
+					break;
+				}
+			}
+			if (match)
+				enable = rule.sense;
+		}
 		if (target.classList.contains("assert-match"))
 			enable = true;
 		target.style.display = enable ? "contents" : "none";
@@ -315,8 +370,13 @@ function onclicklog(evt) {
 
 	let opts = {...anchor_current};
 
+	let cur_log = opts["log"].split("/");
+	let log_basic;
+
+	cur_log.shift();
+
 	if (srcid == "cf-log" && !checked)
-		opts["log"] = "-";
+		log_basic = "-";
 	else {
 		var optstr = [];
 
@@ -324,8 +384,11 @@ function onclicklog(evt) {
 			if (document.getElementById("cf-".concat(classname)).checked)
 				optstr.push(ctlchar);
 		}
-		opts["log"] = optstr.join("");
+		log_basic = optstr.join("");
 	}
+	cur_log.unshift(log_basic);
+	opts["log"] = cur_log.join("/");
+
 	anchor_export(opts);
 }
 
@@ -574,6 +637,40 @@ const mono_xrefs = new Set(["VDSXN-XE88Y", "SH01T-57BR4", "TCYNJ-TRV01", "TRN9Y-
 
 /* global coverage_loc:readonly */
 
+function uidspan_hover_hide_uid() {
+	let hide_uid = hover_child.obj.data.uid;
+	hover_clear();
+
+	let opts = {...anchor_current};
+	let cur_log = opts["log"].split("/");
+	cur_log.push(`-u:${hide_uid}`);
+	opts["log"] = cur_log.join("/");
+
+	anchor_export(opts);
+}
+
+function uidspan_hover(elem) {
+	let obj = elem.parentElement.obj;
+
+	hover_child.obj = obj;
+	hover_child.style.fontSize = "11pt";
+
+	let uid_e = create(hover_child, "span", "uid", obj.data.uid);
+	hover_child.appendChild(document.createTextNode(" "));
+
+	let hide_uid_action = create(hover_child, "span", "action", "[hide]");
+	hide_uid_action.onclick = uidspan_hover_hide_uid;
+
+	if (obj.data.uid in xrefs) {
+		for (const srcloc of xrefs[obj.data.uid]) {
+			create(hover_child, "div", "", `${srcloc["file"]}:${srcloc["line"]} (${srcloc["binary"]})`);
+		}
+	} else {
+		uid_e.classList.add("uid-unknown");
+		create(hover_child, "div", "", "xref uid not found");
+	}
+}
+
 function load_log(timetable, obj, xrefs) {
 	var row, logmeta, uidspan;
 
@@ -605,7 +702,7 @@ function load_log(timetable, obj, xrefs) {
 			let xref_line = row.xref_line = srcloc["line"];
 
 			uidspan = create(logmeta, "a", "uid", obj.data.uid);
-			uidspan.title = `${xref_file} line ${xref_line}`;
+			/* uidspan.title = `${xref_file} line ${xref_line}`; */
 
 			try {
 				if (coverage_loc)
@@ -619,6 +716,9 @@ function load_log(timetable, obj, xrefs) {
 		uidspan.title = "xref uid not found";
 		row.classList.add("mono");
 	}
+	logmeta.onmouseover = hover_mouseover;
+	logmeta.onmouseout = hover_mouseout;
+	logmeta.hover_handler = uidspan_hover;
 
 	create(row, "span", "logprio", obj.data.prio);
 	let logtext = create(row, "span", "logtext", "");
@@ -1273,6 +1373,8 @@ function load_configs(configs) {
 	}
 }
 
+var xrefs;
+
 /* global data:readonly */
 /* exported init */
 function init() {
@@ -1294,7 +1396,7 @@ function init() {
 	var timetable;
 	var ts_end = parseFloat("-Infinity");
 	var item_idx = -1;
-	var xrefs = ("xrefs" in jsdata) ? jsdata["xrefs"] : new Object();
+	xrefs = ("xrefs" in jsdata) ? jsdata["xrefs"] : new Object();
 
 	for (const idx in jsdata.timed) {
 		var obj = jsdata.timed[idx];
