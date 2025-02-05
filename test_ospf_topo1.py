@@ -60,6 +60,11 @@ class Configs(FRRConfigs):
     ospf6d = """
     #% extends "boilerplate.conf"
     #% block main
+    #% if router.name == 'r1'
+    debug ospf6 event
+    debug ospf6 neighbor
+    debug ospf6 spf database
+    #% endif
     !
     #%   for iface in router.ifaces
     interface {{ iface.ifname }}
