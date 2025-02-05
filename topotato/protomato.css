@@ -717,3 +717,31 @@ div.config .cfg-buttons .cfg-dl {
 div.config .cfg-buttons a {
 	text-decoration:none;
 }
+
+/* mouse hover details */
+
+.hover-open {
+	text-decoration:underline solid 3px var(--complement-2);
+}
+.hover {
+	display:inline-block;
+	position:absolute;
+	z-index:10;
+
+	padding:5px;
+	width:max-content;
+	max-width:30em;
+	white-space:collapse;
+
+	background-color:var(--complement-9);
+	color:var(--complement-4);
+	border-color:var(--complement-3);
+	border-width:2px;
+	border-style:solid;
+	border-radius:5px;
+}
+.hover .action {
+	color:var(--complement-3);
+	cursor:pointer;
+	text-decoration:underline;
+}

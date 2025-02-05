@@ -37,6 +37,125 @@ function raw_expand(obj, ev) {
 	ev.stopPropagation();
 }
 
+/* hover infrastructure */
+
+/* before new hover is shown: */
+var hover_timer_in = null;
+var hover_parent_pending = null;
+
+/* current hover that is shown: */
+var hover_parent = null;
+var hover_child = null;
+
+/* after leaving current hover: */
+var hover_timer_out = null;
+
+/* for debugging, set in console to make hover elements not get cleared */
+var hover_stick = false;
+
+
+function hover_clear() {
+	if (hover_timer_out) {
+		clearTimeout(hover_timer_out);
+		hover_timer_out = null;
+	}
+
+	if (hover_child) {
+		hover_child.parentElement.removeChild(hover_child);
+		hover_child = null;
+	}
+
+	if (hover_parent) {
+		hover_parent.classList.remove("hover-open");
+		hover_parent = null;
+	}
+
+	hover_timer_out = null;
+}
+
+function hover_inner() {
+	event.stopPropagation();
+
+	if (hover_timer_out) {
+		clearTimeout(hover_timer_out);
+		hover_timer_out = null;
+	}
+	if (hover_timer_in) {
+		clearTimeout(hover_timer_in);
+		hover_parent_pending = null;
+		hover_timer_in = null;
+	}
+}
+
+function hover_in() {
+	hover_timer_in = null;
+
+	if (hover_parent) {
+		hover_clear();
+	} else if (hover_timer_out) {
+		clearTimeout(hover_timer_out);
+		hover_timer_out = null;
+	}
+
+	hover_parent = hover_parent_pending;
+	hover_parent.classList.add("hover-open");
+	hover_parent_pending = null;
+
+	hover_parent.style.position = "relative";
+
+	hover_child = document.createElement("div");
+	hover_child.classList.add("hover");
+	hover_child.style.marginTop = `${hover_parent.offsetHeight}px`;
+	hover_child.style.marginLeft = "20px";
+	hover_parent.insertBefore(hover_child, hover_parent.childNodes[0]);
+
+	hover_child.onmouseover = hover_inner;
+
+	hover_parent.hover_handler(hover_parent);
+}
+
+function hover_mouseout() {
+	event.stopPropagation();
+	if (hover_timer_in) {
+		clearTimeout(hover_timer_in);
+		hover_timer_in = null;
+		hover_parent_pending = null;
+	}
+	if (!hover_stick && !hover_timer_out) {
+		hover_timer_out = setTimeout(hover_clear, 800);
+	}
+}
+
+function hover_mouseover() {
+	event.stopPropagation();
+
+	let hover_e = event.target;
+	while (hover_e.onmouseover !== hover_mouseover) {
+		hover_e = hover_e.parentElement;
+	}
+
+	if (hover_timer_in) {
+		clearTimeout(hover_timer_in);
+		hover_timer_in = null;
+		hover_parent_pending = null;
+	}
+	if (hover_e === hover_parent) {
+		if (hover_timer_out) {
+			clearTimeout(hover_timer_out);
+		}
+		hover_timer_out = null;
+		return;
+	}
+	hover_parent_pending = hover_e;
+	if (hover_child) {
+		hover_timer_in = setTimeout(hover_in, 400);
+	} else {
+		hover_timer_in = setTimeout(hover_in, 100);
+	}
+}
+
+/* anchor processing */
+
 var anchor_active = null;
 var anchor_current = {};
 const anchor_defaults = {
