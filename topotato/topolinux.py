@@ -288,6 +288,10 @@ class NetworkInstance(topobase.NetworkInstance):
             calls.extend(proc_write("/proc/sys/net/ipv4/ip_forward", "1"))
             calls.extend(proc_write("/proc/sys/net/ipv6/conf/all/forwarding", "1"))
             calls.extend(proc_write("/proc/sys/net/ipv6/conf/default/forwarding", "1"))
+            calls.extend(proc_write("/proc/sys/net/ipv6/conf/all/optimistic_dad", "1"))
+            calls.extend(
+                proc_write("/proc/sys/net/ipv6/conf/default/optimistic_dad", "1")
+            )
             calls.extend(proc_write("/proc/sys/net/ipv6/conf/all/accept_dad", "0"))
             calls.extend(proc_write("/proc/sys/net/ipv6/conf/default/accept_dad", "0"))
 
