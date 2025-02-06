@@ -93,6 +93,8 @@ def find_child(parent: int) -> int:
                 status = fd.read().splitlines()
         except FileNotFoundError:
             continue
+        except ProcessLookupError:
+            continue
 
         ppids = [l for l in status if l.startswith("PPid:")]
         assert len(ppids) == 1
