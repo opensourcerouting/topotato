@@ -745,3 +745,8 @@ div.config .cfg-buttons a {
 	cursor:pointer;
 	text-decoration:underline;
 }
+.logarghover {
+	font-weight:normal;
+	font-family: var(--font-mono);
+	font-size:11pt;
+}

@@ -671,12 +671,71 @@ function uidspan_hover(elem) {
 	}
 }
 
+function arg_hover(elem) {
+	hover_child.classList.add("logarghover");
+	create(hover_child, "div", "carg", elem.obj_carg);
+	create(hover_child, "div", "cfmt", elem.obj_cfmt);
+	create(hover_child, "div", "cout", `⇒ "${elem.obj_cout}"`);
+}
+
+const c_scan_re = /[[{(,)}\]"']/;
+const c_str_re = /["'\\]/;
+const c_fmt_re = /(?<!%)%(([0-9]+)\$)?([-#0 +'I]*)(([0-9]+|(\*[0-9]+\$)?)\.)?([0-9]+|(\*[0-9]+\$)?)?(hh|h|l|ll|L|q|j|z|Z|t)?([iouxXeEfFgGaAcCsSm]|[dp]([A-Z0-9]+[a-z]*)?)/g;
+
+function c_arg_split(text) {
+	let cur = "";
+	let ret = new Array();
+	let depth = 0;
+	let pos;
+
+	while ((pos = text.search(c_scan_re)) >= 0) {
+		const ch = text[pos];
+		if (pos)
+			cur = cur + text.substr(0, pos);
+		text = text.substr(pos + 1);
+
+		if (ch == "," && depth == 0) {
+			ret.push(cur.trim());
+			cur = "";
+			continue;
+		}
+
+		cur += ch;
+
+		if (ch == "[" || ch == "(" || ch == "{")
+			depth++;
+		if (ch == "]" || ch == ")" || ch == "}")
+			depth--;
+		if (ch == "'" || ch == "\"") {
+			while ((pos = text.search(c_str_re)) >= 0) {
+				const cch = text[pos];
+
+				if (cch == "\\") {
+					cur = cur + text.substr(0, pos + 2);
+					text = text.substr(pos + 2);
+					continue;
+				}
+				cur = cur + text.substr(0, pos + 1);
+				text = text.substr(pos + 1);
+				if (cch == ch)
+					break;
+			}
+		}
+	}
+	cur += text;
+	if (cur.trim() != "")
+		ret.push(cur.trim());
+	return ret;
+}
+
 function load_log(timetable, obj, xrefs) {
 	var row, logmeta, uidspan;
 
 	row = create(timetable, "div", "logmsg");
 	row.classList.add("prio-" + obj.data.prio);
 	row.obj = obj;
+	row.c_args = new Array();
+	row.c_fmts = new Array();
 
 	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
 	create(row, "span", "rtrname", obj.data.router);
@@ -701,6 +760,9 @@ function load_log(timetable, obj, xrefs) {
 			let xref_file = row.xref_file = srcloc["file"];
 			let xref_line = row.xref_line = srcloc["line"];
 
+			row.c_args = c_arg_split(xrefs[obj.data.uid][0].args);
+			row.c_fmts = xrefs[obj.data.uid][0].fmtstring.matchAll(c_fmt_re).toArray();
+
 			uidspan = create(logmeta, "a", "uid", obj.data.uid);
 			/* uidspan.title = `${xref_file} line ${xref_line}`; */
 
@@ -724,10 +786,25 @@ function load_log(timetable, obj, xrefs) {
 	let logtext = create(row, "span", "logtext", "");
 
 	var prev_e = obj.data.arghdrlen;
+	let i = 0;
 	for (let [s, e] of Object.values(obj.data.args)) {
 		logtext.append(obj.data.text.substr(prev_e, s - prev_e));
-		create(logtext, "span", "logarg", obj.data.text.substr(s, e - s));
+		let s_arg = create(logtext, "span", "logarg", obj.data.text.substr(s, e - s));
 		prev_e = e;
+
+		if (row.c_fmts[i]) {
+			s_arg.obj_cfmt = row.c_fmts[i][0];
+			let j = i;
+			if (row.c_fmts[i][2] !== undefined)
+				j = parseInt(row.c_fmts[i][2]);
+			s_arg.obj_carg = row.c_args[j];
+			s_arg.obj_cout = obj.data.text.substr(s, e - s);
+
+			s_arg.onmouseover = hover_mouseover;
+			s_arg.onmouseout = hover_mouseout;
+			s_arg.hover_handler = arg_hover;
+		}
+		i++;
 	}
 	logtext.append(obj.data.text.substr(prev_e));
 }
