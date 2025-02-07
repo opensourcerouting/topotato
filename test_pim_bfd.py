@@ -128,17 +128,19 @@ class PIMBFDTest(TestBase, AutoFixture, topo=topology, configs=Configs):
         js = [
             {
                 "peer": str(r2.iface_to("r1").ip4[0].ip),
+                "status": "up",
                 "receive-interval": 250,
                 "transmit-interval": 250,
             }
         ]
-        yield from AssertVtysh.make(r1, "bfdd", "enable\nshow bfd peers json", js)
+        yield from AssertVtysh.make(r1, "bfdd", "enable\nshow bfd peers json", js, maxwait=6.0)
 
         js = [
             {
                 "peer": str(r1.iface_to("r2").ip4[0].ip),
+                "status": "up",
                 "remote-receive-interval": 250,
                 "remote-transmit-interval": 250,
             }
         ]
-        yield from AssertVtysh.make(r2, "bfdd", "enable\nshow bfd peers json", js)
+        yield from AssertVtysh.make(r2, "bfdd", "enable\nshow bfd peers json", js, maxwait=6.0)
