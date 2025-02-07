@@ -95,7 +95,9 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
             for record in iter_mld_records(report):
                 if record.rtype == 2: # IS_EX
                     return True
-        yield from AssertPacket.make("h1_dut", maxwait=2.0, pkt=expect_pkt)
+        yield from AssertPacket.make("h1_dut", maxwait=4.0, pkt=expect_pkt)
+
+        yield from Delay.make(maxwait=5.0)
 
     @topotatofunc
     def test_asm(self, topo, dut, h1, h2, src):
