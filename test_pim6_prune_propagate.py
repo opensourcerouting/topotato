@@ -200,12 +200,13 @@ class PIM6PrunePropagate(TestBase, AutoFixture, topo=topo1, configs=Configs):
         """
         # r2 & r3 go through NOINFO for a little while for prune handling
         yield from self.assert_join_state(r1, "r1-r2", "NOINFO", maxwait=1.0)
-        yield from self.assert_join_state(r2, "r2-r3", "NOINFO", maxwait=1.0)
-        yield from self.assert_join_state(r3, "r3-r4", "NOINFO", maxwait=1.0)
+        # changed in FRRouting#14105
+        #yield from self.assert_join_state(r2, "r2-r3", "NOINFO", maxwait=1.0)
+        #yield from self.assert_join_state(r3, "r3-r4", "NOINFO", maxwait=1.0)
         # MLD state is gone
         yield from self.assert_join_state(r4, "r4-lan4", None, maxwait=1.0)
 
-	# send some follow-on packets that should NOT get forwarded
+        # send some follow-on packets that should NOT get forwarded
         yield from self.pkt_send(h1, repeat=3, interval=1)
 
         # r2-4 should completely ditch source MFIB state
