@@ -1041,6 +1041,10 @@ function pdml_get_attr(item, key, attr = "show", idx = 0) {
 function pdml_get_attr_bool(item, key, attr = "show", idx = 0) {
 	return ["1", "True", "true"].includes(pdml_get_attr(item, key, attr, idx));
 }
+function pdml_match_attr(item, key, regex, attr = "show", idx = 0) {
+	let result = pdml_get_attr(item, key, attr, idx);
+	return regex.exec(result);
+}
 
 function pdml_get_value(item, key, idx = 0) {
 	var result = pdml_get(item, key, idx);
@@ -1118,6 +1122,30 @@ const protocols = {
 		return true;
 	},
 
+	"icmp": function (obj, row, proto, protos) {
+		let text;
+		let pname = "ICMP";
+		let type_num = pdml_get_value(proto, "icmp.type");
+		let type = pdml_match_attr(proto, "icmp.type", /\((.*)\)/, "showname")[1];
+		let code = pdml_match_attr(proto, "icmp.code", /\((.*)\)/, "showname")[1];
+
+		text = `${type}/${code}`;
+
+		const udp = proto.querySelector("proto[name='udp']");
+		if (udp)
+			text = `UDP/${pdml_get_value(udp, "udp.dstport")}: ${text}`;
+		const tcp = proto.querySelector("proto[name='tcp']");
+		if (tcp)
+			text = `TCP/${pdml_get_value(udp, "tcp.dstport")}: ${text}`;
+
+		let l4 = create(row, "span", "pktcol l-4 p-icmp", pname);
+		let detail = create(row, "span", "pktcol l-5 detail last", text);
+		if ([3, 11, 12].includes(type_num)) {
+			l4.classList.add("p-icmp-err");
+			detail.classList.add("p-icmp-err");
+		}
+		return false;
+	},
 	"icmpv6": function (obj, row, proto, protos) {
 		let text;
 		let pname = "ICMPv6";
@@ -1138,8 +1166,12 @@ const protocols = {
 			let type = pdml_get_attr(proto, "icmpv6.type", "showname");
 			text = type.split(": ").slice(1).join(": ");
 		}
-		create(row, "span", "pktcol l-4 p-icmpv6", pname);
-		create(row, "span", "pktcol l-5 detail last", text);
+		let l4 = create(row, "span", "pktcol l-4 p-icmpv6", pname);
+		let detail = create(row, "span", "pktcol l-5 detail last", text);
+		if (type_num < 128) {
+			l4.classList.add("p-icmp-err");
+			detail.classList.add("p-icmp-err");
+		}
 		return false;
 	},
 	"igmp": function (obj, row, proto, protos) {
@@ -1152,6 +1184,8 @@ const protocols = {
 	},
 	"udp": function (obj, row, proto, protos) {
 		create(row, "span", "pktcol l-4 p-udp last", `UDP ${pdml_get_attr(proto, "udp.srcport")} → ${pdml_get_attr(proto, "udp.dstport")}`);
+		if (proto.nextElementSibling)
+			return true;
 		return false;
 	},
 	"tcp": function (obj, row, proto, protos) {
@@ -1339,6 +1373,20 @@ const protocols = {
 			text = `${text} [${prefixes.join(", ")}]`;
 
 		create(row, "span", "pktcol l-4 p-isis-lsp last", text);
+		return false;
+	},
+	"bfd": function (obj, row, proto, protos) {
+		if (row.lastElementChild.classList.contains("p-udp"))
+			row.removeChild(row.lastElementChild);
+
+		let my_disc = pdml_get_attr(proto, "bfd.my_discriminator", "value");
+		let your_disc = pdml_get_attr(proto, "bfd.your_discriminator", "value");
+		let state = pdml_get_attr(proto, "bfd.sta", "showname").split(": ")[1].split(" (")[0];
+
+		let text = `${my_disc}→${your_disc} (${state})`;
+
+		create(row, "span", "pktcol l-4 p-bfd", "BFD");
+		create(row, "span", "pktcol l-5 p-bfd detail last", text);
 		return false;
 	},
 };

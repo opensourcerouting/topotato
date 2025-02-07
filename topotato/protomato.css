@@ -572,10 +572,17 @@ svg {
 .p-ospf,
 .p-pim,
 .p-ldp,
-.p-bgp,
-.p-bfd {
+.p-bgp {
 	background-color:#ffeeaa;
 	border-color:#fa0;
+}
+.p-bfd {
+	background-color:#eedddd;
+	border-color:#a88;
+}
+.p-icmp-err {
+	background-color:#ffddaa;
+	border-color:#f80;
 }
 
 .log {
