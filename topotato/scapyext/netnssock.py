@@ -49,6 +49,7 @@ class NetnsL2Socket(scapy.arch.linux.L2Socket):
         # this causes exceptions during shutdown if the interface is gone
         kwargs["promisc"] = False
         super().__init__(*args, **kwargs)
+        scapy.arch.linux.set_promisc(self.ins, self.iface)
 
         with socket.socket() as ipsock:
             try:
