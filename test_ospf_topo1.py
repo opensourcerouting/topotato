@@ -63,6 +63,7 @@ class Configs(FRRConfigs):
     #% if router.name == 'r1'
     debug ospf6 event
     debug ospf6 neighbor
+    debug ospf6 spf process
     debug ospf6 spf database
     #% endif
     !
@@ -420,6 +421,8 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
              N E2 fdbc:3::/64                    fe80::fc02:ff:febc:300    r1-lan3 00:$$\d+:\d+$$
             ''', maxwait = 45.0)
 
+        yield from AssertVtysh.make(r1, 'ospf6d', 'show ipv6 ospf6 database detail')
+
         yield from AssertVtysh.make(r2, 'ospf6d', 'show ipv6 ospf6 route', r'''
             *N E2 fd00::1/128                    fe80::fc01:ff:febc:300    r2-lan3 00:$$\d+:\d+$$
             *N IA fdbc:1::/64                    fe80::fc01:ff:febc:300    r2-lan3 00:$$\d+:\d+$$
@@ -428,6 +431,8 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             *N IA fdbc:3::/64                    ::                        r2-lan3 00:$$\d+:\d+$$
              N E2 fdbc:3::/64                    fe80::fc01:ff:febc:300    r2-lan3 00:$$\d+:\d+$$
             ''', maxwait = 45.0)
+
+        yield from AssertVtysh.make(r2, 'ospf6d', 'show ipv6 ospf6 database detail')
 
         yield from AssertVtysh.make(r3, 'ospf6d', 'show ipv6 ospf6 route', r'''
             *N E2 fd00::4/128                    fe80::fc04:ff:fefe:300     r3-r4 00:$$\d+:\d+$$
