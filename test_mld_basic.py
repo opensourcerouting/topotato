@@ -119,7 +119,7 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
             "src-lan",
             pkt = ip/udp,
 	    repeat = 2,
-	    interval = 0.1,
+	    interval = 0.33,
         )
 
         def expect_pkt(ipv6: IPv6, udp: UDP):
