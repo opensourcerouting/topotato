@@ -46,8 +46,8 @@ class Configs(FRRConfigs):
     bfd
     #%   if router.name == 'r1'
      profile fast-tx
-      receive-interval 250
-      transmit-interval 250
+      receive-interval 400
+      transmit-interval 400
      !
     #%   endif
     !
@@ -179,7 +179,7 @@ class PIMTopo2Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             ]
 
         yield from AssertVtysh.make(
-            r1, "bfdd", "enable\nshow bfd peers json", expect(r2, 250), maxwait=3.0
+            r1, "bfdd", "enable\nshow bfd peers json", expect(r2, 400), maxwait=3.0
         )
 
         yield from AssertVtysh.make(
