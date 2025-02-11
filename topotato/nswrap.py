@@ -11,6 +11,8 @@ import fcntl
 import ctypes
 import ctypes.util
 import errno
+import signal
+import selectors
 
 from typing import (
     ClassVar,
@@ -159,10 +161,7 @@ class LinuxNamespace:
                 "-p",
                 "-f",
                 "--mount-proc",
-                self._exec("tini"),
-                "-g",
                 sys.executable,
-                "--",
                 "-m",
                 "topotato.nswrap",
                 self.name,
@@ -202,6 +201,24 @@ class LinuxNamespace:
             pass
         subprocess.check_call(["mount", "-t", "tmpfs", "none", frrtmp])
 
+        chld_rd, chld_wr = os.pipe()
+        os.set_blocking(chld_rd, False)
+        os.set_blocking(chld_wr, False)
+
+        def sigchld(sig, frame):
+            os.write(chld_wr, b'.')
+
+        def handle_sigchld():
+            _ = os.read(chld_rd, 256)
+            while waited := os.wait3(os.WNOHANG):
+                pid, status, rusage = waited
+                if pid == 0:
+                    break
+                sys.stdout.write(f"{pid} {status}\n")
+                sys.stdout.flush()
+
+        signal.signal(signal.SIGCHLD, sigchld)
+
         taskfilename = os.path.join(os.environ["TOPOTATO_TASKDIR"], "ns-" + nsname)
 
         with LockedFile(taskfilename):
@@ -209,8 +226,23 @@ class LinuxNamespace:
             sys.stdout.write("\n")
             sys.stdout.flush()
 
-            # ... and wait for parent to tell us to exit
-            sys.stdin.read()
+            #os.set_blocking(sys.stdout.fileno(), False)
+
+            sel = selectors.DefaultSelector()
+            stdin_key = sel.register(sys.stdin, selectors.EVENT_READ)
+            chld_key = sel.register(chld_rd, selectors.EVENT_READ)
+
+            while events := sel.select():
+                fds = { key.fd for key, _ in events }
+                if chld_rd in fds:
+                    try:
+                        handle_sigchld()
+                    except ChildProcessError:
+                        pass
+                if 0 in fds:
+                    # stdin - parent asking us to exit
+                    break
+
 
     def end(self):
         """

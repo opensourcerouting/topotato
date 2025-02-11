@@ -809,7 +809,28 @@ function load_log(timetable, obj, xrefs) {
 	logtext.append(obj.data.text.substr(prev_e));
 }
 
-function load_other(timetable, obj, xrefs) {
+function load_exit(timetable, obj) {
+	let row = create(timetable, "div", "proc-exit");
+	row.obj = obj;
+
+	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
+	create(row, "span", "rtrname", obj.data.router || "");
+	create(row, "span", "dmnname", obj.data.daemon || `(pid ${obj.data.pid})`);
+	let textspan = create(row, "span", "proc-text");
+
+	if ("exitsignal" in obj.data) {
+		row.classList.add("proc-exit-sig");
+		textspan.append(`terminated by signal ${obj.data.exitsignal}`);
+	} else if (obj.data.exitstatus === 0) {
+		row.classList.add("proc-exit-zero");
+		textspan.append("exited normally");
+	} else {
+		row.classList.add("proc-exit-nonzero");
+		textspan.append(`exited ${obj.data.exitstatus}`);
+	}
+}
+
+function load_other(timetable, obj) {
 	let row = create(timetable, "div", "event");
 	row.obj = obj;
 
@@ -1539,6 +1560,8 @@ function init() {
 			load_log(timetable, obj, xrefs);
 		else if (obj.data.type == "vtysh")
 			load_vtysh(timetable, obj);
+		else if (obj.data.type == "process_exit")
+			load_exit(timetable, obj);
 		else
 			load_other(timetable, obj);
 	}

@@ -462,6 +462,105 @@ class VtyshPoll(MiniPollee):
                 self.send_cmd()
 
 
+class TimedProcessExit(TimedElement):
+    rtrname: str
+    pid: int
+    result: int
+    daemon: Optional[str]
+
+    __slots__ = [
+        "_ts",
+        "rtrname",
+        "pid",
+        "result",
+        "daemon",
+    ]
+
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def __init__(
+        self,
+        ts: float,
+        rtrname: str,
+        pid: int,
+        result: int,
+        daemon: Optional[str],
+    ):
+        super().__init__()
+        self._ts = ts
+        self.rtrname = rtrname
+        self.pid = pid
+        self.result = result
+        self.daemon = daemon
+
+    @property
+    def ts(self):
+        return (self._ts, 0)
+
+    def serialize(self, context: Context):
+        jsdata = {
+            "type": "process_exit",
+            "router": self.rtrname,
+            "pid": self.pid,
+            "result": self.result,
+        }
+        if self.daemon:
+            jsdata["daemon"] = self.daemon
+        if os.WIFEXITED(self.result):
+            jsdata["exitstatus"] = os.WEXITSTATUS(self.result)
+        if os.WIFSIGNALED(self.result):
+            sig = os.WTERMSIG(self.result)
+            try:
+                jsdata["exitsignal"] = signal.Signals(sig).name
+            except ValueError:
+                jsdata["exitsignal"] = sig
+        return (jsdata, None)
+
+
+class ProcessExitPoll(MiniPollee):
+    """
+    pidfd read poll event handler.
+    """
+
+    rns: TopotatoNetwork.RouterNS
+    _buf: bytes
+    active: bool
+
+    def __init__(self, rns: TopotatoNetwork.RouterNS):
+        self.rns = rns
+        self._buf = b''
+        self.active = True
+        os.set_blocking(self.rns.process.stdout.fileno(), False)
+
+    def fileno(self) -> Optional[int]:
+        if not self.active:
+            return
+        proc = getattr(self.rns, "process", None)
+        if not proc:
+            return
+        return proc.stdout.fileno()
+
+    def readable(self) -> Generator[TimedElement, None, None]:
+        r = self.rns.process.stdout.read1(256)
+
+        if not r:
+            self.active = False
+            return
+
+        self._buf += r
+        while b'\n' in self._buf:
+            msg, self._buf = self._buf.split(b"\n", 1)
+
+            pid, result = msg.decode("UTF-8").split()
+            pid = int(pid)
+            result = int(result)
+            daemon = self.rns.inner_pids.get(pid)
+            # _logger.debug("process %d (%s) exited (%d)", pid, daemon, result)
+            yield TimedProcessExit(
+                time.time(), self.rns.name, pid, result, daemon
+            )
+
+
+
 class FRRInvalidConfigFail(TopotatoFail):
     def __init__(self, router: str, daemon: str, errmsg: str):
         self.router = router
@@ -492,6 +591,8 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
     livelogs: Dict[str, LiveLog]
     frrconfpath: str
     merged_cfg: str
+    exitpoll: ProcessExitPoll
+    inner_pids: Dict[int, str]
 
     # hack to fix CallableNS foo...  really needs some improvement
     check_call: Callable[..., None]
@@ -510,6 +611,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         self.logfiles = {}
         self.livelogs = {}
         self.pids = {}
+        self.inner_pids = {}
         self.rundir = None
         self.rtrcfg = {}
 
@@ -571,6 +673,8 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
 
     def start_run(self):
         super().start_run()
+        self.exitpoll = ProcessExitPoll(self)
+        self.instance.timeline.install(self.exitpoll)
         self.start_run_frr_pre()
 
         self.rtrcfg = self._configs.configs
@@ -629,6 +733,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         logfd = self._getlogfd(daemon)
 
         execpath = os.path.join(frrpath, binmap[daemon])
+        pidfile = "%s/%s.pid" % (self.rundir, daemon)
         cmdline = []
 
         cmdline.extend(
@@ -648,7 +753,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
                 "--vty_socket",
                 self.rundir,
                 "-i",
-                "%s/%s.pid" % (self.rundir, daemon),
+                pidfile,
             ]
         )
         self.adjust_cmdline(daemon, cmdline)
@@ -687,6 +792,8 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
                 ) from e
 
         self.pids[daemon] = pid
+        with open(pidfile, "r") as fd:
+            self.inner_pids[int(fd.read())] = daemon
 
         if not defer_config:
             self._load_config(daemon)

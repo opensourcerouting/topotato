@@ -359,6 +359,40 @@ svg {
 	font-weight: 300;
 }
 
+.proc-exit {
+	display: contents;
+}
+.proc-exit .dmnname {
+	grid-column-end: 6;
+}
+.proc-text {
+	grid-column-start: 6;
+	grid-column-end: span 2;
+}
+.proc-exit.proc-exit-zero > span {
+	background-color: #e0e6d6;
+	font-style: italic;
+}
+.proc-exit.proc-exit-nonzero > span {
+	background-color: #fca;
+	font-weight: 500;
+	font-style: italic;
+}
+.proc-exit.proc-exit-sig > span {
+	background-color: #fbc;
+	background-attachment:fixed;
+	background-image: repeating-linear-gradient(
+		135deg,
+		#fbc,
+		#fde 28.2842712px,
+		#f9b 28.2842712px,
+		#f79 56.5685424px
+	);
+	border-top:8px solid #f00;
+	border-bottom:8px solid #f00;
+	font-weight:700;
+}
+
 .event {
 	display: contents;
 }
@@ -459,7 +493,8 @@ svg {
 .pktcol,
 .logmsg > span,
 .clicmd > span,
-.event > span {
+.event > span,
+.proc-exit > span {
 	border-bottom: 1px solid #aaa;
 	background-color:#eee;
 	/* border-radius: 3pt; */
