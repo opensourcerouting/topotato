@@ -75,6 +75,15 @@ class BGPGrRestartRetainRoutes(TestBase, AutoFixture, topo=topology, configs=Con
             compare=expected,
         )
 
+        expected = {
+            str(r1.lo_ip4[0]): [
+                {
+                    "gateway": str(r1.iface_to("r2").ip4[0].ip),
+                },
+            ],
+        }
+        yield from AssertKernelRoutesV4.make("r2", expected, maxwait=5.5)
+
     @topotatofunc
     def bgp_check_bgp_retained_routes(self, r1, r2):
         yield from DaemonStop.make(r1, "bgpd")
@@ -95,4 +104,7 @@ class BGPGrRestartRetainRoutes(TestBase, AutoFixture, topo=topology, configs=Con
                 },
             ],
         }
-        yield from AssertKernelRoutesV4.make("r2", expected)
+        yield from AssertKernelRoutesV4.make("r2", expected, maxwait=5.5)
+
+        # just for reference
+        yield from AssertVtysh.make(r2, "zebra", "show ip route")
