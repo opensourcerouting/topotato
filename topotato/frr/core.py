@@ -756,7 +756,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
                 pidfile,
             ]
         )
-        if daemon == "bgpd":
+        if daemon == "bgpd" and self.name == "r1" and "orf" in self.rtrcfg.get("bgpd", ""):
             cmdline.append("--deny-exit")
         self.adjust_cmdline(daemon, cmdline)
         try:
