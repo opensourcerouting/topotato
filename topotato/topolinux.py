@@ -287,6 +287,16 @@ class NetworkInstance(topobase.NetworkInstance):
 
             calls = []
             calls.extend(proc_write("/proc/sys/net/ipv4/ip_forward", "1"))
+
+            calls.extend(proc_write("/proc/sys/net/ipv4/conf/all/arp_announce", "0"))
+            calls.extend(
+                proc_write("/proc/sys/net/ipv4/conf/default/arp_announce", "0")
+            )
+            calls.extend(proc_write("/proc/sys/net/ipv4/conf/all/arp_ignore", "0"))
+            calls.extend(proc_write("/proc/sys/net/ipv4/conf/default/arp_ignore", "0"))
+            calls.extend(proc_write("/proc/sys/net/ipv4/conf/all/rp_filter", "0"))
+            calls.extend(proc_write("/proc/sys/net/ipv4/conf/default/rp_filter", "0"))
+
             calls.extend(proc_write("/proc/sys/net/ipv6/conf/all/forwarding", "1"))
             calls.extend(proc_write("/proc/sys/net/ipv6/conf/default/forwarding", "1"))
             calls.extend(proc_write("/proc/sys/net/ipv6/conf/all/optimistic_dad", "1"))
