@@ -1153,6 +1153,32 @@ function strip_colon(text) {
 	return text.split(": ").slice(1).join(": ");
 }
 
+function bgp_pretty_nlri(nlri, subitems, direction) {
+	let dir_str = direction == 1 ? "" : "☒";
+
+	for (const item of nlri.querySelectorAll("field[name='bgp.evpn.nlri']")) {
+		let rtype = pdml_get_value(item, "bgp.evpn.nlri.rt");
+
+		switch (rtype) {
+		case 2: {
+			let mac = pdml_get_attr(item, "bgp.evpn.nlri.mac_addr");
+			let addr = pdml_get_attr(item, "bgp.evpn.nlri.ipv6.addr");
+			if (addr === null)
+				addr = pdml_get_attr(item, "bgp.evpn.nlri.ip.addr");
+
+			subitems.push(`${dir_str}EVPN-T${rtype} ${mac} ${addr}`);
+			break;
+		}
+
+		default:
+			subitems.push(`${dir_str}EVPN-T${rtype}`);
+		}
+	}
+	for (const item of nlri.querySelectorAll("field[name='']")) {
+		subitems.push(dir_str + item.getAttribute("show"));
+	}
+}
+
 const mld_short_recordtypes = {
 	1: "IN",
 	2: "EX",
@@ -1422,9 +1448,10 @@ const protocols = {
 					subitems.push(pdml_get_attr(nlri, ""));
 				}
 				for (const nlri of proto.querySelectorAll("field[name='bgp.update.path_attribute.mp_reach_nlri']")) {
-					for (const item of nlri.querySelectorAll("field[name='']")) {
-						subitems.push(item.getAttribute("show"));
-					}
+					bgp_pretty_nlri(nlri, subitems, 1);
+				}
+				for (const nlri of proto.querySelectorAll("field[name='bgp.update.path_attribute.mp_unreach_nlri']")) {
+					bgp_pretty_nlri(nlri, subitems, -1);
 				}
 				msgtype = "UPDATE [" + subitems.join(", ") + "]";
 			}
