@@ -540,6 +540,8 @@ class NetworkInstance(topobase.NetworkInstance):
                     *self.lcov_args,
                     "-c",
                     "-q",
+                    "--ignore-errors",
+                    "inconsistent",
                     "-d",
                     self.gcov_dir,
                     "-o",
