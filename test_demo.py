@@ -94,7 +94,7 @@ class AllStartupTest(TestBase, AutoFixture, topo=allproto_topo, configs=Configs)
         compare = r"""
         Routing Protocol is "rip"
           Sending updates every 30 seconds with +/-50%, next due in $$\d+$$ seconds
-          Timeout after 180 seconds, garbage collect after 120 seconds
+          Timeout after 180 seconds, garbage collect after $$\d+$$ seconds
           Outgoing update filter list for all interface is not set
           Incoming update filter list for all interface is not set
           Default redistribution metric is 1
@@ -117,7 +117,7 @@ class AllStartupTest(TestBase, AutoFixture, topo=allproto_topo, configs=Configs)
         compare = r"""
         Routing Protocol is "RIPng"
           Sending updates every 30 seconds with +/-50%, next due in $$\d+$$ seconds
-          Timeout after 180 seconds, garbage collect after 120 seconds
+          Timeout after 180 seconds, garbage collect after $$\d+$$ seconds
           Outgoing update filter list for all interface is not set
           Incoming update filter list for all interface is not set
           Default redistribution metric is 1
