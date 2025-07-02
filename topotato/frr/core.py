@@ -640,8 +640,6 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         cmdline.extend(
             [
                 "--log",
-                "file:%s" % self.logfiles[daemon],
-                "--log",
                 "monitor:%d" % logfd.fileno(),
                 "--log-level",
                 "debug",
@@ -667,8 +665,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
                 pid, _, _ = self.vtysh_polled(
                     self.instance.timeline,
                     daemon,
-                    "enable\nconfigure\nlog file %s\ndebug memstats-at-exit\nend\nclear log cmdline-targets"
-                    % self.logfiles[daemon],
+                    "enable\nconfigure\ndebug memstats-at-exit\nend",
                 )
                 break
             except ConnectionRefusedError as e:
