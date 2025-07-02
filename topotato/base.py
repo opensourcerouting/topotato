@@ -814,7 +814,9 @@ class TopotatoFunction(nodes.Collector, _pytest.python.PyobjMixin):
     def collect_iter(
         self,
         iterator: Generator[
-            Union[nodes.Item, nodes.Collector], Optional[Tuple[nodes.Item, str]], None
+            Union[nodes.Item, nodes.Collector],
+            Optional[Tuple[nodes.Collector, str]],
+            None,
         ],
     ) -> Union[
         None, nodes.Item, nodes.Collector, List[Union[nodes.Item, nodes.Collector]]
