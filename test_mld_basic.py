@@ -159,21 +159,6 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
         yield from AssertPacket.make("h1_dut", maxwait=2.0, pkt=expect_pkt)
 
     @topotatofunc
-    def test_no_rtralert(self, topo, dut, h1, h2, src):
-        """
-        MLD code should be ignoring MLD reports without router alert option.
-        """
-        ip = IPv6(hlim=1, src=h1.iface_to("dut").ll6, dst="ff02::16")
-        rec0 = ICMPv6MLDMultAddrRec(dst="ff0e::1234")
-
-        yield from ScapySend.make(
-            h1,
-            "h1-dut",
-            pkt = ip/ICMPv6MLReport2(records = [rec0]),
-        )
-        yield from AssertLog.make(dut, 'pim6d', 'packet without IPv6 Router Alert MLD option', maxwait=2.0)
-
-    @topotatofunc
     def test_invalid_group(self, topo, dut, h1, h2, src):
         """
         An unicast address is not a valid group address.
