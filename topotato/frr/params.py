@@ -110,7 +110,7 @@ class FRRParams(TopotatoParams):
 
         # TODO: rework mgmtd integration, particularly for supporting older
         # FRR versions
-        if "mgmtd" not in self.configs:
+        if self.configs and "mgmtd" not in self.configs:
             self.configs["mgmtd"] = ""
 
         self.daemons = list(d for d in FRRSetup.daemons_all if d in self.configs)
