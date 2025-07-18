@@ -606,8 +606,10 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         out, err = vtysh.communicate()
         out, err = out.decode("UTF-8"), err.decode("UTF-8")
 
-        _logger.debug("stdout from config load: %r", out)
-        _logger.debug("stderr from config load: %r", err)
+        for line in out.splitlines():
+            _logger.debug("%s config load (%r) stdout: %r", self.name, daemon, line)
+        for line in err.splitlines():
+            _logger.debug("%s config load (%r) stderr: %r", self.name, daemon, line)
 
         if 0 < vtysh.returncode < 128:
             raise FRRStartupVtyshConfigFail(
