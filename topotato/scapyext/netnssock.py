@@ -12,6 +12,8 @@ import errno
 import threading
 from fcntl import ioctl
 
+from typing import cast
+
 import scapy.fields  # type: ignore[import-untyped]
 import scapy.arch.linux  # type: ignore[import-untyped]
 import scapy.layers.l2  # type: ignore[import-untyped]
@@ -53,7 +55,7 @@ class NetnsL2Socket(scapy.arch.linux.L2Socket):
 
         with socket.socket() as ipsock:
             try:
-                req = struct.pack("16s16x", self.iface.encode("utf8"))
+                req = struct.pack("16s16x", str(self.iface).encode("utf8"))
                 self._local_ipv4 = ioctl(ipsock, SIOCGIFADDR, req)[20:24]
             except OSError as e:
                 if e.errno != errno.EADDRNOTAVAIL:
@@ -84,7 +86,9 @@ class _SourceMACFixup:
     """
 
     def i2h(self, pkt, x):
-        return scapy.layers.l2.MACField.i2h(self, pkt, x)
+        # i2h is inherited, hence Field below rather than MACField.  hacky. :/
+        selfc = cast(scapy.fields.Field, self)
+        return scapy.layers.l2.MACField.i2h(selfc, pkt, x)
 
     scapy.layers.l2.SourceMACField.i2h = i2h  # type: ignore
 
@@ -93,7 +97,9 @@ class _SourceMACFixup:
             nsock = NetnsL2Socket._tls.send_socket
             if nsock:
                 return nsock.ins.getsockname()[4]
-        return scapy.layers.l2.MACField.i2m(self, pkt, self.i2h(pkt, x))
+
+        selfc = cast(scapy.layers.l2.MACField, self)
+        return scapy.layers.l2.MACField.i2m(selfc, pkt, self.i2h(pkt, x))
 
     scapy.layers.l2.SourceMACField.i2m = i2m  # type: ignore
 
@@ -104,7 +110,8 @@ class _SourceIPFixup:
     """
 
     def i2h(self, pkt, x):
-        return scapy.fields.IPField.i2h(self, pkt, x)
+        selfc = cast(scapy.fields.IPField, self)
+        return scapy.fields.IPField.i2h(selfc, pkt, x)
 
     scapy.fields.SourceIPField.i2h = i2h  # type: ignore
 
@@ -113,6 +120,8 @@ class _SourceIPFixup:
             nsock = NetnsL2Socket._tls.send_socket
             if nsock:
                 return nsock._local_ipv4
-        return scapy.fields.IPField.i2m(self, pkt, self.i2h(pkt, x))
+
+        selfc = cast(scapy.fields.IPField, self)
+        return scapy.fields.IPField.i2m(selfc, pkt, self.i2h(pkt, x))
 
     scapy.fields.SourceIPField.i2m = i2m  # type: ignore
