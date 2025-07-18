@@ -10,8 +10,8 @@ import logging
 
 from typing import Optional
 
-from scapy.supersocket import SuperSocket  # type: ignore
-from scapy.packet import Raw  # type: ignore
+from scapy.supersocket import SuperSocket
+from scapy.packet import Raw, Packet
 
 from .timeline import MiniPollee, TimedElement
 from .pcapng import EnhancedPacket, IfDesc, Context
@@ -86,10 +86,18 @@ class LiveScapy(MiniPollee):
             except BlockingIOError:
                 break
 
+            assert pkt is not None
+
             if isinstance(pkt, Raw):
                 # not exactly sure why/when this happens, scapy bug?
                 rawpkt = pkt
-                pkt = self._sock.LL(bytes(rawpkt))
+
+                LLcls = getattr(self._sock, "LL", None)
+                assert LLcls is not None and issubclass(LLcls, Packet)
+
+                pkt = LLcls(bytes(rawpkt))
+                assert pkt is not None
+
                 if hasattr(rawpkt, "time"):
                     pkt.time = rawpkt.time
                 if hasattr(rawpkt, "time_ns"):
