@@ -51,6 +51,7 @@ from .exceptions import (
 
 if typing.TYPE_CHECKING:
     from .frr.core import FRRRouterNS
+    from .exceptions import TopotatoFail
     from . import toponom, topobase
 
 __all__ = [
@@ -236,7 +237,7 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
     _rtr: "toponom.Router"
     _daemon: str
     _command: str
-    _compare: Optional[str]
+    _compare: Union[str, dict, list, None]
     _filters: List[Callable[[str], str]]
 
     default_delay = 0.1
@@ -282,8 +283,9 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
         self._compare = compare
         self._filters = filters or self.default_filters
 
-    def __call__(self):
+    def __call__(self) -> None:
         router = cast("FRRRouterNS", self.instance.routers[self._rtr.name])
+        result: Optional["TopotatoFail"]
 
         for _ in self.timeline.run_tick(self._timing):
             _, out, rc = router.vtysh_polled(self.timeline, self._daemon, self._command)
