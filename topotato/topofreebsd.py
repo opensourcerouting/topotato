@@ -343,10 +343,15 @@ class NetworkInstance(topobase.NetworkInstance):
 def test():
     from . import toponom
     from pprint import pprint
+    import tempfile
 
     net = toponom.test()
 
-    instance = NetworkInstance(net)
+    class TestNetworkInstance(NetworkInstance):
+        def tempfile(self, name):
+            return tempfile.mktemp(name)
+
+    instance = TestNetworkInstance(net)
     instance.prepare()
     try:
         instance.start()

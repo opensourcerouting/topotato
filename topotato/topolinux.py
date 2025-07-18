@@ -552,10 +552,15 @@ class NetworkInstance(topobase.NetworkInstance):
 def test():
     # pylint: disable=import-outside-toplevel
     from . import toponom
+    import tempfile
 
     net = toponom.test()
 
-    instance = NetworkInstance(net)
+    class TestNetworkInstance(NetworkInstance):
+        def tempfile(self, name):
+            return tempfile.mktemp(name)
+
+    instance = TestNetworkInstance(net)
     instance.prepare()
     try:
         instance.start()
