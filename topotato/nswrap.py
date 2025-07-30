@@ -31,11 +31,23 @@ _unshare = _libc.unshare
 _unshare.argtypes = [ctypes.c_int]
 _unshare.restype = ctypes.c_int
 
+CLONE_NEWTIME = 0x00000080
 CLONE_NEWNS = 0x00020000
+CLONE_NEWCGROUP = 0x02000000
+CLONE_NEWUTS = 0x04000000
+CLONE_NEWIPC = 0x08000000
+CLONE_NEWUSER = 0x10000000
+CLONE_NEWPID = 0x20000000
 CLONE_NEWNET = 0x40000000
 
 _nstypes = {
+    CLONE_NEWTIME: "time",
     CLONE_NEWNS: "mnt",
+    CLONE_NEWCGROUP: "cgroup",
+    CLONE_NEWUTS: "uts",
+    CLONE_NEWIPC: "ipc",
+    CLONE_NEWUSER: "user",
+    CLONE_NEWPID: "pid",
     CLONE_NEWNET: "net",
 }
 
