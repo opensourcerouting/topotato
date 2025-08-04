@@ -1346,6 +1346,22 @@ const protocols = {
 		create(row, "span", "pktcol l-5 p-bgp detail last", items.join(", "));
 		return false;
 	},
+	"bmp": function (obj, row, proto, protos) {
+		var items = new Array;
+		var idx = 0;
+
+		while (proto && idx++ < 6) {
+			let slug = proto.getAttribute("showname");
+
+			slug = slug.replace("BGP Monitoring Protocol, Type ", "");
+
+			items.push(slug);
+			proto = proto.nextElementSibling;
+		}
+		create(row, "span", "pktcol l-4 p-bmp", `BMP`);
+		create(row, "span", "pktcol l-5 p-bmp detail last", items.join(", "));
+		return false;
+	},
 	"isis": function (obj, row, proto, protos) {
 		let pkttype = pdml_get_value(proto, "isis.type");
 
