@@ -8,6 +8,7 @@ Extensions for interactive topotato runs (pausing & potatool)
 
 import sys
 import os
+import asyncio
 import code
 import functools
 import json
@@ -22,6 +23,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    Optional,
     cast,
 )
 
@@ -301,12 +303,37 @@ To modify & run a test item, replace "yield from X.make(...)" with
 """
         )
 
+    def show_aio_tasks(self, out, aioloop):
+        tasks = sorted(
+            asyncio.tasks.all_tasks(aioloop), key=lambda task: task.get_name()
+        )
+        if not tasks:
+            return
+
+        out.write("\033[37;40;1m%s\033[m\n" % (("━━━━━ async ").ljust(72, "━")))
+        sys.stdout.write(
+            "\nasync tasks \033[91mwill not run\033[m while sitting at python prompt:\n"
+        )
+
+        for task in tasks:
+            name = task.get_name()
+            if name.startswith("<"):
+                sys.stdout.write(f"\t{name}\n")
+            else:
+                sys.stdout.write(f"\t{task!r}\n")
+
+        sys.stdout.write(
+            "\nto jump into event loop and run async tasks, use \033[37;40;1m_run_async()\033[m\n\n"
+        )
+
     def show_instance_for_stop(self, instance: "TopotatoNetwork"):
         network: toponom.Network = instance.network
+        aioloop: asyncio.AbstractEventLoop = instance.timeline.aioloop
 
         self.show_diagram(network, sys.stdout)
         self.show_network(network, sys.stdout)
         sys.stdout.write("\n")
+        self.show_aio_tasks(sys.stdout, aioloop)
         self.show_banner(sys.stdout)
 
     @staticmethod
@@ -355,11 +382,13 @@ To modify & run a test item, replace "yield from X.make(...)" with
 
         context = context or {}
         context["__item__"] = item
+        _aioloop: Optional[asyncio.AbstractEventLoop] = None
 
         if show_context:
             show_context()
         if hasattr(item, "instance"):
             context["_instance"] = item.instance
+            context["_aioloop"] = _aioloop = item.instance.timeline.aioloop
             self.show_instance_for_stop(item.instance)
 
         def _yield_from(iterator):
@@ -375,6 +404,30 @@ To modify & run a test item, replace "yield from X.make(...)" with
                 value()
 
         context["_yield_from"] = _yield_from
+
+        def _run_async():
+            if _aioloop is None:
+                sys.stdout.write("Cannot run - not suspended in asyncio event loop.\n")
+                return
+
+            fut: asyncio.Future[bool] = asyncio.Future()
+
+            async def wait_input():
+                sys.stdout.write("Running asyncio event loop.  Hit enter to stop.\n")
+                await fut
+
+            def read_stdin():
+                sys.stdin.read(1)
+                fut.set_result(True)
+
+            _aioloop.add_reader(sys.stdin, read_stdin)
+            try:
+                _aioloop.run_until_complete(wait_input())
+            finally:
+                _aioloop.remove_reader(sys.stdin)
+
+        context["_run_async"] = _run_async
+
         try:
             code.interact(local=context, banner="")
         finally:
