@@ -592,6 +592,15 @@ svg {
 .p-tcp-fin {
 	color:#a20;
 }
+.retransmit .p-tcp {
+	background-color:#fed;
+}
+.retransmit .p-tcp::before {
+	content:"↻ ";
+	font-weight:bold;
+	color:#c60;
+	background-color:#fed;
+}
 
 .p-ospf,
 .p-pim,

@@ -1037,6 +1037,19 @@ function pdml_get(item, key, idx = 0) {
 	return result;
 }
 
+function pdml_search(item, key, idx = 0) {
+	var iter = pdmltree.evaluate(".//field[@name='"+key+"']", item, null, XPathResult.ORDERED_NODE_ITERATOR_TYPE);
+	var result;
+
+	while (idx >= 0) {
+		result = iter.iterateNext();
+		if (result === null)
+			return null;
+		idx--;
+	}
+	return result;
+}
+
 function pdml_get_attr(item, key, attr = "show", idx = 0) {
 	var result = pdml_get(item, key, idx);
 	return result === null ? null : result.getAttribute(attr);
@@ -1192,6 +1205,10 @@ const protocols = {
 		return false;
 	},
 	"tcp": function (obj, row, proto, protos) {
+		let retrans = pdml_search(proto, "tcp.analysis.retransmission");
+		if (retrans)
+			row.classList.add("retransmit");
+
 		if (proto.nextElementSibling)
 			return true;
 
