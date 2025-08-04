@@ -15,6 +15,7 @@ from abc import ABC, abstractmethod
 import os
 import weakref
 import warnings
+import logging
 import asyncio
 from asyncio.events import AbstractEventLoop
 from asyncio import tasks
@@ -44,6 +45,9 @@ if typing.TYPE_CHECKING:
     import subprocess
     from . import toponom
     from .timeline import Timeline
+
+
+_logger = logging.getLogger(__name__)
 
 
 class _ContextAtexit:
@@ -466,6 +470,7 @@ class NetworkInstance(ABC):
             return
 
         for task in to_cancel:
+            _logger.info("cancelling: %r", task)
             task.cancel()
 
         loop.run_until_complete(tasks.gather(*to_cancel, return_exceptions=True))
