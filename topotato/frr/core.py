@@ -94,6 +94,7 @@ class TargetFRRSection(TargetSection, name="frr"):
         return FRRRouterNS(network, name, setup, params)
 
 
+# pylint: disable=too-many-instance-attributes
 class FRRSetup:
     """
     Encapsulation of an FRR build.
@@ -138,6 +139,10 @@ class FRRSetup:
     binmap: Dict[str, str]
     """
     Daemon name to executable mapping
+    """
+    modmap: Dict[str, str]
+    """
+    Module name to DSO mapping
     """
     makevars: Mapping[str, str]
     """
@@ -209,6 +214,7 @@ class FRRSetup:
         self._source_locate()
         self._env_check(result)
         self._daemons_setup(result)
+        self._modules_setup(result)
         self._xrefs_load()
 
     def _source_locate(self):
@@ -300,6 +306,24 @@ class FRRSetup:
         for daemon in sorted(disabled):
             result.warning("daemon %r not enabled in configure, skipping" % daemon)
 
+    def _modules_setup(self, result: EnvcheckResult):
+        self.modmap = {}
+        for mod in self.makevars["module_LTLIBRARIES"].split():
+            if not mod.endswith(".la"):
+                _logger.warning("unrecognized module: %r", mod)
+                continue
+
+            subdir, name = mod.rsplit("/", 1)
+            name = name[:-3]
+
+            path = f"{subdir}/.libs/{name}.so"
+
+            if not os.path.exists(os.path.join(self.frrpath, path)):
+                result.warning("module %r enabled but not built?" % name)
+            else:
+                _logger.debug("module: %s => %s", name, path)
+                self.modmap[name] = path
+
     def _xrefs_load(self):
         xrefpath = os.path.join(self.frrpath, "frr.xref")
         if os.path.exists(xrefpath):
@@ -310,6 +334,7 @@ class FRRSetup:
 class _FRRConfigProtocol(Protocol):
     daemons: Collection[str]
     configs: Dict[str, str]
+    modules: ClassVar[Dict[str, List[str]]]
 
     def want_daemon(self, daemon: str) -> bool: ...
 
@@ -576,6 +601,15 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
                 "-d",
             ]
         )
+        for mod in self._configs.modules.get(daemon, []):
+            args = ""
+            if ":" in mod:
+                mod, args = mod.split(":", 1)
+                args = ":" + args
+
+            cmdline.append(
+                f"-M{self.frr.frrpath}/{self.frr.modmap[mod]}{args}",
+            )
         cmdline.extend(
             [
                 "--log",

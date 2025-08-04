@@ -79,6 +79,8 @@ class FRRParams(TopotatoParams):
 
     daemon_rtrs: ClassVar[Dict[str, Optional[List[str]]]]
 
+    modules: ClassVar[Dict[str, List[str]]]
+
     topology: "toponom.Network"
     topo_router: "toponom.Router"
     daemons: Collection[str]
@@ -90,6 +92,14 @@ class FRRParams(TopotatoParams):
         self.topology = instance.network
         self.topo_router = self.topology.router(name)
         self.configs = {}
+
+        if self.modules:
+            allmods: set[str] = set()
+            for dm in self.modules.values():
+                allmods.update(m.split(":", 1)[0] for m in dm)
+            missing = allmods - set(self.frr.modmap.keys())
+            if missing:
+                raise FRRRequirementNotMet(f"missing modules: {missing!r}")
 
         self.requirements()
 
@@ -249,6 +259,7 @@ class FRRParams(TopotatoParams):
 
         cls.templates = {}
         cls.daemon_rtrs = {}
+        cls.modules = getattr(cls, "modules", {})
 
         all_routers = getattr(cls, "routers", None)
 
@@ -258,5 +269,10 @@ class FRRParams(TopotatoParams):
 
             cls.templates[daemon] = jenv.compile_class_attr(cls, daemon)
             cls.daemon_rtrs[daemon] = getattr(cls, "%s_routers" % daemon, all_routers)
+
+            mods = getattr(cls, daemon + "_modules", None)
+            if mods:
+                l = cls.modules.setdefault(daemon, [])
+                l.extend(mods)
 
         return cls
