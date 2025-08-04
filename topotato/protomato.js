@@ -1461,6 +1461,9 @@ function load_packet(timetable, obj, pdmltree) {
 	obj.pdml = pdml;
 
 	row = create(timetable, "div", "pkt");
+	if (obj.data.local_emit) {
+		row.classList.add("local-emit");
+	}
 	row.obj = obj;
 	row.onclick = onclick_pkt;
 

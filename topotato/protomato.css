@@ -514,6 +514,12 @@ svg {
 	/* border-radius: 3pt; */
 	padding: 2pt 3pt;
 }
+.pkt.local-emit > span.tstamp,
+.pkt.local-emit > span.ifname,
+.pkt.local-emit > span.p-eth,
+.pkt.local-emit > span.l-3 {
+	background-color:#bde;
+}
 .clicmd > span {
 	color:#000;
 	background-color:#f3f3f3;
