@@ -370,6 +370,10 @@ class LiveLog(EventMux[Union[LogMessage, LogClosed, LogReadCancelled]], EventOri
             )
             self.dispatch([LogReadCancelled(self._router.name, self._daemon)])
 
+            self._rdfd.close()
+            self._rdfd = None  # type: ignore[assignment]
+            raise
+
     async def drain(self) -> None:
         await self._task
 
