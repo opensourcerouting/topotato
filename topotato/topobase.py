@@ -38,7 +38,7 @@ from typing_extensions import Protocol
 from .utils import self_or_kwarg
 
 if typing.TYPE_CHECKING:
-    from typing import (
+    from typing import (  # novermin
         Self,
         TypeAlias,
     )

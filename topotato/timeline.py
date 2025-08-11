@@ -23,7 +23,6 @@ from typing import (
     Generic,
     List,
     Optional,
-    Self,
     Tuple,
     Type,
     TypeVar,
@@ -33,7 +32,7 @@ from types import TracebackType
 from .pcapng import Context, Block, Sink
 
 if typing.TYPE_CHECKING:
-    from typing import Awaitable
+    from typing import Awaitable, Self  # novermin
     from .base import TopotatoItem
 
 
@@ -203,7 +202,7 @@ class EventIter(EventDispatch[TE_contra]):
     def dispatch(self, elements: List[TE_contra]):
         self._queue.put_nowait(elements)
 
-    def __aiter__(self) -> Self:
+    def __aiter__(self) -> "Self":
         return self
 
     async def __anext__(self) -> TE_contra:
@@ -214,7 +213,7 @@ class EventIter(EventDispatch[TE_contra]):
             self._pending.extend(elements)
         return self._pending.pop(0)
 
-    def __enter__(self) -> Self:
+    def __enter__(self) -> "Self":
         self.source.dispatch_add(self, self._backfill)
         return self
 

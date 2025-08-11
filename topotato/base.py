@@ -115,7 +115,7 @@ to debug when a test fails.
 endtrace = _SkipTrace()
 
 
-class ItemGroup(list["TopotatoItem"]):
+class ItemGroup(List["TopotatoItem"]):
     """
     Return value of the :py:meth:`TopotatoItem.make` generators.
 

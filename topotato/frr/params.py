@@ -15,6 +15,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Set,
     Union,
 )
 
@@ -94,7 +95,7 @@ class FRRParams(TopotatoParams):
         self.configs = {}
 
         if self.modules:
-            allmods: set[str] = set()
+            allmods: Set[str] = set()
             for dm in self.modules.values():
                 allmods.update(m.split(":", 1)[0] for m in dm)
             missing = allmods - set(self.frr.modmap.keys())

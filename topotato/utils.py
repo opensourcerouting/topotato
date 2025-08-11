@@ -36,7 +36,7 @@ from typing import (
 )
 
 try:
-    from typing import ParamSpec
+    from typing import ParamSpec  # novermin
 except ImportError:
     # python < 3.10
     # pylint: disable=unused-argument
@@ -165,7 +165,7 @@ def self_or_kwarg(
         setattr(self, fieldname, kw.pop(argname))
 
 
-class PathDict(dict[str, Optional[str]]):
+class PathDict(Dict[str, Optional[str]]):
     def __call__(self, k: str) -> str:
         return self.get(k) or k
 
@@ -814,7 +814,7 @@ class Forked:
     def __exit__(self, typ_, value, tb):
         if self.childpid:
             _, status = os.waitpid(self.childpid, 0)
-            ec = os.waitstatus_to_exitcode(status)
+            ec = os.waitstatus_to_exitcode(status)  # novermin # FIXME
             if ec != 0:
                 raise subprocess.CalledProcessError(ec, self.cmd)
         elif typ_ is None:

@@ -31,7 +31,6 @@ from typing import (
     List,
     Mapping,
     Optional,
-    Self,
     Tuple,
     Union,
 )
@@ -62,6 +61,7 @@ from ..control import TargetSection
 from .exceptions import FRRStartupVtyshConfigFail
 
 if typing.TYPE_CHECKING:
+    from typing import Self  # novermin
     from .. import toponom
     from ..types import ISession
 
@@ -167,7 +167,7 @@ class FRRSetup:
     is mildly security relevant.)
     """
 
-    setups: ClassVar[Dict[Union[str, None], Self]] = {}
+    setups: ClassVar[Dict[Union[str, None], "Self"]] = {}
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: frrpath={self.frrpath}>"
@@ -193,12 +193,12 @@ class FRRSetup:
     def pytest_topotato_envcheck(cls, session: "ISession", result: EnvcheckResult):
         frrpath = get_dir(session, "--frr-builddir", "frr_builddir")
 
-        session.frr = cast(Self, cls(frrpath, result))
+        session.frr = cast("Self", cls(frrpath, result))
         cls.setups[None] = session.frr
 
         for section in session.control.typed_sections.get(TargetFRRSection, []):
             _logger.debug("additional loading %r", section)
-            setup = cast(Self, cls(os.path.expanduser(section.builddir), result))
+            setup = cast("Self", cls(os.path.expanduser(section.builddir), result))
             cls.setups[section.name] = setup
 
     def __init__(self, frrpath: str, result: EnvcheckResult):

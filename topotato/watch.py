@@ -410,7 +410,7 @@ class WatchedSession:
                         tcsetpgrp(0, pid)
                         os.killpg(pid, signal.SIGCONT)
                     else:
-                        rc = os.waitstatus_to_exitcode(status)
+                        rc = os.waitstatus_to_exitcode(status)  # novermin # FIXME
 
                 tcsetpgrp(0, orig_pgrp)
                 tcsetattr(0, TCSAFLUSH, orig_term)
