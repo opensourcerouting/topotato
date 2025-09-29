@@ -48,6 +48,7 @@ from .livescapy import LiveScapy
 from .generatorwrap import GeneratorWrapper, GeneratorChecks
 from .network import TopotatoNetwork
 from .leaks import FDState, FDDelta, fdinfo
+from .logcapture import TimelineLogHandler
 
 if typing.TYPE_CHECKING:
     from types import TracebackType
@@ -921,6 +922,8 @@ class TopotatoClass(_pytest.python.Class):
             yield InstanceShutdown.from_parent(self)
 
     def do_start(self) -> None:
+        TimelineLogHandler.get().bind(self.netinst.timeline)
+
         self.starting_ts = time.time()
 
         netinst = self.netinst
@@ -967,8 +970,10 @@ class TopotatoClass(_pytest.python.Class):
             scapysrc = LiveScapy(ifname, sock, netinst.timeline)
             scapysrc.dispatch_add(netinst.timeline)
 
-    @staticmethod
-    def do_stop(stopitem):
+    def do_stop(self, stopitem):
         netinst = stopitem.instance
 
-        netinst.stop()
+        try:
+            netinst.stop()
+        finally:
+            TimelineLogHandler.get().unbind(self.netinst.timeline)

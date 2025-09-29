@@ -25,6 +25,7 @@ from .interactive import Interactive
 from .control import Control
 from .pretty import PrettySession
 from .osdep import NetworkInstance
+from .logcapture import TimelineLogHandler
 
 _logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ def pytest_addhooks(pluginmanager):
     pluginmanager.register(FRRSetup)
     pluginmanager.register(PrettySession)
     pluginmanager.register(Interactive)
+    pluginmanager.register(TimelineLogHandler)
 
 
 def pytest_addoption(parser):

@@ -812,6 +812,24 @@ function load_log(timetable, obj, xrefs) {
 	logtext.append(obj.data.text.substr(prev_e));
 }
 
+function load_pylog(timetable, obj) {
+	let row = create(timetable, "div", "pylog");
+	row.obj = obj;
+
+	row.classList.add(`pyprio-${obj.data.levelname}`);
+
+	prio = obj.data.levelname.toLowerCase();
+	if (prio == "warning")
+		prio = "warn";
+
+	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
+	create(row, "span", "pyinfo", `${obj.data.pathname}:${obj.data.lineno}`);
+	create(row, "span", "pyprio", `${prio}`);
+	let textspan = create(row, "span", "msg");
+
+	textspan.append(`${obj.data.msg}`);
+}
+
 function load_other(timetable, obj, xrefs) {
 	let row = create(timetable, "div", "event");
 	row.obj = obj;
@@ -1575,6 +1593,8 @@ function init() {
 			load_log(timetable, obj, xrefs);
 		else if (obj.data.type == "vtysh")
 			load_vtysh(timetable, obj);
+		else if (obj.data.type == "pylog")
+			load_pylog(timetable, obj);
 		else
 			load_other(timetable, obj);
 	}

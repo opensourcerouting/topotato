@@ -483,6 +483,7 @@ svg {
 .pktcol,
 .logmsg > span,
 .clicmd > span,
+.pylog > span,
 .event > span {
 	border-bottom: 1px solid #aaa;
 	background-color:#eee;
@@ -793,4 +794,61 @@ div.config .cfg-buttons a {
 	font-weight:normal;
 	font-family: var(--font-mono);
 	font-size:11pt;
+}
+
+.pylog {
+	display: contents;
+	color:#333;
+
+	/* #3776ab python color lightened up */
+	--pylog-color: rgb(89.1% 97.2% 100%);
+	--debug-crosshatch: #f2f2f2;
+	--warn-crosshatch: rgb(100% 93.3% 86.5%);
+	--error-crosshatch: rgb(100% 77.6% 77.5%);
+}
+.pylog > span {
+	background-color:var(--pylog-color);
+}
+.pylog .pyinfo {
+	text-align:right;
+	overflow:hidden;
+	grid-column-start: 2;
+	grid-column-end: 5;
+}
+.pylog .pyprio {
+}
+.pylog .msg {
+	grid-column-start: 6;
+	grid-column-end: span 2;
+}
+
+.pylog.pyprio-DEBUG > span {
+	background-attachment:fixed;
+	background-image: repeating-linear-gradient(
+		135deg,
+		var(--pylog-color),
+		var(--pylog-color) 23.14213452px,
+		var(--debug-crosshatch) 23.14213452px,
+		var(--debug-crosshatch) 28.28427124px
+	);
+}
+.pylog.pyprio-WARNING > span {
+	background-attachment:fixed;
+	background-image: repeating-linear-gradient(
+		135deg,
+		var(--pylog-color),
+		var(--pylog-color) 23.14213452px,
+		var(--warn-crosshatch) 23.14213452px,
+		var(--warn-crosshatch) 28.28427124px
+	);
+}
+.pylog.pyprio-ERROR > span {
+	background-attachment:fixed;
+	background-image: repeating-linear-gradient(
+		135deg,
+		var(--pylog-color),
+		var(--pylog-color) 23.14213452px,
+		var(--error-crosshatch) 23.14213452px,
+		var(--error-crosshatch) 28.28427124px
+	);
 }
