@@ -15,3 +15,14 @@ disable = [
 	"consider-using-f-string",
 	"useless-option-value"
 ]
+
+[tool.ruff]
+target-version = "py38"
+
+[tool.ruff.lint]
+ignore = [
+	"F401", # imported but not used
+	"F403", # star import
+	"E402", # import not at top of file
+	"E741", # ambiguous variable name
+]
