@@ -627,10 +627,23 @@ function onclick_pkt(evt) {
 
 /* global pako:readonly */
 
-function b64_inflate_json(b64data) {
+
+function b64_inflate_json_sync(b64data) {
 	var bytearr = Uint8Array.from(atob(b64data), i => i.charCodeAt(0));
 	var text = new TextDecoder().decode(pako.inflate(bytearr));
 	return JSON.parse(text);
+}
+
+function b64_inflate_json_async(b64data) {
+	let ds = new DecompressionStream("deflate");
+	let uarr;
+	if ("fromBase64" in Uint8Array)
+		uarr = Uint8Array.fromBase64(b64data);
+	else
+		uarr = Uint8Array.from(atob(b64data), i => i.charCodeAt(0));
+	let blob = new Blob([uarr]);
+	let out = blob.stream().pipeThrough(ds);
+	return new Response(out).json();
 }
 
 /*
@@ -1683,7 +1696,38 @@ const logprios = [
 
 /* global data:readonly */
 /* exported init */
-function init() {
+async function init() {
+	let body = document.getElementsByTagName("body")[0];
+	let loadmsg = create(body, "div", "");
+
+	loadmsg.style.position = "fixed";
+	loadmsg.style.zIndex = "20";
+	loadmsg.style.backgroundColor = "rgba(0,0,0,33%)";
+	loadmsg.style.color = "#fff";
+	loadmsg.style.textAlign = "center";
+	loadmsg.style.width = "100%";
+	loadmsg.style.height = "100%";
+	loadmsg.style.paddingTop = "10%";
+	loadmsg.style.fontSize = "36pt";
+	loadmsg.innerHTML = "loading…";
+
+	try {
+		await real_init();
+	} catch (error) {
+		let errdetails = create(loadmsg, "div", "", `${error.name}: ${error.message}\nplease check JavaScript console (under devtools, press F12) for details`);
+		errdetails.style.fontSize = "12pt";
+		errdetails.style.color = "#f00";
+		errdetails.style.backgroundColor = "#000";
+		errdetails.style.padding = "4pt";
+		errdetails.style.border = "2pt solid red";
+		errdetails.style.whiteSpace = "pre-wrap";
+		throw error;
+	}
+
+	body.removeChild(loadmsg);
+}
+
+async function real_init() {
 	window.addEventListener("hashchange", onhashchangedoc);
 	document.onmousedown = onmousedown_selstate;
 
@@ -1705,7 +1749,15 @@ function init() {
 	create_filter_checkbox(f_cli, "ftitle", "cf-cli", onclickcli, "CLI ", "");
 	create_filter_checkbox(f_cli, "fitems", "cf-cli-repeat", onclickcli, "", " repeats with identical output (⇡)");
 
-	jsdata = b64_inflate_json(data);
+	try {
+		jsdata = await b64_inflate_json_async(data);
+		console.log("load complete (async)");
+	} catch (e) {
+		console.log(`load failed (async): ${e.name} ${e.message}`);
+
+		jsdata = b64_inflate_json_sync(data);
+		console.log("load complete (sync)");
+	}
 	ts_start = jsdata.ts_start;
 
 	load_configs(jsdata.configs);
