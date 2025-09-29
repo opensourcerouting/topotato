@@ -174,7 +174,6 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
     sortkey: Tuple[Any, ...]
     num_default: int
     num_explicit: Optional[int]
-    dotname: str
 
     def __init__(self, network):
         super().__init__(network)
@@ -192,6 +191,10 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
         self.num_explicit = val
 
     num = property(_num_get, _num_set)
+
+    @property
+    @abc.abstractmethod
+    def dotname(self) -> str: ...
 
     def add_iface(self, iface):
         self.ifaces.append(iface)
