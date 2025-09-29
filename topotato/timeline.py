@@ -119,7 +119,13 @@ class TimedElement(ABC):
 
 
 class FrameworkEvent(TimedElement):
+    # pylint: disable=declare-non-slot
     typ: ClassVar[str]
+
+    __slots__ = [
+        "_ts",
+        "_data",
+    ]
 
     def __init__(self):
         super().__init__()
@@ -135,6 +141,10 @@ class FrameworkEvent(TimedElement):
 
 
 class _Dummy(TimedElement):
+    __slots__ = [
+        "_ts",
+    ]
+
     def __init__(self, ts: float):
         super().__init__()
         self._ts = ts
