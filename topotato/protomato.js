@@ -1556,6 +1556,32 @@ function load_configs(configs) {
 
 var xrefs;
 
+function create_filter_checkbox(parent_, label_class, id, cbfn, text_before, text_after) {
+	let label = create(parent_, "label", label_class);
+
+	if (text_before)
+		label.appendChild(document.createTextNode(text_before));
+
+	let element = create(label, "input", "");
+	element.type = "checkbox";
+	element.id = id;
+	element.onclick = function() { cbfn(event); };
+
+	if (text_after)
+		label.appendChild(document.createTextNode(text_after));
+
+	return element;
+}
+
+const logprios = [
+	["cf-prio-error", "err"],
+	["cf-prio-warn", "warn"],
+	["cf-prio-notif", "notify"],
+	["cf-prio-info", "info"],
+	["cf-prio-debug", "debug"],
+	["cf-prio-startup", "startup/???"]
+];
+
 /* global data:readonly */
 /* exported init */
 function init() {
@@ -1565,6 +1591,20 @@ function init() {
 	const infopane = document.getElementById("infopane");
 	pdml_decode = create(infopane, "div", "pdml_decode");
 	pdml_decode.style.display = "none";
+
+	const topbar = document.getElementById("filters");
+	while (topbar.firstChild)
+		topbar.removeChild(topbar.firstChild);
+
+	let f_logmsgs = create(topbar, "div", "fblock");
+	create_filter_checkbox(f_logmsgs, "ftitle", "cf-log", onclicklog, "log messages ", "");
+	for (let prio of logprios) {
+		create_filter_checkbox(f_logmsgs, "fitems", prio[0], onclicklog, "", " " + prio[1]);
+	}
+
+	let f_cli = create(topbar, "div", "fblock");
+	create_filter_checkbox(f_cli, "ftitle", "cf-cli", onclickcli, "CLI ", "");
+	create_filter_checkbox(f_cli, "fitems", "cf-cli-repeat", onclickcli, "", " repeats with identical output (⇡)");
 
 	jsdata = b64_inflate_json(data);
 	ts_start = jsdata.ts_start;

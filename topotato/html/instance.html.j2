@@ -10,19 +10,6 @@
   </head>
   <body onload="init()">
     <div id="filters">
-      <div class="fblock">
-        <label class="ftitle">log messages <input type="checkbox" onclick="onclicklog(event)" id="cf-log"/></label>
-        <label class="fitems"><input type="checkbox" onclick="onclicklog(event)" id="cf-prio-error"/> err</label>
-        <label class="fitems"><input type="checkbox" onclick="onclicklog(event)" id="cf-prio-warn"/> warn</label>
-        <label class="fitems"><input type="checkbox" onclick="onclicklog(event)" id="cf-prio-notif"/> notify</label>
-        <label class="fitems"><input type="checkbox" onclick="onclicklog(event)" id="cf-prio-info"/> info</label>
-        <label class="fitems"><input type="checkbox" onclick="onclicklog(event)" id="cf-prio-debug"/> debug</label>
-        <label class="fitems"><input type="checkbox" onclick="onclicklog(event)" id="cf-prio-startup"/> startup/???</label>
-      </div>
-      <div class="fblock">
-        <label class="ftitle">CLI <input type="checkbox" onclick="onclickcli(event)" id="cf-cli"/></label>
-        <label class="fitems"><input type="checkbox" onclick="onclickcli(event)" id="cf-cli-repeat"/> repeats with identical output (⇡)</label>
-      </div>
     </div>
     <div id="vsplit">
       <div id="main">
