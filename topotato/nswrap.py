@@ -12,6 +12,7 @@ import ctypes
 import ctypes.util
 import errno
 import subprocess
+import signal
 import asyncio
 
 from typing import (
@@ -239,6 +240,7 @@ class LinuxNamespace:
 
         self.process.stdin.write(b"\n")
         self.process.stdin.close()
+        self.process.send_signal(signal.SIGHUP)
         await self.process.wait()
         del self.process
 
