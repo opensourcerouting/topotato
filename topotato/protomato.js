@@ -818,7 +818,7 @@ function load_pylog(timetable, obj) {
 
 	row.classList.add(`pyprio-${obj.data.levelname}`);
 
-	prio = obj.data.levelname.toLowerCase();
+	let prio = obj.data.levelname.toLowerCase();
 	if (prio == "warning")
 		prio = "warn";
 
@@ -1376,7 +1376,7 @@ const protocols = {
 			items.push(slug);
 			proto = proto.nextElementSibling;
 		}
-		create(row, "span", "pktcol l-4 p-bmp", `BMP`);
+		create(row, "span", "pktcol l-4 p-bmp", "BMP");
 		create(row, "span", "pktcol l-5 p-bmp detail last", items.join(", "));
 		return false;
 	},
