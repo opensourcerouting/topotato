@@ -20,7 +20,8 @@ class FreeBSDJail:
         self_or_kwarg(self, kw, "name")
         super().__init__(**kw)
 
-    def start(self):
+    async def start(self):
+        # FIXME: use async subprocess
         # pylint: disable=consider-using-with
         self.process = subprocess.Popen(
             [

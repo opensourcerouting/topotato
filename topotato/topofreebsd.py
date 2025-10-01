@@ -55,8 +55,8 @@ class NetworkInstance(topobase.NetworkInstance):
         def tempfile(self, name):
             return os.path.join(self.tempdir, name)
 
-        def start(self):
-            super().start()
+        async def start(self):
+            await super().start()
             self.check_call(["ifconfig", "lo0", "up"])
 
         async def end_prep(self):
@@ -127,7 +127,7 @@ class NetworkInstance(topobase.NetworkInstance):
         """
 
         # pylint: disable=useless-super-delegation
-        def start(self):
+        async def start(self):
             """
             switch ns init:
 
@@ -135,7 +135,7 @@ class NetworkInstance(topobase.NetworkInstance):
             - disable ipv6 everywhere because we don't want linklocals on
               these interfaces
             """
-            super().start()
+            await super().start()
 
             # nothing special for freebsd yet
 
@@ -146,7 +146,7 @@ class NetworkInstance(topobase.NetworkInstance):
         one of these corresponds to 1 router in the topology
         """
 
-        def start(self):
+        async def start(self):
             """
             router ns init:
 
@@ -155,7 +155,7 @@ class NetworkInstance(topobase.NetworkInstance):
             - create all the interfaces from the topology
             - add the addresses the topology contains
             """
-            super().start()
+            await super().start()
 
             assert self.instance.switch_ns is not None
 

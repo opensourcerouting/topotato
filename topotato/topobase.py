@@ -156,7 +156,7 @@ class BaseNS:
         """
         return ""
 
-    def start(self) -> None:
+    async def start(self) -> None:
         """
         Start this virtual system.
         """

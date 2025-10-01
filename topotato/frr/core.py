@@ -511,8 +511,8 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
     def xrefs(self):
         return self.frr.xrefs
 
-    def start(self):
-        super().start()
+    async def start(self):
+        await super().start()
 
         frrcred = self.frr.frrcred
 

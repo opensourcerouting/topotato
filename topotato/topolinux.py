@@ -158,8 +158,8 @@ class NetworkInstance(topobase.NetworkInstance):
         def tempfile(self, name: str) -> str:
             return os.path.join(self.tempdir, name)
 
-        def start(self):
-            super().start()
+        async def start(self):
+            await super().start()
             self.check_call([self._exec("ip"), "link", "set", "lo", "up"])
 
         async def end_prep(self):
@@ -237,7 +237,7 @@ class NetworkInstance(topobase.NetworkInstance):
         bridge side so the router gets "carrier down"
         """
 
-        def start(self):
+        async def start(self):
             """
             switch ns init:
 
@@ -245,7 +245,7 @@ class NetworkInstance(topobase.NetworkInstance):
             - disable ipv6 everywhere because we don't want linklocals on
               these interfaces
             """
-            super().start()
+            await super().start()
 
             calls = []
             calls.append("ip link set lo up")
@@ -272,7 +272,7 @@ class NetworkInstance(topobase.NetworkInstance):
         one of these corresponds to 1 router in the topology
         """
 
-        def start(self):
+        async def start(self):
             """
             router ns init:
 
@@ -281,7 +281,7 @@ class NetworkInstance(topobase.NetworkInstance):
             - create all the interfaces from the topology
             - add the addresses the topology contains
             """
-            super().start()
+            await super().start()
 
             assert self.instance.switch_ns is not None
 
@@ -389,9 +389,14 @@ class NetworkInstance(topobase.NetworkInstance):
 
         assert self.switch_ns is not None
 
-        self.switch_ns.start()
+        # switch_ns needs to be running before other ns'es because they need
+        # the switch ns' pid.  This could be done async, but... not worth it.
+        await self.switch_ns.start()
+
+        aws = []
         for rns in self.routers.values():
-            rns.start()
+            aws.append(rns.start())
+        await asyncio.gather(*aws)
 
         # def linkinfo(iface):
         #    if isinstance(iface.endpoint, LAN):

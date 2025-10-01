@@ -145,7 +145,7 @@ class LinuxNamespace:
 
         self.process = None
 
-    def start(self):
+    async def start(self):
         # pylint: disable=consider-using-with
 
         env = dict(os.environ)
