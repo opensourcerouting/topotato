@@ -12,6 +12,7 @@ import ctypes
 import ctypes.util
 import errno
 import subprocess
+import asyncio
 
 from typing import (
     ClassVar,
@@ -260,6 +261,12 @@ class LinuxNamespace:
     def popen(self, cmdline: List[str], *args, **kwargs):
         # pylint: disable=consider-using-with
         return subprocess.Popen(self.prefix(kwargs) + cmdline, *args, **kwargs)
+
+    async def popen_async(self, cmdline: List[str], *args, **kwargs):
+        # pylint: disable=consider-using-with
+        return await asyncio.create_subprocess_exec(
+            *(self.prefix(kwargs) + cmdline), *args, **kwargs
+        )
 
     def check_call(self, cmdline: List[str], *args, **kwargs):
         return subprocess.check_call(self.prefix(kwargs) + cmdline, *args, **kwargs)

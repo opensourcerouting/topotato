@@ -43,6 +43,7 @@ if typing.TYPE_CHECKING:
         TypeAlias,
     )
     import subprocess
+    import asyncio.process  # type: ignore[import-not-found]
     from . import toponom
     from .timeline import Timeline
 
@@ -321,6 +322,10 @@ class CallableNS(Protocol):
 
     def popen(self, cmdline: List[str], *args, **kwargs) -> "subprocess.Popen": ...
 
+    async def popen_async(
+        self, cmdline: List[str], *args, **kwargs
+    ) -> "asyncio.process.Process": ...
+
 
 class CallableEnvMixin(ABC):
     """
@@ -347,6 +352,11 @@ class CallableEnvMixin(ABC):
         self._modify_env(kwargs)
         _super: CallableNS = cast(CallableNS, super())
         return _super.popen(cmdline, *args, **kwargs)
+
+    async def popen_async(self, cmdline: List[str], *args, **kwargs):
+        self._modify_env(kwargs)
+        _super: CallableNS = cast(CallableNS, super())
+        return await _super.popen_async(cmdline, *args, **kwargs)
 
     def check_call(self, cmdline: List[str], *args, **kwargs):
         self._modify_env(kwargs)

@@ -7,6 +7,11 @@ FreeBSD jail abstractions.
 
 import subprocess
 import time
+import asyncio
+
+from typing import (
+    List,
+)
 
 from .utils import self_or_kwarg
 
@@ -59,6 +64,12 @@ class FreeBSDJail:
     def popen(self, cmdline, *args, **kwargs):
         # pylint: disable=consider-using-with
         return subprocess.Popen(self.prefix() + cmdline, *args, **kwargs)
+
+    async def popen_async(self, cmdline: List[str], *args, **kwargs):
+        # pylint: disable=consider-using-with
+        return await asyncio.create_subprocess_exec(
+            *(self.prefix() + cmdline), *args, **kwargs
+        )
 
     def check_call(self, cmdline, *args, **kwargs):
         return subprocess.check_call(self.prefix() + cmdline, *args, **kwargs)
