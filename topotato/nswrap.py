@@ -138,7 +138,7 @@ class LinuxNamespace:
     )
 
     taskdir: ClassVar[str] = "/tmp/topotato"
-    process: Optional[subprocess.Popen]
+    process: Optional["asyncio.process.Process"]
 
     def __init__(self, **kw):
         self_or_kwarg(self, kw, "name")
@@ -163,8 +163,8 @@ class LinuxNamespace:
         )
 
         # pylint: disable=subprocess-popen-preexec-fn
-        self.process = subprocess.Popen(
-            [
+        self.process = await asyncio.create_subprocess_exec(
+            *[
                 self._exec("unshare"),
                 "-u",
                 "-m",
@@ -182,14 +182,13 @@ class LinuxNamespace:
             ],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            shell=False,
             env=env,
             preexec_fn=os.setpgrp,
         )
         # wait for child to tell us it's ready...
         # (match sys.stdout.write("\n") below)
         assert self.process.stdout is not None
-        self.process.stdout.read(1)
+        await self.process.stdout.read(1)
 
         self.pid = find_child(self.process.pid)
 
@@ -240,7 +239,7 @@ class LinuxNamespace:
 
         self.process.stdin.write(b"\n")
         self.process.stdin.close()
-        self.process.wait()
+        await self.process.wait()
         del self.process
 
     def prefix(self, kwargs) -> List[str]:
