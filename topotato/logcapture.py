@@ -51,7 +51,7 @@ class PyLogEvent(FrameworkEvent):
         self._data["msg"] = record.getMessage()
 
         for key in self.pass_js:
-            self._data[key] = getattr(record, key)
+            self._data[key] = getattr(record, key, None)
 
 
 class TimelineLogHandler(logging.Handler):
