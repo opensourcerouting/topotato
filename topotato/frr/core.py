@@ -61,6 +61,7 @@ from ..control import TargetSection
 from .exceptions import FRRStartupVtyshConfigFail
 
 if typing.TYPE_CHECKING:
+    import asyncio.process  # type: ignore[import-not-found]
     from typing import Self  # novermin
     from .. import toponom
     from ..types import ISession
@@ -456,6 +457,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
     # hack to fix CallableNS foo...  really needs some improvement
     check_call: Callable[..., None]
     popen: Callable[..., "subprocess.Popen"]
+    popen_async: Callable[..., "asyncio.process.Process"]
 
     def __init__(
         self,
@@ -557,15 +559,27 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
 
         if self.pids:
             # one-pass load all daemons
-            self._load_config()
+            await self._load_config()
 
-    def _load_config(self, daemon=None):
-        daemon_arg = ["-d", daemon] if daemon else []
+    async def _load_config(self, daemon=None):
+        args = []
+        frrpath = self.frr.frrpath
+        execpath = os.path.join(frrpath, "vtysh/vtysh")
+        assert self.rundir
 
-        vtysh = self._vtysh(
-            daemon_arg + ["-f", self.frrconfpath], stderr=subprocess.PIPE
+        args.extend([execpath])
+        args.extend(["--vty_socket", self.rundir])
+        if daemon:
+            args.extend(["-d", daemon])
+        args.extend(["-f", self.frrconfpath])
+
+        vtysh = await self.popen_async(
+            args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
-        out, err = vtysh.communicate()
+
+        out, err = await vtysh.communicate()
         out, err = out.decode("UTF-8"), err.decode("UTF-8")
 
         for line in out.splitlines():
@@ -658,7 +672,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         self.pids[daemon] = pid
 
         if not defer_config:
-            self._load_config(daemon)
+            await self._load_config(daemon)
 
     def start_post(self, timeline, failed: List[Tuple[str, str]]):
         for daemon in self._configs.daemons:
