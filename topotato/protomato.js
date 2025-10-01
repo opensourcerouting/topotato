@@ -277,7 +277,9 @@ function cli_show(key, sel) {
 			target.style.display = "none";
 	}
 
+	document.getElementById("cf-cli").checked = show_normal;
 	document.getElementById("cf-cli-repeat").disabled = !show_normal;
+	document.getElementById("cf-cli-repeat").checked = show_repeat;
 }
 
 const anchor_funcs = {
