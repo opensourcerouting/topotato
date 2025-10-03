@@ -385,14 +385,17 @@ svg {
 }
 
 .logmsg.prio-error.xwarn {
-	background-image: repeating-linear-gradient(
-		135deg,
-		#fba,
-		#fba 23.14213452px,
-		var(--xwarn-crosshatch) 23.14213452px,
-		var(--xwarn-crosshatch) 28.28427124px
-	);
+	background:
+		repeating-linear-gradient( 135deg, transparent, transparent 15px, var(--xwarn-crosshatch) 15px, var(--xwarn-crosshatch) 17px ),
+		repeating-linear-gradient(  45deg, transparent, transparent 15px, var(--xwarn-crosshatch) 15px, var(--xwarn-crosshatch) 17px ),
+		#fba;
 	font-weight:normal;
+}
+.logmsg.prio-error.xwarn > span:last-child:after {
+	float:right;
+	color:#810;
+	content:"(known)";
+	font-size:9pt;
 }
 .logmsg.prio-error {
 	background-color: #fba;
@@ -401,14 +404,17 @@ svg {
 .logmsg.prio-error .logtext {
 }
 .logmsg.prio-warn.xwarn {
-	background-image: repeating-linear-gradient(
-		135deg,
-		#fca,
-		#fca 23.14213452px,
-		var(--xwarn-crosshatch) 23.14213452px,
-		var(--xwarn-crosshatch) 28.28427124px
-	);
+	background:
+		repeating-linear-gradient( 135deg, transparent, transparent 15px, var(--xwarn-crosshatch) 15px, var(--xwarn-crosshatch) 17px ),
+		repeating-linear-gradient(  45deg, transparent, transparent 15px, var(--xwarn-crosshatch) 15px, var(--xwarn-crosshatch) 17px ),
+		#fca;
 	font-weight:normal;
+}
+.logmsg.prio-warn.xwarn > span:last-child:after {
+	float:right;
+	color:#830;
+	content:"(known)";
+	font-size:9pt;
 }
 .logmsg.prio-warn {
 	background-color: #fca;
@@ -831,9 +837,10 @@ div.config .cfg-buttons a {
 
 	/* #3776ab python color lightened up */
 	--pylog-color: rgb(89.1% 97.2% 100%);
-	--debug-crosshatch: #f2f2f2;
-	--warn-crosshatch: rgb(100% 93.3% 86.5%);
-	--error-crosshatch: rgb(100% 77.6% 77.5%);
+	--debug-gradient: #f2f2f2;
+	--info-gradient: #eee;
+	--warn-gradient: rgb(100% 93.3% 86.5%);
+	--error-gradient: rgb(100% 77.6% 77.5%);
 }
 .pylog .pyinfo {
 	text-align:right;
@@ -849,29 +856,14 @@ div.config .cfg-buttons a {
 }
 
 .pylog.pyprio-DEBUG {
-	background-image: repeating-linear-gradient(
-		135deg,
-		var(--pylog-color),
-		var(--pylog-color) 23.14213452px,
-		var(--debug-crosshatch) 23.14213452px,
-		var(--debug-crosshatch) 28.28427124px
-	);
+	background: linear-gradient(to right, var(--pylog-color), 75%, var(--debug-gradient));
+}
+.pylog.pyprio-INFO {
+	background: linear-gradient(to right, var(--pylog-color), 75%, var(--info-gradient));
 }
 .pylog.pyprio-WARNING {
-	background-image: repeating-linear-gradient(
-		135deg,
-		var(--pylog-color),
-		var(--pylog-color) 23.14213452px,
-		var(--warn-crosshatch) 23.14213452px,
-		var(--warn-crosshatch) 28.28427124px
-	);
+	background: linear-gradient(to right, var(--pylog-color), 25%, var(--warn-gradient));
 }
 .pylog.pyprio-ERROR {
-	background-image: repeating-linear-gradient(
-		135deg,
-		var(--pylog-color),
-		var(--pylog-color) 23.14213452px,
-		var(--error-crosshatch) 23.14213452px,
-		var(--error-crosshatch) 28.28427124px
-	);
+	background: linear-gradient(to right, var(--pylog-color), 25%, var(--error-gradient));
 }
