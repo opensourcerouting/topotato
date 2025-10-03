@@ -297,6 +297,27 @@ svg {
 	display: contents;
 }
 
+.pkt,
+.event,
+.clicmd,
+.pylog,
+.logmsg {
+	display: grid;
+	grid-column-start: 1;
+	grid-column-end: -1;
+	grid-template-columns: subgrid;
+
+	border-bottom: 1px solid #aaa;
+	background-color:#eee;
+}
+.pktcol,
+.logmsg > span,
+.clicmd > span,
+.pylog > span,
+.event > span {
+	padding: 2pt 3pt;
+}
+
 .rtrname {
 	grid-column-start: 2;
 }
@@ -308,7 +329,6 @@ svg {
 }
 
 .logmsg {
-	display: contents;
 	white-space:pre-wrap;
 }
 .logmsg > span.logmeta {
@@ -353,7 +373,7 @@ svg {
 	text-decoration:underline dashed #777;
 }
 
-.logmsg.prio-crit > span {
+.logmsg.prio-crit {
 	background-color: #fbc;
 	border-bottom:1px solid #f04;
 	font-weight:500;
@@ -364,8 +384,7 @@ svg {
 	white-space:pre-wrap;
 }
 
-.logmsg.prio-error.xwarn > span {
-	background-attachment:fixed;
+.logmsg.prio-error.xwarn {
 	background-image: repeating-linear-gradient(
 		135deg,
 		#fba,
@@ -375,14 +394,13 @@ svg {
 	);
 	font-weight:normal;
 }
-.logmsg.prio-error > span {
+.logmsg.prio-error {
 	background-color: #fba;
 	font-weight: 500;
 }
 .logmsg.prio-error .logtext {
 }
-.logmsg.prio-warn.xwarn > span {
-	background-attachment:fixed;
+.logmsg.prio-warn.xwarn {
 	background-image: repeating-linear-gradient(
 		135deg,
 		#fca,
@@ -392,24 +410,21 @@ svg {
 	);
 	font-weight:normal;
 }
-.logmsg.prio-warn > span {
+.logmsg.prio-warn {
 	background-color: #fca;
 	font-weight: 500;
 }
-.logmsg.prio-notif > span {
+.logmsg.prio-notif {
 	background-color: #e0e6d6;
 }
-.logmsg.prio-info > span {
+.logmsg.prio-info {
 	background-color: #d4ddd4;
 }
-.logmsg.prio-debug > span {
+.logmsg.prio-debug {
 	background-color: #d0d7dd;
 	font-weight: 300;
 }
 
-.event {
-	display: contents;
-}
 .event .dmnname {
 	grid-column-end: 6;
 }
@@ -419,9 +434,6 @@ svg {
 	font-style: italic;
 }
 
-.clicmd {
-	display: contents;
-}
 .clicmdtext {
 	grid-column-start: 6;
 	grid-column-end: span 2;
@@ -500,20 +512,7 @@ svg {
 	color:#fe7;
 }
 
-.pkt {
-	display: contents;
-}
 
-.pktcol,
-.logmsg > span,
-.clicmd > span,
-.pylog > span,
-.event > span {
-	border-bottom: 1px solid #aaa;
-	background-color:#eee;
-	/* border-radius: 3pt; */
-	padding: 2pt 3pt;
-}
 .pkt.local-emit > span.tstamp,
 .pkt.local-emit > span.ifname,
 .pkt.local-emit > span.p-eth,
@@ -827,17 +826,14 @@ div.config .cfg-buttons a {
 }
 
 .pylog {
-	display: contents;
 	color:#333;
+	background-color:var(--pylog-color);
 
 	/* #3776ab python color lightened up */
 	--pylog-color: rgb(89.1% 97.2% 100%);
 	--debug-crosshatch: #f2f2f2;
 	--warn-crosshatch: rgb(100% 93.3% 86.5%);
 	--error-crosshatch: rgb(100% 77.6% 77.5%);
-}
-.pylog > span {
-	background-color:var(--pylog-color);
 }
 .pylog .pyinfo {
 	text-align:right;
@@ -852,8 +848,7 @@ div.config .cfg-buttons a {
 	grid-column-end: span 2;
 }
 
-.pylog.pyprio-DEBUG > span {
-	background-attachment:fixed;
+.pylog.pyprio-DEBUG {
 	background-image: repeating-linear-gradient(
 		135deg,
 		var(--pylog-color),
@@ -862,8 +857,7 @@ div.config .cfg-buttons a {
 		var(--debug-crosshatch) 28.28427124px
 	);
 }
-.pylog.pyprio-WARNING > span {
-	background-attachment:fixed;
+.pylog.pyprio-WARNING {
 	background-image: repeating-linear-gradient(
 		135deg,
 		var(--pylog-color),
@@ -872,8 +866,7 @@ div.config .cfg-buttons a {
 		var(--warn-crosshatch) 28.28427124px
 	);
 }
-.pylog.pyprio-ERROR > span {
-	background-attachment:fixed;
+.pylog.pyprio-ERROR {
 	background-image: repeating-linear-gradient(
 		135deg,
 		var(--pylog-color),
