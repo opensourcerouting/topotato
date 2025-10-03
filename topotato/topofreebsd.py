@@ -338,13 +338,20 @@ class NetworkInstance(topobase.NetworkInstance):
     async def _stop(self):
         assert self.switch_ns is not None
 
-        for rtr in self.routers.values():
-            await rtr.end_prep()
-        for rtr in self.routers.values():
-            await rtr.end()
+        aws = [rns.end_prep() for rns in self.routers.values()]
+        await asyncio.gather(*aws, return_exceptions=True)
+
+        async def do_stop(rns):
+            # pylint: disable=protected-access
+            rns._do_atexit()
+            await rns.end()
+
+        aws = [do_stop(rns) for rns in self.routers.values()]
+        await asyncio.gather(*aws, return_exceptions=True)
+
+        # pylint: disable=protected-access
+        self.switch_ns._do_atexit()
         await self.switch_ns.end()
-        # self.dumpcap.send_signal(signal.SIGINT)
-        # self.dumpcap.wait()
 
 
 # pylint: disable=import-outside-toplevel
