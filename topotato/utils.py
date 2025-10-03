@@ -581,6 +581,10 @@ class TmpName:
         return os.path.join(dirname, "." + basename + ".tmp")
 
 
+class LockedFileDisappearedError(RuntimeError):
+    pass
+
+
 class LockedFile:
     """
     Create a file and hold a POSIX advisory lock on it.
@@ -670,11 +674,15 @@ class LockedFile:
         if self._depth:
             return
 
-        os.unlink(self._basename, dir_fd=self._dir_fd)
-        # delete file before implicit unlock in close()
-        # => avoids the same kind of race as in _open
-        self._fd.close()
-        self._fd = None
+        try:
+            os.unlink(self._basename, dir_fd=self._dir_fd)
+        except FileNotFoundError as e:
+            raise LockedFileDisappearedError() from e
+        finally:
+            # delete file before implicit unlock in close()
+            # => avoids the same kind of race as in _open
+            self._fd.close()
+            self._fd = None
 
     def __enter__(self):
         self._open()
