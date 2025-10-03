@@ -133,6 +133,12 @@ def fdinfo(fd: int) -> str:
                 f"pipe(inode={st.st_ino}, mode={stat.S_IMODE(st.st_mode):#o}{extrastr})"
             )
 
+        if (fdlink or "").startswith("anon_inode:"):
+            anontype = (fdlink or "").split(":", 1)[1]
+            if anontype.startswith("[") and anontype.endswith("]"):
+                anontype = anontype[1:-1]
+            return f"{anontype}(inode={st.st_ino}, mode={stat.S_IMODE(st.st_mode):#o}{extrastr})"
+
         return f"?({st!r}{extrastr})"
 
     except OSError as e:
