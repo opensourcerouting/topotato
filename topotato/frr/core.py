@@ -847,10 +847,21 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
 
                 raise
 
-            peercred = sock.getsockopt(
-                socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3I")
-            )
-            pid, _, _ = struct.unpack("3I", peercred)
+            if sys.platform == "linux":
+                # pylint: disable=no-member
+                peercred = sock.getsockopt(
+                    socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3I")
+                )
+                pid, _, _ = struct.unpack("3I", peercred)
+            elif sys.platform.startswith("freebsd"):
+                # pylint: disable=no-member
+                peercred = sock.getsockopt(
+                    0, socket.LOCAL_PEERCRED, struct.calcsize("IIH16IQ")
+                )
+                xucred = struct.unpack("IIH16IQ", peercred)
+                pid = xucred[-1]
+            else:
+                assert False, "unsupported platform(?)"
 
             while cmds:
                 cmd = cmds.pop(0)
