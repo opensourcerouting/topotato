@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import tempfile
 import time
+import signal
 
 import typing
 from typing import Optional, cast
@@ -46,7 +47,7 @@ class ExaBGP:
 
     _rtr: Router
 
-    proc: "subprocess.Popen"
+    proc: Optional["subprocess.Popen"]
     proc_cli: "subprocess.Popen"
     path: str
 
@@ -79,6 +80,7 @@ class ExaBGP:
                 )
 
         def is_bgp_daemon_running(self):
+            assert self._cmdobj.proc
             response = self._cmdobj.proc.poll()
 
             if response is not None:
@@ -184,6 +186,16 @@ class ExaBGP:
                 cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             )
 
+            def atexit():
+                if self._cmdobj.proc is None:
+                    return
+
+                self._cmdobj.proc.send_signal(signal.SIGHUP)
+                self._cmdobj.proc.wait(3.0)
+                self._cmdobj.proc = None
+
+            router.atexit(atexit)
+
             self.is_bgp_daemon_running()
 
     class Execute(Action):
@@ -216,17 +228,12 @@ class ExaBGP:
 
     class Stop(Action):
         def __call__(self):
+            assert self._cmdobj.proc
             self.is_bgp_daemon_running()
 
-            router = cast("CallableNS", self.instance.routers[self._rtr.name])
-
-            path = self._cmdobj.path
-            self._cmdobj.proc_cli = router.popen(
-                ["exabgpcli", "--root", path, "shutdown"],
-                cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            )
-
-            self.is_cli_ok()
+            self._cmdobj.proc.send_signal(signal.SIGHUP)
+            self._cmdobj.proc.wait(3.0)
+            self._cmdobj.proc = None
 
     @skiptrace
     def start(self):

@@ -326,6 +326,8 @@ class CallableNS(Protocol):
         self, cmdline: List[str], *args, **kwargs
     ) -> "asyncio.process.Process": ...
 
+    def atexit(self, fn: Callable[[], None]) -> None: ...
+
 
 class CallableEnvMixin(ABC):
     """
