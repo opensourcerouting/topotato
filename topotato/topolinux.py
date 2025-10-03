@@ -423,6 +423,7 @@ class NetworkInstance(topobase.NetworkInstance):
                 if link.parallel_num != 0:
                     brname += "_%d" % (link.parallel_num)
                 self.bridges.append(brname)
+                self.ifnames[brname] = link
                 self.switch_ns.check_call(
                     [
                         self._exec("ip"),
@@ -464,6 +465,7 @@ class NetworkInstance(topobase.NetworkInstance):
         for lan in self.network.lans.values():
             brname = lan.name
             self.bridges.append(brname)
+            self.ifnames[brname] = lan
             self.switch_ns.check_call(
                 [
                     self._exec("ip"),

@@ -306,6 +306,7 @@ class NetworkInstance(topobase.NetworkInstance):
                     .strip()
                 )
                 self.switch_ns.check_call(["ifconfig", brcreated, "name", brname])
+                self.ifnames[brname] = link
                 self.switch_ns.check_call(
                     [
                         "ifconfig",
@@ -339,6 +340,7 @@ class NetworkInstance(topobase.NetworkInstance):
         for lan in self.network.lans.values():
             brname = lan.name
             self.bridges.append(brname)
+            self.ifnames[brname] = lan
             brcreated = (
                 self.switch_ns.check_output(["ifconfig", "bridge", "create"])
                 .decode("US-ASCII")

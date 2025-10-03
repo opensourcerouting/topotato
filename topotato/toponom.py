@@ -602,10 +602,7 @@ class Link(NOMNode):
     def __repr__(self):
         return "<Link %r %r -- %r>" % (self.parallel_num, self.a, self.b)
 
-    def dot(self, out: List[str]):
-        """
-        graphviz representation
-        """
+    def _names(self) -> Tuple[str, str, str, str, str]:
         if isinstance(self.a.endpoint, LAN):
             a_name = self.a.endpoint.dotname
             a_id = self.a.endpoint.dotname
@@ -624,6 +621,18 @@ class Link(NOMNode):
             self.b.endpoint.dotname,
             self.parallel_num,
         )
+        return (cheat_name, a_name, a_id, b_name, b_id)
+
+    @property
+    def dotname(self) -> str:
+        return self._names()[0]
+
+    def dot(self, out: List[str]):
+        """
+        graphviz representation
+        """
+
+        cheat_name, a_name, a_id, b_name, b_id = self._names()
 
         if not isinstance(self.b.endpoint, LAN) and not isinstance(
             self.a.endpoint, LAN

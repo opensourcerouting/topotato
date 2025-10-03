@@ -371,6 +371,11 @@ class CallableEnvMixin(ABC):
         return _super.check_output(cmdline, *args, **kwargs)
 
 
+class _HasDotname(Protocol):
+    @property
+    def dotname(self) -> str: ...
+
+
 class NetworkInstance(ABC):
     """
     A possibly-running virtual network for a test.
@@ -379,6 +384,14 @@ class NetworkInstance(ABC):
     network: "toponom.Network"
     switch_ns: Optional[SwitchyNS]
     routers: Mapping[str, RouterNS]
+
+    ifnames: Dict[str, _HasDotname]
+    """
+    Topology object (:py:class:`toponom.NOMLinked` or :py:class:`toponom.Link`)
+    that belongs to a given interface name.  Used to write a lookup dict into
+    the output JSON to allow going from packets' interfaces to SVG item, via
+    the latter's graphviz name.
+    """
 
     RouterNS: "TypeAlias" = RouterNS
     """
@@ -407,6 +420,7 @@ class NetworkInstance(ABC):
         self.switch_ns = None
         self.routers = {}
         self.environ = {}
+        self.ifnames = {}
         self.aioloop = asyncio.events.new_event_loop()
 
     def make(self, name: str) -> RouterNS:

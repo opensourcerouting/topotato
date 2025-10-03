@@ -546,6 +546,10 @@ class PrettyShutdown(PrettyTopotato, matches=base.InstanceShutdown):
             jsdata, jstoplevel = self.instance.timeline.serialize(pcapng)
             pcapng.flush()
 
+            jstoplevel["ifnames2dot"] = {
+                k: v.dotname for k, v in self.instance.ifnames.items()
+            }
+
             fd.seek(0)
             self._pcap = fd.read()
 
