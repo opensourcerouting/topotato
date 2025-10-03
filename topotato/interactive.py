@@ -170,9 +170,10 @@ class Interactive:
 
         # FIXME
         # pylint: disable=import-outside-toplevel
-        from .nswrap import LinuxNamespace
+        if sys.platform == "linux":
+            from .nswrap import LinuxNamespace
 
-        LinuxNamespace.taskdir = taskdir
+            LinuxNamespace.taskdir = taskdir
 
     @staticmethod
     @pytest.hookimpl()

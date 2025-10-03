@@ -929,22 +929,25 @@ class TopotatoClass(_pytest.python.Class):
 
         netinst = self.netinst
 
-        tcname = self.nodeid
-        tcname = "".join(
-            ch if ch in string.ascii_letters + string.digits else "_" for ch in tcname
-        )
-        netinst.lcov_args.extend(  # type: ignore[attr-defined]
-            [
-                "-t",
-                tcname,
-                "--exclude",
-                "/usr/include/*",
-                "--exclude",
-                "*_clippy.c",
-                "--exclude",
-                "*.yang.c",
-            ]
-        )
+        if hasattr(netinst, "lcov_args"):
+            # FIXME: clean this up
+            tcname = self.nodeid
+            tcname = "".join(
+                ch if ch in string.ascii_letters + string.digits else "_"
+                for ch in tcname
+            )
+            netinst.lcov_args.extend(  # type: ignore[attr-defined]
+                [
+                    "-t",
+                    tcname,
+                    "--exclude",
+                    "/usr/include/*",
+                    "--exclude",
+                    "*_clippy.c",
+                    "--exclude",
+                    "*.yang.c",
+                ]
+            )
 
         netinst.start()
         netinst.timeline.aioloop.run_until_complete(asyncio.sleep(0.2))

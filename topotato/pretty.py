@@ -298,7 +298,10 @@ class PrettyInstance(list):
             extrafiles.update(item.extrafiles)
 
         covdata = None
-        covdatafile = topotatocls.netinst.coverage_wait()
+        try:
+            covdatafile = topotatocls.netinst.coverage_wait()
+        except AttributeError:
+            covdatafile = None
         if covdatafile:
             try:
                 with open(covdatafile, "rb") as fd:

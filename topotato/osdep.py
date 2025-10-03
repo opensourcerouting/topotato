@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
     from .topobase import NetworkInstance
 elif sys.platform == "linux":
     from .topolinux import NetworkInstance
-elif sys.platform == "freebsd12":
+elif sys.platform.startswith("freebsd"):
     from .topofreebsd import NetworkInstance
 else:
 
