@@ -635,7 +635,8 @@ function create(parent_, tagname, clsname, text = undefined) {
 	return element;
 }
 
-const mono_xrefs = new Set(["VDSXN-XE88Y", "SH01T-57BR4", "TCYNJ-TRV01", "TRN9Y-VYTR4"]);
+const mono_xrefs = new Set(["VDSXN-XE88Y", "SH01T-57BR4", "TCYNJ-TRV01", "TRN9Y-VYTR4",
+	"N142K-P0ZB3", "KHCZ2-6BBZZ"]);
 const xwarn_xrefs = new Set(["NNACN-54BDA", "GQGFH-DSTSR", "RHJDG-5FNSK", "RQT05-4D0H5", "VDWX6-W8CNF", "X3G8F-PM93W", "N5M5Y-J5BPG"]);
 
 /* global coverage_loc:readonly */
