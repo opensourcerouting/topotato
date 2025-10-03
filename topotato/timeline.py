@@ -122,6 +122,8 @@ class FrameworkEvent(TimedElement):
     # pylint: disable=declare-non-slot
     typ: ClassVar[str]
 
+    _data: Dict[str, Optional[str]]
+
     __slots__ = [
         "_ts",
         "_data",
