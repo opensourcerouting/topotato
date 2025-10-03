@@ -120,6 +120,13 @@ class FreeBSDJail:
         self.jid = int(self.process.stdout.readline())
         self.process.stdout.readline()
 
+    def fs_bind(self, target: os.PathLike, substitute: os.PathLike):
+        assert self.rootdir
+        dest = self.rootdir + str(target)
+
+        subprocess.check_call(["mount", "-t", "nullfs", str(substitute), dest])
+        self._umount.insert(0, dest)
+
     async def end(self):
         assert self.process.stdin is not None
 

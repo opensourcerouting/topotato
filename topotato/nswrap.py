@@ -280,6 +280,9 @@ class LinuxNamespace:
     def check_output(self, cmdline: List[str], *args, **kwargs):
         return subprocess.check_output(self.prefix(kwargs) + cmdline, *args, **kwargs)
 
+    def fs_bind(self, target: os.PathLike, substitute: os.PathLike):
+        self.check_call(["mount", "--bind", str(substitute), str(target)])
+
     def __enter__(self):
         if self.process is None:
             raise ValueError("cannot enter non-running namespace")

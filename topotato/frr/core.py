@@ -476,6 +476,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
     check_call: Callable[..., None]
     popen: Callable[..., "subprocess.Popen"]
     popen_async: Callable[..., "asyncio.process.Process"]
+    fs_bind: Callable[..., None]
 
     def __init__(
         self,
@@ -548,14 +549,15 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         self.rundir = rundir = self.tempfile("run")
         os.mkdir(rundir)
         os.chown(rundir, frrcred.pw_uid, frrcred.pw_gid)
-        self.check_call(["mount", "--bind", rundir, "/run"])
-        self.check_call(["mount", "--bind", rundir, "/var/run"])
+        if os.path.exists("/run"):
+            self.fs_bind("/run", rundir)
+        self.fs_bind("/var/run", rundir)
 
         self.varlibdir = varlibdir = self.tempfile("var_lib")
         os.mkdir(varlibdir)
         os.chown(varlibdir, frrcred.pw_uid, frrcred.pw_gid)
         self.varlibdir = varlibdir
-        self.check_call(["mount", "--bind", varlibdir, "/var/lib"])
+        self.fs_bind("/var/lib", varlibdir)
 
     def start_run_frr_pre(self):
         pass
