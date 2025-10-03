@@ -732,6 +732,8 @@ function c_arg_split(text) {
 	return ret;
 }
 
+var all_routers_logs = {};
+
 function load_log(timetable, obj, xrefs) {
 	var row, logmeta, uidspan;
 
@@ -740,6 +742,10 @@ function load_log(timetable, obj, xrefs) {
 	row.obj = obj;
 	row.c_args = new Array();
 	row.c_fmts = new Array();
+
+	if (!(obj.data.router in all_routers_logs))
+		all_routers_logs[obj.data.router] = new Array();
+	all_routers_logs[obj.data.router].push(row);
 
 	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
 	create(row, "span", "rtrname", obj.data.router);
@@ -813,6 +819,33 @@ function load_log(timetable, obj, xrefs) {
 		i++;
 	}
 	logtext.append(obj.data.text.substr(prev_e));
+}
+
+function onclick_rtrfilter() {
+	const cbox = event.currentTarget;
+	const val = cbox.checked;
+	const rtrname = cbox.rtrname;
+
+	let opts = {...anchor_current};
+	let cur_log = opts["log"].split("/");
+	let i;
+
+	for (i = 1; i < cur_log.length; i++) {
+		if (cur_log[i] != `+h:${rtrname}` && cur_log[i] != `-h:${rtrname}`)
+			continue;
+		if (val)
+			cur_log.splice(i, 1);
+		else
+			cur_log[i] = `-h:${rtrname}`;
+		i = 0;
+		break;
+	}
+	if (i && !val)
+		cur_log.push(`-h:${rtrname}`);
+	console.log(rtrname, cbox, cur_log);
+	opts["log"] = cur_log.join("/");
+
+	anchor_export(opts);
 }
 
 function load_pylog(timetable, obj) {
@@ -1568,7 +1601,8 @@ function create_filter_checkbox(parent_, label_class, id, cbfn, text_before, tex
 
 	let element = create(label, "input", "");
 	element.type = "checkbox";
-	element.id = id;
+	if (id)
+		element.id = id;
 	element.onclick = function() { cbfn(event); };
 
 	if (text_after)
@@ -1643,6 +1677,15 @@ function init() {
 			load_pylog(timetable, obj);
 		else
 			load_other(timetable, obj);
+	}
+
+	let f_logrtrs = create(topbar, "div", "fblock");
+	create(f_logrtrs, "div", "ftitle", "log origins:");
+
+	for (const rtrname of Object.keys(all_routers_logs)) {
+		let rtrelem = create_filter_checkbox(f_logrtrs, "fitems", null, onclick_rtrfilter, "", rtrname);
+		rtrelem.rtrname = rtrname;
+		rtrelem.checked = true;
 	}
 
 	anchor_update();
