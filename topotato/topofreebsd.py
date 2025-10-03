@@ -10,6 +10,7 @@ import os
 import time
 import subprocess
 import json
+import logging
 import asyncio
 
 from typing import (
@@ -22,6 +23,8 @@ from typing import (
 from .jailwrap import FreeBSDJail
 from .toponom import LAN, Network
 from . import topobase
+
+_logger = logging.getLogger(__name__)
 
 
 def ifname(host, iface):
@@ -139,6 +142,42 @@ class NetworkInstance(topobase.NetworkInstance):
             await super().start()
 
             # nothing special for freebsd yet
+
+        async def end(self):
+            # don't try to delete loopback
+            failed = {"lo0"}
+
+            while True:
+                # on each interation, just get the list of all interfaces and
+                # try to delete the first non-failed one.  For epair, another
+                # one will disappear at the same time; this would cause errors
+                # if we just get the list once at the beginning.  This is just
+                # the simplest approach.
+                try:
+                    delifs = (
+                        self.check_output(["ifconfig", "-a"])
+                        .decode("ASCII")
+                        .splitlines()
+                    )
+                except subprocess.CalledProcessError:
+                    _logger.warning("could not get jail interface list?!")
+                    break
+
+                delifs = [
+                    line.split(":")[0] for line in delifs if not line.startswith("\t")
+                ]
+                delifs = [ifname for ifname in delifs if ifname not in failed]
+                if not delifs:
+                    break
+
+                delif = delifs.pop(0)
+                try:
+                    self.check_call(["ifconfig", delif, "destroy"])
+                except subprocess.CalledProcessError:
+                    _logger.warning("could not destroy interface %r", delif)
+                    failed.add(delif)
+
+            await super().end()
 
     class RouterNS(BaseNS, topobase.RouterNS):
         """
