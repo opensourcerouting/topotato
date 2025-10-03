@@ -187,7 +187,7 @@ class NetworkInstance(topobase.NetworkInstance):
                 )
                 for ip6 in iface.ip6:
                     self.check_call(
-                        ["ifconfig", iface.ifname, "inet6", "no_dad", "alias", str(ip4)]
+                        ["ifconfig", iface.ifname, "inet6", "no_dad", "alias", str(ip6)]
                     )
 
                 subprocess.check_call(
