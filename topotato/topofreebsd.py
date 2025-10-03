@@ -237,9 +237,9 @@ class NetworkInstance(topobase.NetworkInstance):
         """
         assert self.switch_ns is not None
 
-        self.switch_ns.start()
+        await self.switch_ns.start()
         for rns in self.routers.values():
-            rns.start()
+            await rns.start()
 
         # def linkinfo(iface):
         #     if isinstance(iface.endpoint, LAN):
