@@ -426,6 +426,7 @@ class TopotatoItem(nodes.Item):
             def __init__(self, codeloc, nexttb):
                 self.tb_frame = codeloc.frame
                 self.tb_lineno = codeloc.lineno
+                self.tb_lasti = codeloc.frame.f_lasti
                 self.tb_next = nexttb
 
         # pylint: disable=protected-access
