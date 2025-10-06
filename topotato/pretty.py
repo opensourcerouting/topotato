@@ -345,6 +345,19 @@ class PrettyInstance(list):
         with open("%s.html" % basepath, "wb") as fd:
             fd.write(output.encode("UTF-8"))
 
+    @staticmethod
+    def extract(html: str) -> Dict[str, Any]:
+        b64_re = re.compile(r'const data = "')
+        m = b64_re.search(html)
+
+        if m is None:
+            raise ValueError("input text does not contain topotato JSON block")
+
+        b64_data = html[m.end() : html.find('"', m.end())]
+        gzip_data = base64.b64decode(b64_data)
+        json_data = zlib.decompress(gzip_data)
+        return json.loads(json_data)
+
 
 class PrettyItem:
     itemclasses: Dict[Type[base.TopotatoItem], Type["PrettyItem"]] = {}
