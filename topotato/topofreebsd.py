@@ -61,7 +61,7 @@ class NetworkInstance(topobase.NetworkInstance):
 
         async def start(self):
             await super().start()
-            self.check_call(["ifconfig", "lo0", "up"])
+            self.check_call(["ifconfig", "lo0", "name", "lo", "up"])
 
         async def end_prep(self):
             pass
@@ -104,7 +104,7 @@ class NetworkInstance(topobase.NetworkInstance):
                     continue
                 if (
                     entry.get("gateway", "").startswith("link#")
-                    and entry["interface-name"] == "lo0"
+                    and entry["interface-name"] == "lo"
                 ):
                     if not local:
                         continue
@@ -145,7 +145,7 @@ class NetworkInstance(topobase.NetworkInstance):
 
         async def end(self):
             # don't try to delete loopback
-            failed = {"lo0"}
+            failed = {"lo"}
 
             while True:
                 # on each interation, just get the list of all interfaces and
@@ -200,9 +200,9 @@ class NetworkInstance(topobase.NetworkInstance):
             assert self.instance.switch_ns is not None
 
             for ip4 in self.instance.network.routers[self.name].lo_ip4:
-                self.check_call(["ifconfig", "lo0", "inet", "alias", str(ip4)])
+                self.check_call(["ifconfig", "lo", "inet", "alias", str(ip4)])
             for ip6 in self.instance.network.routers[self.name].lo_ip6:
-                self.check_call(["ifconfig", "lo0", "inet6", "alias", str(ip6)])
+                self.check_call(["ifconfig", "lo", "inet6", "alias", str(ip6)])
 
             for iface in self.instance.network.routers[self.name].ifaces:
                 epairname = (
