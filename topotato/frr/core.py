@@ -31,6 +31,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Set,
     Tuple,
     Union,
 )
@@ -54,6 +55,7 @@ from ..exceptions import (
     TopotatoDaemonStartFail,
     TopotatoDaemonStopFail,
     TopotatoFail,
+    TopotatoSkipped,
 )
 from ..pcapng import Context
 from ..network import TopotatoNetwork
@@ -435,6 +437,22 @@ class FRRInvalidConfigFail(TopotatoFail):
     __str__ = __repr__
 
 
+class FRRDaemonsUnavailable(TopotatoSkipped):
+    """
+    A test is requesting a daemon (has config for it) but it isn't built
+    """
+
+    def __init__(self, router: str, daemons: Set[str]):
+        self.router = router
+        self.daemons = daemons
+        super().__init__()
+
+    def __repr__(self) -> str:
+        return f"{self.router}: {', '.join(sorted(self.daemons))}"
+
+    __str__ = __repr__
+
+
 # pylint: disable=too-many-ancestors,too-many-instance-attributes
 class FRRRouterNS(TopotatoNetwork.RouterNS):
     """
@@ -467,6 +485,14 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         configs: _FRRConfigProtocol,
     ):
         super().__init__(instance=instance, name=name)
+
+        unavailable = set()
+        for daemon in frr.daemons:
+            if configs.want_daemon(daemon) and daemon not in frr.binmap.keys():
+                unavailable.add(daemon)
+        if unavailable:
+            raise FRRDaemonsUnavailable(self.name, unavailable)
+
         self._configs = configs
         self.frr = frr
         self.logfiles = {}
