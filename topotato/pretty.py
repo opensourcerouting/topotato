@@ -9,6 +9,7 @@ import base64
 import re
 import time
 import os
+import math
 import json
 import lzma
 import zlib
@@ -19,6 +20,7 @@ from xml.etree import ElementTree
 
 import typing
 from typing import (
+    Any,
     cast,
     ClassVar,
     Dict,
@@ -57,14 +59,19 @@ def _docrender(item):
 
     docstr = deindent(obj.__doc__)
     parts = docutils.core.publish_parts(docstr, writer_name="html4")
-    return markupsafe.Markup(f"<div class=\"docstring\">{parts['fragment']}</div>")
+    return parts["fragment"]
+
+
+def _docrender_markup(item):
+    html = _docrender(item)
+    return markupsafe.Markup(f'<div class="docstring">{html}</div>')
 
 
 jenv = jinja2.Environment(
     loader=jinja2.PackageLoader("topotato.pretty", "html"),
     autoescape=True,
 )
-jenv.filters["docrender"] = _docrender
+jenv.filters["docrender"] = _docrender_markup
 
 
 # migrate to javascript
@@ -223,6 +230,7 @@ class PrettyInstance(list):
 
         data = {
             "ts_start": getattr(topotatocls, "started_ts", None),
+            "funcs": [],
             "items": [],
             "macmap": self.instance.network.macmap(),
             "configs": {},
@@ -239,25 +247,25 @@ class PrettyInstance(list):
         for i, prettyitem in enumerate(self.instance.pretty):
             prettyitem.idx = i
 
-            itemnodeid = prettyitem.item.nodeid[len(nodeid) :]
-            itembasename = "%s_%s" % (basename, self._filename_sub.sub("_", itemnodeid))
+            itembasename = "%s_%s" % (
+                basename,
+                self._filename_sub.sub("_", prettyitem.nodeid_rel),
+            )
             for extrafile in prettyitem.files():
                 extrafile.output(self.prettysession.outdir, itembasename)
 
             funcparent = prettyitem.item.getparent(base.TopotatoFunction)
             if funcparent is not prevfunc and funcparent is not None:
                 items.append(PrettyItem.make(self.prettysession, funcparent))
+
+                funcinfo = prettyitem.json_fill(data)
+                funcinfo["start_item"] = i
+                data["funcs"].append(funcinfo)
+
             prevfunc = funcparent
 
             items.append(prettyitem)
-
-            data["items"].append(
-                {
-                    "nodeid": itemnodeid,
-                    "idx": prettyitem.idx,
-                    "ts_end": prettyitem.ts_end,
-                }
-            )
+            data["items"].append(prettyitem.json_fill(data))
 
         del prevfunc
         del funcparent
@@ -385,6 +393,29 @@ class PrettyItem:
     def when_call(self, call, result):
         self.result = result
 
+    def json_fill(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        if not self.result:
+            return {"nodeid": self.nodeid_rel}
+
+        loc = list(self.result.location)
+        if not math.isfinite(loc[1]):
+            loc[1] = None
+
+        ret = {
+            "nodeid": self.nodeid_rel,
+            "outcome": self.result.outcome,
+            "location": loc,
+            "duration": self.result.duration,
+        }
+
+        if self.result.longrepr:
+            longrepr = self.result.longrepr
+            if getattr(longrepr, "tohtml", None):
+                ret["longrepr"] = longrepr.tohtml()
+            ret["chain"] = [str(erepr) for erepr, _, _ in longrepr.chain]
+
+        return ret
+
     # properties for HTML rendering
 
     @property
@@ -400,6 +431,12 @@ class PrettyTopotatoFunc(PrettyItem, matches=base.TopotatoFunction):
     @property
     def obj(self):
         return self.item.obj
+
+    def json_fill(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        ret = super().json_fill(data)
+
+        ret["func_doc"] = _docrender(self.item)
+        return ret
 
 
 class PrettyTopotato(PrettyItem, matches=base.TopotatoItem):
@@ -426,6 +463,12 @@ class PrettyTopotato(PrettyItem, matches=base.TopotatoItem):
         if not hasattr(self.instance, "pretty"):
             self.instance.pretty = PrettyInstance(self.prettysession, self.instance)
         self.instance.pretty.append(self)
+
+    def json_fill(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        ret = super().json_fill(data)
+        ret["idx"] = self.idx
+        ret["ts_end"] = self.ts_end
+        return ret
 
 
 class PrettyStartup(PrettyTopotato, matches=base.InstanceStartup):
@@ -531,6 +574,22 @@ class PrettyShutdown(PrettyTopotato, matches=base.InstanceShutdown):
 class PrettyVtysh(PrettyTopotato, matches=assertions.AssertVtysh):
     template = jenv.get_template("item_vtysh.html.j2")
 
+    def json_fill(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        ret = super().json_fill(data)
+
+        ret["vtysh_command"] = self.item.command
+        if self.item.compare:
+            ret["vtysh_compare"] = self.item.compare
+        return ret
+
 
 class PrettyScapy(PrettyTopotato, matches=ScapySend):
     template = jenv.get_template("item_scapy.html.j2")
+
+    def json_fill(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        ret = super().json_fill(data)
+
+        # pylint: disable=protected-access
+        ret["scapy_summary"] = self.item._pkt.summary()
+        ret["scapy_dump"] = self.item._pkt.show(dump=True)
+        return ret
