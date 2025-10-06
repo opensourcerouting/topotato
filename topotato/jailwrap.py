@@ -4,6 +4,7 @@
 """
 FreeBSD jail abstractions.
 """
+# pylint: disable=duplicate-code
 
 import subprocess
 import time
@@ -58,24 +59,29 @@ class FreeBSDJail:
         self.process.wait()
         del self.process
 
-    def prefix(self):
-        return ["jexec", str(self.jid)]
+    def prefix(self, kwargs) -> List[str]:
+        ret = ["jexec"]
+        if "cwd" in kwargs:
+            cwd = kwargs.pop("cwd")
+            ret.extend(["-d", cwd])
+        ret.append(str(self.jid))
+        return ret
 
     def popen(self, cmdline, *args, **kwargs):
         # pylint: disable=consider-using-with
-        return subprocess.Popen(self.prefix() + cmdline, *args, **kwargs)
+        return subprocess.Popen(self.prefix(kwargs) + cmdline, *args, **kwargs)
 
     async def popen_async(self, cmdline: List[str], *args, **kwargs):
         # pylint: disable=consider-using-with
         return await asyncio.create_subprocess_exec(
-            *(self.prefix() + cmdline), *args, **kwargs
+            *(self.prefix(kwargs) + cmdline), *args, **kwargs
         )
 
     def check_call(self, cmdline, *args, **kwargs):
-        return subprocess.check_call(self.prefix() + cmdline, *args, **kwargs)
+        return subprocess.check_call(self.prefix(kwargs) + cmdline, *args, **kwargs)
 
     def check_output(self, cmdline, *args, **kwargs):
-        return subprocess.check_output(self.prefix() + cmdline, *args, **kwargs)
+        return subprocess.check_output(self.prefix(kwargs) + cmdline, *args, **kwargs)
 
 
 # pylint: disable=duplicate-code
