@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import LogTable from "./LogTable";
+import LogTable from "./component/LogTable";
 
 const templateFiles = [
   { label: "Example 1", value: "test.json" },
@@ -57,6 +57,8 @@ function App() {
         return set;
       }, new Set())
     );
+
+    console.log(itemsWithLogs[0].logs);
 
     setItems(itemsWithLogs);
     setKeys(allKeys);
@@ -126,12 +128,6 @@ function App() {
     reader.readAsText(file);
   };
 
-  // Debug log
-  React.useEffect(() => {
-    console.log("[DEBUG] items:", items);
-    console.log("[DEBUG] keys:", keys);
-  }, [items, keys]);
-
   const hasValidData = items.length > 0 && keys.length > 0;
 
   return (
@@ -158,11 +154,9 @@ function App() {
               <div style={{ background: '#e3e3e3', padding: '6px 12px', fontWeight: 'bold', fontSize: 18, borderTopLeftRadius: 6, borderTopRightRadius: 6 }}>
                 {item.nodeid}
               </div>
-              <div style={{ background: '#d4edda', color: '#155724', padding: '4px 12px', fontWeight: 'bold', borderBottom: '1px solid #bdbdbd' }}>
-                &#x2714; passed after {item.logs && item.logs.length > 0 ? Math.abs(item.logs[0].ts ?? 0).toFixed(2) : '0.00'}s
-              </div>
-              <pre style={{background:'#eee', color:'#333', fontSize:12, padding:8, margin:0, overflowX:'auto'}}>{JSON.stringify(item.logs, null, 2)}</pre>
-              <LogTable logs={item.logs} />
+              <LogTable
+                  logs={item.logs}
+                  timed={item.logs && item.logs.length > 0 ? Math.abs(item.logs[0].ts ?? 0).toFixed(2) : '0.00'} />
             </div>
           ))}
         </div>
