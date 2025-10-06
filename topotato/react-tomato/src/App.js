@@ -5,11 +5,28 @@ const templateFiles = [
   { label: "Example 1", value: "test.json" },
 ];
 
+// Mapeamento dos checkboxes para os valores de type nos logs
+const LOG_TYPE_MAP = {
+  err: "error",
+  warn: "warn",
+  notify: "notif",
+  info: "info",
+  debug: "debug",
+};
+
 function App() {
   const [items, setItems] = useState([]);
   const [keys, setKeys] = useState([]);
   const [error, setError] = useState("");
   const [selectedFile, setSelectedFile] = useState("");
+  const [logTypeFilter, setLogTypeFilter] = useState({
+    showAll: true,
+    err: true,
+    warn: true,
+    notify: true,
+    info: true,
+    debug: true,
+  });
 
   function safeKeys(obj) {
     if (obj && typeof obj === "object" && !Array.isArray(obj)) {
@@ -57,8 +74,6 @@ function App() {
         return set;
       }, new Set())
     );
-
-    console.log(itemsWithLogs[0].logs);
 
     setItems(itemsWithLogs);
     setKeys(allKeys);
@@ -130,6 +145,40 @@ function App() {
 
   const hasValidData = items.length > 0 && keys.length > 0;
 
+  // Handler para checkboxes
+  function handleLogTypeChange(e) {
+    const { name, checked } = e.target;
+    if (name === 'showAll') {
+      setLogTypeFilter({
+        showAll: checked,
+        err: checked,
+        warn: checked,
+        notify: checked,
+        info: checked,
+        debug: checked,
+      });
+    } else {
+      setLogTypeFilter((prev) => {
+        const updated = { ...prev, [name]: checked, showAll: false };
+        // Se todos os checkboxes individuais ficarem marcados, ativa showAll automaticamente
+        const allChecked = ['err','warn','notify','info','debug'].every(k => updated[k]);
+        if (allChecked) updated.showAll = true;
+        return updated;
+      });
+    }
+  }
+
+  // Função para filtrar logs de acordo com os checkboxes
+  function filterLogs(logs) {
+    if (logTypeFilter.showAll) return logs || [];
+    const allowedTypes = Object.entries(logTypeFilter)
+      .filter(([k, v]) => v && k !== 'showAll')
+      .map(([k]) => LOG_TYPE_MAP[k]);
+    return Array.isArray(logs)
+      ? logs.filter((log) => allowedTypes.includes(log.data?.type))
+      : [];
+  }
+
   return (
     <div style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
       <h1>Test Results (JSON)</h1>
@@ -146,6 +195,31 @@ function App() {
         <label>Or upload a JSON file:&nbsp;</label>
         <input type="file" accept="application/json" onChange={handleFile} />
       </div>
+      {/* Checkboxes para filtrar tipos de log */}
+      <div style={{ marginBottom: 16 }}>
+        <span style={{ fontWeight: 'bold', marginRight: 8 }}>Filtrar tipos:</span>
+        <label style={{ marginRight: 16 }}>
+          <input
+            type="checkbox"
+            name="showAll"
+            checked={logTypeFilter.showAll}
+            onChange={handleLogTypeChange}
+          />
+          &nbsp;Show all
+        </label>
+        {Object.keys(LOG_TYPE_MAP).map((key) => (
+          <label key={key} style={{ marginRight: 12 }}>
+            <input
+              type="checkbox"
+              name={key}
+              checked={logTypeFilter[key]}
+              onChange={handleLogTypeChange}
+              disabled={logTypeFilter.showAll}
+            />
+            &nbsp;{key}
+          </label>
+        ))}
+      </div>
       {error && <div style={{ color: "red", marginTop: 16 }}>{error}</div>}
       {hasValidData && (
         <div style={{ marginTop: 24 }}>
@@ -155,7 +229,7 @@ function App() {
                 {item.nodeid}
               </div>
               <LogTable
-                  logs={item.logs}
+                  logs={filterLogs(item.logs)}
                   timed={item.logs && item.logs.length > 0 ? Math.abs(item.logs[0].ts ?? 0).toFixed(2) : '0.00'} />
             </div>
           ))}
