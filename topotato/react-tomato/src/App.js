@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import TableVirtualList from "./TableVirtualList";
+import LogTable from "./LogTable";
 
 const templateFiles = [
   { label: "Example 1", value: "test.json" },
@@ -21,6 +21,45 @@ function App() {
   function filterValidObjects(arr) {
     if (!Array.isArray(arr)) return [];
     return arr.filter((item) => item && typeof item === "object" && !Array.isArray(item));
+  }
+
+  function processDataItems(data, dataItems, setItems, setKeys, setError, safeKeys) {
+    const validItems = filterValidObjects(dataItems);
+    if (validItems.length === 0) {
+      setItems([]);
+      setKeys([]);
+      setError("The items array is empty or does not contain valid objects.");
+      return;
+    }
+
+    let timedEntries = Array.isArray(data.timed) ? data.timed : [];
+    const logsByItem = Array(validItems.length).fill(null).map(() => []);
+    let item_idx = -1;
+    let ts_end = -Infinity;
+    for (let i = 0; i < timedEntries.length; i++) {
+      const entry = timedEntries[i];
+
+      while (item_idx + 1 < validItems.length && entry.ts > validItems[item_idx + 1].ts_end) {
+        item_idx++;
+        ts_end = validItems[item_idx]?.ts_end ?? -Infinity;
+      }
+
+      if (item_idx + 1 < validItems.length) {
+        logsByItem[item_idx + 1].push(entry);
+      }
+    }
+
+    const itemsWithLogs = validItems.map((item, idx) => ({ ...item, logs: logsByItem[idx] }));
+
+    const allKeys = Array.from(
+      itemsWithLogs.reduce((set, item) => {
+        safeKeys(item).forEach((k) => set.add(k));
+        return set;
+      }, new Set())
+    );
+
+    setItems(itemsWithLogs);
+    setKeys(allKeys);
   }
 
   // New: Load JSON file from templates folder
@@ -47,21 +86,8 @@ function App() {
         setError("JSON must be an array of objects or contain an 'items' field with an array.");
         return;
       }
-      dataItems = filterValidObjects(dataItems);
-      if (dataItems.length === 0) {
-        setItems([]);
-        setKeys([]);
-        setError("The items array is empty or does not contain valid objects.");
-        return;
-      }
-      const allKeys = Array.from(
-        dataItems.reduce((set, item) => {
-          safeKeys(item).forEach((k) => set.add(k));
-          return set;
-        }, new Set())
-      );
-      setItems(dataItems);
-      setKeys(allKeys);
+
+      processDataItems(data, dataItems, setItems, setKeys, setError, safeKeys);
     } catch (err) {
       setItems([]);
       setKeys([]);
@@ -89,21 +115,8 @@ function App() {
           setError("JSON must be an array of objects or contain an 'items' field with an array.");
           return;
         }
-        dataItems = filterValidObjects(dataItems);
-        if (dataItems.length === 0) {
-          setItems([]);
-          setKeys([]);
-          setError("The items array is empty or does not contain valid objects.");
-          return;
-        }
-        const allKeys = Array.from(
-          dataItems.reduce((set, item) => {
-            safeKeys(item).forEach((k) => set.add(k));
-            return set;
-          }, new Set())
-        );
-        setItems(dataItems);
-        setKeys(allKeys);
+
+        processDataItems(dataItems, setItems, setKeys, setError, safeKeys);
       } catch (err) {
         setItems([]);
         setKeys([]);
@@ -140,7 +153,18 @@ function App() {
       {error && <div style={{ color: "red", marginTop: 16 }}>{error}</div>}
       {hasValidData && (
         <div style={{ marginTop: 24 }}>
-          <TableVirtualList items={items} keys={keys} />
+          {items.map((item, idx) => (
+            <div key={idx} style={{ border: '1px solid #bdbdbd', borderRadius: 6, marginBottom: 24, background: '#f8f9fa' }}>
+              <div style={{ background: '#e3e3e3', padding: '6px 12px', fontWeight: 'bold', fontSize: 18, borderTopLeftRadius: 6, borderTopRightRadius: 6 }}>
+                {item.nodeid}
+              </div>
+              <div style={{ background: '#d4edda', color: '#155724', padding: '4px 12px', fontWeight: 'bold', borderBottom: '1px solid #bdbdbd' }}>
+                &#x2714; passed after {item.logs && item.logs.length > 0 ? Math.abs(item.logs[0].ts ?? 0).toFixed(2) : '0.00'}s
+              </div>
+              <pre style={{background:'#eee', color:'#333', fontSize:12, padding:8, margin:0, overflowX:'auto'}}>{JSON.stringify(item.logs, null, 2)}</pre>
+              <LogTable logs={item.logs} />
+            </div>
+          ))}
         </div>
       )}
     </div>
