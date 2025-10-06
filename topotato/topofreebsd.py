@@ -13,6 +13,7 @@ import json
 import asyncio
 
 from typing import (
+    Any,
     Dict,
     List,
     Optional,
@@ -73,7 +74,7 @@ class NetworkInstance(topobase.NetworkInstance):
             """
 
             assert af in [4, 6]
-            ret = {}
+            ret: Dict[str, List[Dict[str, Any]]] = {}
 
             jsroutes = json.loads(
                 self.check_output(["netstat", "--libxo=json,pretty", "-rn"]).decode(
@@ -104,7 +105,7 @@ class NetworkInstance(topobase.NetworkInstance):
                 ):
                     if not local:
                         continue
-                ret[dst] = entry
+                ret.setdefault(dst, []).append(entry)
             return ret
 
     class SwitchyNS(BaseNS, topobase.SwitchyNS):
