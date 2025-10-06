@@ -5,6 +5,7 @@
 HTML test report prettying
 """
 
+import sys
 import base64
 import re
 import time
@@ -16,6 +17,7 @@ import zlib
 import tempfile
 import logging
 import subprocess
+import pathlib
 from xml.etree import ElementTree
 
 import typing
@@ -606,3 +608,62 @@ class PrettyScapy(PrettyTopotato, matches=ScapySend):
         ret["scapy_summary"] = self.item._pkt.summary()
         ret["scapy_dump"] = self.item._pkt.show(dump=True)
         return ret
+
+
+def _makeindex(args):
+    def load(inpath, outpath):
+        with open(inpath, "r", encoding="UTF-8") as fd:
+            html = fd.read()
+        try:
+            data = PrettyInstance.extract(html)
+        except ValueError:
+            return None
+
+        summary: Dict[str, int] = {}
+        for item in data["items"]:
+            summary[item["outcome"]] = summary.get(item["outcome"], 0) + 1
+
+        return {
+            "inpath": inpath,
+            "relpath": inpath.relative_to(outpath.parent),
+            "data": data,
+            "summary": summary,
+        }
+
+    if len(args) < 2:
+        sys.stderr.write(
+            "usage: python3 -m topotato.pretty makeindex OUTNAME INPUTS...\n"
+        )
+        sys.exit(2)
+
+    template = jenv.get_template("index.html.j2")
+
+    out = pathlib.Path(args.pop(0))
+
+    fileitems = []
+    for source in args:
+        source = pathlib.Path(source)
+        if source.is_dir():
+            for basepath, _, files in os.walk(source):
+                basepathobj = pathlib.Path(basepath)
+                for file in sorted(files):
+                    if file.endswith(".html"):
+                        fileitems.append(load(basepathobj / file, out))
+        else:
+            fileitems.append(load(source, out))
+
+    fileitems = [i for i in fileitems if i is not None]
+    with open(out, "w", encoding="UTF-8") as fd:
+        fd.write(template.render({"fileitems": fileitems}))
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        sys.stderr.write("please specify an operation as commandline arg\n")
+        sys.exit(2)
+
+    if sys.argv[1] == "makeindex":
+        _makeindex(sys.argv[2:])
+    else:
+        sys.stderr.write(f"unknown operation {sys.argv[1]!r}\n")
+        sys.exit(2)

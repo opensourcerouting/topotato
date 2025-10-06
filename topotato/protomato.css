@@ -52,13 +52,33 @@ html, body {
 	border:0;
 
 	font-family: var(--font-plain);
+}
+html {
 	height:100%;
 	width:100%;
 }
 
+body#testindex {
+  padding:1em;
+  padding-bottom:6em;
+}
+
+span.infoblurb {
+  display:inline-block;
+  min-width:6em;
+}
+span.infoblurb > span {
+  display:inline-block;
+  padding:2px 4px;
+  margin:2px 0px;
+  border:1px solid #000;
+}
+
 /* filter / nav block at the top, and layout for it */
 
-body {
+body:has(div#vsplit) {
+	height:100%;
+	width:100%;
 	display:flex;
 	flex-direction:column;
 	overflow-y:hidden;
@@ -218,19 +238,23 @@ svg {
 	padding:2pt;
 }
 
-.node.node-failed .nodesum {
+.node.node-failed .nodesum,
+.infoblurb .result-failed {
 	background-color:#fbb;
 	color:#000;
 }
-.node.node-passed .nodesum {
+.node.node-passed .nodesum,
+.infoblurb .result-passed {
 	background-color:#bfb;
 	color:#000;
 }
-.node-tocentry.node-failed::before {
+.node-tocentry.node-failed::before,
+#testindex .nodes .result-failed::before {
 	content: "█ ";
 	color:#f00;
 }
-.node-tocentry.node-passed::before {
+.node-tocentry.node-passed::before,
+#testindex .nodes .result-passed::before {
 	content: "█ ";
 	color:#0a0;
 }
