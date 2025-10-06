@@ -1,10 +1,16 @@
 import React, { useState } from "react";
 import TableVirtualList from "./TableVirtualList";
 
+const templateFiles = [
+  { label: "Example 1", value: "example1.json" },
+  { label: "Example 2", value: "test.json" },
+];
+
 function App() {
   const [items, setItems] = useState([]);
   const [keys, setKeys] = useState([]);
   const [error, setError] = useState("");
+  const [selectedFile, setSelectedFile] = useState("");
 
   function safeKeys(obj) {
     if (obj && typeof obj === "object" && !Array.isArray(obj)) {
@@ -18,6 +24,53 @@ function App() {
     return arr.filter((item) => item && typeof item === "object" && !Array.isArray(item));
   }
 
+  // Novo: Carregar arquivo JSON da pasta templates
+  async function handleTemplateSelect(e) {
+    setError("");
+    const file = e.target.value;
+    setSelectedFile(file);
+    if (!file) {
+      setItems([]);
+      setKeys([]);
+      return;
+    }
+    try {
+      // Import dinâmico do JSON
+      const data = await import(`./templates/${file}`);
+      let dataItems = [];
+      if (Array.isArray(data.default)) {
+        dataItems = data.default;
+      } else if (data.default && Array.isArray(data.default.items)) {
+        dataItems = data.default.items;
+      } else {
+        setItems([]);
+        setKeys([]);
+        setError("O JSON deve ser um array de objetos ou conter um campo 'items' com um array.");
+        return;
+      }
+      dataItems = filterValidObjects(dataItems);
+      if (dataItems.length === 0) {
+        setItems([]);
+        setKeys([]);
+        setError("O array de itens está vazio ou não contém objetos válidos.");
+        return;
+      }
+      const allKeys = Array.from(
+        dataItems.reduce((set, item) => {
+          safeKeys(item).forEach((k) => set.add(k));
+          return set;
+        }, new Set())
+      );
+      setItems(dataItems);
+      setKeys(allKeys);
+    } catch (err) {
+      setItems([]);
+      setKeys([]);
+      setError("Erro ao importar JSON: " + err);
+    }
+  }
+
+  // Mantém o upload manual também
   const handleFile = (e) => {
     setError("");
     const file = e.target.files[0];
@@ -61,22 +114,33 @@ function App() {
     reader.readAsText(file);
   };
 
+  // Log para debug detalhado
+  React.useEffect(() => {
+    console.log("[DEBUG] items:", items);
+    console.log("[DEBUG] keys:", keys);
+  }, [items, keys]);
+
   const hasValidData = items.length > 0 && keys.length > 0;
 
   return (
     <div style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
       <h1>Resultados dos Testes (JSON)</h1>
-      <input type="file" accept="application/json" onChange={handleFile} />
+      <div style={{ marginBottom: 16 }}>
+        <label>Escolha um template:&nbsp;</label>
+        <select value={selectedFile} onChange={handleTemplateSelect}>
+          <option value="">Selecione...</option>
+          {templateFiles.map((f) => (
+            <option key={f.value} value={f.value}>{f.label}</option>
+          ))}
+        </select>
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label>Ou carregue um arquivo JSON:&nbsp;</label>
+        <input type="file" accept="application/json" onChange={handleFile} />
+      </div>
       {error && <div style={{ color: "red", marginTop: 16 }}>{error}</div>}
       {hasValidData && (
         <div style={{ marginTop: 24 }}>
-          <div style={{ display: "flex", fontWeight: "bold", background: "#f0f0f0" }}>
-            {keys.map((key) => (
-              <div key={key} style={{ flex: 1, padding: "0.5em" }}>
-                {key}
-              </div>
-            ))}
-          </div>
           <TableVirtualList items={items} keys={keys} />
         </div>
       )}
