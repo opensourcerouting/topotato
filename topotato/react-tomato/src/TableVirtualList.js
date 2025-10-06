@@ -1,5 +1,5 @@
 import React from "react";
-import { Virtuoso } from "react-virtuoso";
+import { TableVirtuoso } from "react-virtuoso";
 
 function getStatusColor(status) {
   if (!status) return "#fff";
@@ -7,6 +7,13 @@ function getStatusColor(status) {
   if (status === "failed") return "#ffe6e6";
   if (status === "skipped") return "#fffbe6";
   return "#fff";
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return "";
+  const date = new Date(ts * 1000);
+  if (isNaN(date.getTime())) return "";
+  return date.toLocaleString();
 }
 
 export default function TableVirtualList({ items, keys }) {
@@ -22,6 +29,10 @@ export default function TableVirtualList({ items, keys }) {
     },
     {}
   );
+
+  // Add 'Timestamp' as a virtual column if 'ts_end' exists in the data
+  const hasTsEnd = keys.includes('ts_end');
+  const displayKeys = hasTsEnd ? [...keys, 'Timestamp'] : keys;
 
   return (
     <div style={{ border: "1px solid #ccc", borderRadius: 8, background: "#fafbfc", padding: 24, maxWidth: 1200, margin: "0 auto" }}>
@@ -39,38 +50,35 @@ export default function TableVirtualList({ items, keys }) {
         )}
       </div>
       <div style={{ border: "1px solid #bbb", borderRadius: 4, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff" }}>
-          <thead style={{ position: "sticky", top: 0, background: "#f0f0f0", zIndex: 2 }}>
+        <TableVirtuoso
+          style={{ height: 420 }}
+          data={items}
+          columns={displayKeys}
+          fixedHeaderContent={() => (
             <tr>
-              {keys.map((key) => (
-                <th key={key} style={{ border: "1px solid #ccc", padding: 8, fontWeight: 600, fontSize: 15, background: "#f0f0f0" }}>{key}</th>
+              {displayKeys.map((key) => (
+                <th key={key} style={{ border: "1px solid #ccc", padding: 8, fontWeight: 600, fontSize: 15, background: "#f0f0f0", position: 'sticky', top: 0, zIndex: 2 }}>{key}</th>
               ))}
             </tr>
-          </thead>
-        </table>
-        <div style={{ height: 420 }}>
-          <Virtuoso
-            style={{ height: 420 }}
-            totalCount={items.length}
-            components={{
-              Table: (props) => <table {...props} style={{ width: "100%", borderCollapse: "collapse" }} />,
-              TableRow: (props) => <tr {...props} />,
-            }}
-            itemContent={index => (
-              <tr style={{ background: index % 2 === 0 ? "#fff" : "#f7f7f7", backgroundColor: getStatusColor(items[index].status) }}>
-                {keys.map(key => (
-                  <td key={key} style={{ border: "1px solid #eee", padding: 8, fontSize: 14 }}>
-                    {items[index][key] !== undefined && items[index][key] !== null
-                      ? typeof items[index][key] === "object"
-                        ? JSON.stringify(items[index][key])
-                        : String(items[index][key])
-                      : ""}
-                  </td>
-                ))}
-              </tr>
-            )}
-          />
-        </div>
+          )}
+          itemContent={(index, item) => (
+            displayKeys.map((key) => (
+              key === 'Timestamp' ? (
+                <td key={key} style={{ border: "1px solid #eee", padding: 8, fontSize: 14, background: getStatusColor(item.status) }}>
+                  {formatTimestamp(item['ts_end'])}
+                </td>
+              ) : (
+                <td key={key} style={{ border: "1px solid #eee", padding: 8, fontSize: 14, background: getStatusColor(item.status) }}>
+                  {item[key] !== undefined && item[key] !== null
+                    ? typeof item[key] === "object"
+                      ? JSON.stringify(item[key])
+                      : String(item[key])
+                    : ""}
+                </td>
+              )
+            ))
+          )}
+        />
       </div>
     </div>
   );
