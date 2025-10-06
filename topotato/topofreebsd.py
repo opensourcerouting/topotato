@@ -182,6 +182,9 @@ class NetworkInstance(topobase.NetworkInstance):
                     self.check_call(
                         ["ifconfig", iface.ifname, "inet", "alias", str(ip4)]
                     )
+                self.check_call(
+                    ["ifconfig", iface.ifname, "inet6", "no_dad", str(iface.ll6)]
+                )
                 for ip6 in iface.ip6:
                     self.check_call(
                         ["ifconfig", iface.ifname, "inet6", "no_dad", "alias", str(ip4)]
