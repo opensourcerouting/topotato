@@ -47,6 +47,15 @@ class TimingParams:
 
     _start: Callable[[], float] = time.time
 
+    adj_offset: ClassVar[float] = 0.0
+    """
+    Global timing adjustment - add wait time everywhere
+    """
+    adj_scale: ClassVar[float] = 1.0
+    """
+    Global timing adjustment - scale all wait times by factor
+    """
+
     def anchor(self, anchor: Callable[[], float]):
         self._start = anchor
         return self
@@ -59,7 +68,9 @@ class TimingParams:
 
         start = self._start()
         nexttick = start + self.delay
-        deadline = start + (self.maxwait or 0.0)
+        deadline = start
+        if self.maxwait:
+            deadline += self.maxwait * self.adj_scale + self.adj_offset
 
         while nexttick < deadline:
             if nexttick >= now:

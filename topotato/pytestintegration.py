@@ -26,6 +26,7 @@ from .control import Control
 from .pretty import PrettySession
 from .osdep import NetworkInstance
 from .logcapture import TimelineLogHandler
+from .timeline import TimingParams
 
 _logger = logging.getLogger(__name__)
 
@@ -68,6 +69,14 @@ def pytest_addoption(parser):
     parser.addoption(
         "--show-topology", type=str, default=None, help="show specific topology"
     )
+    parser.addoption(
+        "--slowcook",
+        type=str,
+        metavar="OFFSET[:SCALE]",
+        default=None,
+        help="adjust all timings: offset in seconds, scale factor as multiplier,"
+        " e.g. --slowcook=2:1.2 adds 20%% and 2 seconds everywhere.",
+    )
 
 
 # @pytest.hookimpl()
@@ -82,6 +91,15 @@ def pytest_sessionstart(session):
 
     if session.config.getoption("--collect-only"):
         return
+
+    slowcook = session.config.getoption("--slowcook")
+    if slowcook:
+        scale = "1"
+        if ":" in slowcook:
+            slowcook, scale = slowcook.split(":", 1)
+
+        TimingParams.adj_offset = float(slowcook)
+        TimingParams.adj_scale = float(scale)
 
     tw.sep("=", "topotato initialization", bold=True)
 
