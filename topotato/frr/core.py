@@ -761,6 +761,12 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         await super().end_prep()
 
     async def end(self):
+        try:
+            await self._end()
+        finally:
+            await super().end()
+
+    async def _end(self):
         livelogs = self.livelogs.values()
 
         aioloop = asyncio.get_running_loop()
@@ -777,8 +783,6 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
 
         for livelog in self.livelogs.values():
             await livelog.terminate()
-
-        await super().end()
 
     def _vtysh(self, args: List[str], **kwargs) -> subprocess.Popen:
         assert self.rundir is not None
