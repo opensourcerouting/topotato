@@ -295,6 +295,9 @@ class NetworkInstance(topobase.NetworkInstance):
             )
             calls.extend(proc_write("/proc/sys/net/ipv6/conf/all/accept_dad", "0"))
             calls.extend(proc_write("/proc/sys/net/ipv6/conf/default/accept_dad", "0"))
+            calls.extend(
+                proc_write("/proc/sys/net/mpls/platform_labels", "1048575"),
+            )
 
             for ip4 in self.instance.network.routers[self.name].lo_ip4:
                 calls.append("ip -4 addr add %s dev lo scope global" % ip4)
@@ -326,6 +329,9 @@ class NetworkInstance(topobase.NetworkInstance):
                     calls.append(
                         "ip -6 addr add %s dev %s" % (ip6, shlex.quote(iface.ifname))
                     )
+                calls.extend(
+                    proc_write(f"/proc/sys/net/mpls/conf/{iface.ifname}/input", "1")
+                )
 
             subprocess.check_call(["/bin/sh", "-e", "-c", "; ".join(parentcalls)])
             self.check_call(["/bin/sh", "-e", "-c", "; ".join(calls)])
