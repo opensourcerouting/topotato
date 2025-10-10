@@ -89,6 +89,7 @@ class PIMBFDTest(TestBase, AutoFixture, setup=Setup):
     @staticmethod
     def expect_bfd_peer(rtr, peer, deadline):
         js = [
+            JSONCompareListKeyedDict("peer"),
             {
                 "peer": str(peer.ip4[0].ip),
                 "status": "up",
@@ -130,6 +131,7 @@ class PIMBFDTest(TestBase, AutoFixture, setup=Setup):
         yield from self.expect_neighbor(r4, "r4-r2", r2.iface_to("r4"), 5.0)
 
         js = [
+            JSONCompareListKeyedDict("peer"),
             {
                 "peer": str(r2.iface_to("r1").ip4[0].ip),
                 "status": "up",
@@ -142,6 +144,7 @@ class PIMBFDTest(TestBase, AutoFixture, setup=Setup):
         )
 
         js = [
+            JSONCompareListKeyedDict("peer"),
             {
                 "peer": str(r1.iface_to("r2").ip4[0].ip),
                 "status": "up",

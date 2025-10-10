@@ -137,6 +137,7 @@ class TestBGPSetLocalPreferenceAddSubtract(TestBase, AutoFixture, setup=Setup):
                 f"{topo.lans['unconnected'].ip4[0][2]}/32": [{"locPrf": 160}],
                 f"{topo.lans['unconnected'].ip4[0][3]}/32": [{"locPrf": 40}],
                 "172.16.255.254/32": [
+                    JSONCompareListKeyedDict("locPrf"),
                     {
                         "locPrf": 50,
                         "nexthops": [{"ip": str(r3.iface_to("s1").ip4[0].ip)}],

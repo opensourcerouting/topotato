@@ -104,6 +104,7 @@ class PtMPBasic(TestBase, AutoFixture, setup=Setup):
             )
 
             prefixes = [
+                JSONCompareListKeyedDict("prefix"),
                 {
                     "prefixOption": "--|--|--|LA|--",
                     "prefix": str(rtr.iface_to("lan").ip6[0].ip) + "/128",
@@ -121,10 +122,11 @@ class PtMPBasic(TestBase, AutoFixture, setup=Setup):
                 {
                     "type": "Intra-Prefix",
                     "advertisingRouter": str(rtr.lo_ip4[0].ip),
-                    "numberOfPrefix": len(prefixes),
+                    "numberOfPrefix": len(prefixes) - 1,
                     "reference": "Router",
                     "referenceId": "0.0.0.0",
                     "prefix": prefixes,
+                    "linkStateId": "0.0.0.0",
                 }
             )
 
