@@ -15,7 +15,7 @@ __topotests_gitrev__ = "c75d6ccbfe95d2708618ade7cc7198e46ee467dd"
 
 # pylint: disable=wildcard-import, unused-wildcard-import
 
-from topotato import *
+from topotato.v1 import *
 
 
 @topology_fixture()

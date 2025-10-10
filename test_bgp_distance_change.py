@@ -16,7 +16,7 @@ Changed distance should reflect to RIB after changes.
 __topotests_file__ = "bgp_distance_change/test_bgp_distance_change.py"
 __topotests_gitrev__ = "4953ca977f3a5de8109ee6353ad07f816ca1774c"
 
-from topotato import *
+from topotato.v1 import *
 
 
 @topology_fixture()

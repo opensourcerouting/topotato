@@ -5,7 +5,7 @@
 Demo testing of ExaBGP
 """
 # pylint: disable=unused-wildcard-import,wildcard-import,unused-argument,redefined-outer-name,attribute-defined-outside-init
-from topotato import *
+from topotato.v1 import *
 from topotato.exabgp import ExaBGP
 
 

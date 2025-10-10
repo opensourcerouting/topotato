@@ -13,7 +13,7 @@ https://datatracker.ietf.org/doc/html/rfc9072
 __topotests_file__ = "bgp_extended_optional_parameters_length/test_bgp_extended_optional_parameters_length.py"
 __topotests_gitrev__ = "bfe6156ab0f4ea00e399d3374b2131d88108ce14"
 
-from topotato import *
+from topotato.v1 import *
 
 
 @topology_fixture()

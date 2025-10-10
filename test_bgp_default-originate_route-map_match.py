@@ -6,7 +6,7 @@
 Test if default-originate works with ONLY match operations.
 """
 
-from topotato import *
+from topotato.v1 import *
 
 
 @topology_fixture()

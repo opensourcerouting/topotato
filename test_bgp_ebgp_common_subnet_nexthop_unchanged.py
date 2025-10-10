@@ -24,7 +24,7 @@ __topotests_gitrev__ = "a53c08bc131c02f4a20931d7aa9f974194ab16e7"
 
 # pylint: disable=invalid-name, missing-class-docstring, missing-function-docstring, line-too-long, consider-using-f-string, wildcard-import, unused-wildcard-import, f-string-without-interpolation, too-few-public-methods
 
-from topotato import *
+from topotato.v1 import *
 
 
 @topology_fixture()

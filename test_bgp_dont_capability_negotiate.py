@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2022 Nathan Mangar
 
-from topotato import *
+from topotato.v1 import *
 
 """
 Test if BGP connection is established if at least one peer
