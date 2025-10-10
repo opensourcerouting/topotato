@@ -428,9 +428,10 @@ class PrettyItem:
 
         if self.result.longrepr:
             longrepr = self.result.longrepr
-            if getattr(longrepr, "tohtml", None):
-                ret["longrepr"] = longrepr.tohtml()
-            ret["chain"] = [str(erepr) for erepr, _, _ in longrepr.chain]
+            if tohtml := getattr(longrepr, "tohtml", None):
+                ret["longrepr"] = tohtml()
+            if chain := getattr(longrepr, "chain", None):
+                ret["chain"] = [str(erepr) for erepr, _, _ in chain]
 
         return ret
 
