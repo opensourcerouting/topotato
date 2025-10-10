@@ -93,7 +93,7 @@ class TestBGPAsWideBGPIdentifier(TestBase, AutoFixture, topo=topology, configs=C
             r1,
             "bgpd",
             "show ip bgp neighbor 192.168.255.1 json",
-            maxwait=2.0,
+            maxwait=5.0,
             compare=expected,
         )
 

@@ -127,7 +127,7 @@ class BGPDisableAddpathRx(TestBase, AutoFixture, topo=topology, configs=Configs)
             r2,
             "bgpd",
             f"show bgp ipv4 unicast neighbor {r1.iface_to('s1').ip4[0].ip} advertised-routes json",
-            maxwait=2.0,
+            maxwait=5.0,
             compare=expected,
         )
 

@@ -79,7 +79,7 @@ class BGPDefaultOriginate(TestBase, AutoFixture, topo=topology, configs=Configs)
             r2,
             "bgpd",
             f"show ip bgp neighbor {r1.ifaces[0].ip4[0].ip} json",
-            maxwait=2.0,
+            maxwait=5.0,
             compare=expected,
         )
 

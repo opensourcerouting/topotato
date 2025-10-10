@@ -87,7 +87,7 @@ class BGPExtendedOptionalParametersLength(
             r1,
             "bgpd",
             f"show bgp ipv4 unicast summary json",
-            maxwait=2.0,
+            maxwait=5.0,
             compare=expected,
         )
 

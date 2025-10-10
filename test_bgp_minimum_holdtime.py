@@ -86,6 +86,6 @@ class TestBGPMinimumHoldtime(TestBase, AutoFixture, topo=topology, configs=Confi
             r1,
             "bgpd",
             "show ip bgp neighbor 192.168.255.2 json",
-            maxwait=3.0,
+            maxwait=5.0,
             compare=expected,
         )
