@@ -19,7 +19,7 @@ from scapy.layers.inet import (
 )
 
 __topotests_replaces__ = {
-    "pim_basic/": "f1f0bd0911c0834d9af9adfd9bf1a5f8f0bb62af",
+    "pim_basic/": "f5de14db8e85a5c01328039ad44f61824234b7c2",
 }
 
 

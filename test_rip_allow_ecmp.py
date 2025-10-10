@@ -5,7 +5,7 @@ Test RIP ECMP support, including multipath limit.
 """
 
 __topotests_replaces__ = {
-    "rip_allow_ecmp/": "66e0f6c456cb2380f932c8f0dfef8897218359d7",
+    "rip_allow_ecmp/": "8381dbd9e258825daff4802c4c44b3d435a7b7e3",
 }
 
 # pylint: disable=invalid-name, missing-class-docstring, missing-function-docstring, line-too-long, consider-using-f-string, wildcard-import, unused-wildcard-import, f-string-without-interpolation

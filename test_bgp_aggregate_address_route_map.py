@@ -11,10 +11,9 @@ route-map aggr-rmap permit 10
   set metric 123
 """
 
-__topotests_file__ = (
-    "bgp_aggregate_address_route_map/test_bgp_aggregate-address_route-map.py",
-)
-__topotests_gitrev__ = "4953ca977f3a5de8109ee6353ad07f816ca1774c"
+__topotests_replaces__ = {
+    "bgp_aggregate_address_route_map/": "a63bfb75669780df7ce29201c87db77b83c6f60a",
+}
 
 # pylint: disable=invalid-name, missing-class-docstring, missing-function-docstring, line-too-long, consider-using-f-string, wildcard-import, unused-wildcard-import, f-string-without-interpolation
 
@@ -88,7 +87,7 @@ class BGPAggregateAddressRouteMap(TestBase, AutoFixture, setup=Setup):
             r2,
             "bgpd",
             f"show ip bgp neighbor {r1.ifaces[0].ip4[0].ip} json",
-            maxwait=5.0,
+            maxwait=8.0,
             compare=expected,
         )
 
@@ -100,5 +99,20 @@ class BGPAggregateAddressRouteMap(TestBase, AutoFixture, setup=Setup):
             "bgpd",
             f"show ip bgp 172.16.255.0/24 json",
             maxwait=1.0,
+            compare=expected,
+        )
+
+    @topotatofunc
+    def metric_change(self, r1, r2):
+        yield from ReconfigureFRR.make(r1, "vtysh",
+            "route-map aggr-rmap permit 10\n"
+            "set metric 666\n"
+        )
+        expected = {"paths": [{"metric": 666}]}
+        yield from AssertVtysh.make(
+            r2,
+            "bgpd",
+            f"show ip bgp 172.16.255.0/24 json",
+            maxwait=8.0,
             compare=expected,
         )

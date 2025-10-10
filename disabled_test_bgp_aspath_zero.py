@@ -6,8 +6,9 @@ Test if BGP UPDATE with AS-PATH attribute with value zero (0)
 is threated as withdrawal.
 """
 
-__topotests_file__ = "bgp_aspath_zero/test_bgp_aspath_zero.py"
-__topotests_gitrev__ = "a53c08bc131c02f4a20931d7aa9f974194ab16e7"
+__topotests_replaces__ = {
+    "bgp_aspath_zero/": "dc372568ad6e0114d46c600d29c509fa31523a8d",
+}
 
 # pylint: disable=invalid-name, missing-class-docstring, missing-function-docstring, line-too-long, consider-using-f-string, wildcard-import, unused-wildcard-import, f-string-without-interpolation, too-few-public-methods, unused-argument, attribute-defined-outside-init
 from topotato.v1 import *
@@ -46,6 +47,7 @@ class Configs(FRRConfigs):
      no bgp ebgp-requires-policy
      neighbor {{ routers.peer1.ifaces[0].ip4[0].ip }} remote-as 65001
      neighbor {{ routers.peer1.ifaces[0].ip4[0].ip }} timers 3 10
+     neighbor {{ routers.peer1.ifaces[0].ip4[0].ip }} timers connect 1
     !
     #%   endif
     #% endblock

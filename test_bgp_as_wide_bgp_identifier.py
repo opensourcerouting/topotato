@@ -9,8 +9,9 @@ internal peers (autonomous-system-wide). eBGP peers are not
 affected and should work.
 """
 
-__topotests_file__ = "bgp_as_wide_bgp_identifier/test_bgp_as_wide_bgp_identifier.py"
-__topotests_gitrev__ = "4953ca977f3a5de8109ee6353ad07f816ca1774c"
+__topotests_replaces__ = {
+    "bgp_as_wide_bgp_identifier/": "a63bfb75669780df7ce29201c87db77b83c6f60a",
+}
 
 # pylint: disable=wildcard-import, unused-wildcard-import
 
