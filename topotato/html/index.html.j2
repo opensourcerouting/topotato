@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="UTF-8"/> 
+    <title>topotato index</title>
+    <link href="../topotato/protomato.css" rel="stylesheet" type="text/css"/>
+    <script src="../topotato/protomato.js" type="text/javascript"></script>
+  </head>
+  <body id="testindex">
+    <h1>topotato result index</h1>
+    <ul>
+      {%- for file in fileitems %}
+        <li class="e_cont">
+          <div class="e_always"><span class="infoblurb" onclick="raw_expand(this, event)">[+]
+          {%- for name, count in file["summary"].items() %}
+            <span class="result-{{ name }}">{{ count }}{{ name[0].upper() }}</span>
+          {%- endfor %}
+            </span>
+            <a href="{{ file.relpath }}">{{ file.inpath }}</a>
+          </div>
+          <ul class="e_hide nodes">
+            {%- for item in file.data["items"] %}
+              <li class="result-{{ item.outcome }}">{{ item.nodeid }}</li>
+            {%- endfor %}
+          </ul>
+        </li>
+      {%- endfor %}
+    </ul>
+  </body>
+</html>
