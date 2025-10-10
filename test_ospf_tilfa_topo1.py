@@ -29,6 +29,17 @@ def topology(topo):
 
 
 class FRRConfigured(RouterFRR):
+    # the TI-LFA code has some sequencing bugs somewhere; without these startup
+    # delays it randomly fails.  And even with this, we still need to flap the
+    # links down in the test :(
+    workaround_startup_delay = {
+        "r1": 5.00,
+        "r2": 3.75,
+        "r3": 2.50,
+        "r4": 1.25,
+        "r5": 0.00,
+    }
+
     zebra = """
     #% extends "boilerplate.conf"
     """
@@ -194,6 +205,8 @@ class OSPF_TILFA_Topo1(TestBase, AutoFixture, setup=Setup):
         this test function flaps a link down and back up.  This needs to be
         fixed in FRR.
         """
+        yield from Delay.make(maxwait=0.5)
+
         yield from ModifyLinkStatus.make(r1, r1.iface_to("lan12"), False)
         yield from ModifyLinkStatus.make(r1, r1.iface_to("lan51"), False)
         yield from ModifyLinkStatus.make(r2, r2.iface_to("lan12"), False)
