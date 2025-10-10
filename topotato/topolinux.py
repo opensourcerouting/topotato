@@ -363,7 +363,6 @@ class NetworkInstance(topobase.NetworkInstance):
     switch_ns: Optional[SwitchyNS]
     routers: Dict[str, RouterNS]
     bridges: List[str]
-    scapys: Dict[str, NetnsL2Socket]
 
     # TODO: none of the coverage stuff belongs in here.  but it works, and
     # right now (2023-09-28) that matters more than getting it to "perfect".
@@ -492,7 +491,6 @@ class NetworkInstance(topobase.NetworkInstance):
                     ]
                 )
 
-        self.scapys = {}
         args = []
 
         with self.switch_ns:

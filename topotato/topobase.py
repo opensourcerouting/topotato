@@ -44,6 +44,7 @@ if typing.TYPE_CHECKING:
     )
     import subprocess
     import asyncio.process  # type: ignore[import-not-found]
+    from scapy.supersocket import SuperSocket
     from . import toponom
     from .timeline import Timeline
 
@@ -392,6 +393,11 @@ class NetworkInstance(ABC):
     the output JSON to allow going from packets' interfaces to SVG item, via
     the latter's graphviz name.
     """
+    scapys: Dict[str, "SuperSocket"]
+    """
+    scapy L2 sockets for each interface; some may not exist if not supported
+    Will be some platform specific subclass (e.g. scapy.arch.linux.L2Socket)
+    """
 
     RouterNS: "TypeAlias" = RouterNS
     """
@@ -421,6 +427,7 @@ class NetworkInstance(ABC):
         self.routers = {}
         self.environ = {}
         self.ifnames = {}
+        self.scapys = {}
         self.aioloop = asyncio.events.new_event_loop()
 
     def make(self, name: str) -> RouterNS:

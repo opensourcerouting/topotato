@@ -967,10 +967,10 @@ class TopotatoClass(_pytest.python.Class):
 
         self.started_ts = time.time()
 
-        for ifname, sock in netinst.scapys.items():  # type: ignore[attr-defined]
+        for ifname, sock in netinst.scapys.items():
             # FIXME: this really needs to be reworked to a less hacky way
             scapysrc = LiveScapy(ifname, sock, netinst.timeline)
-            sock.live = scapysrc
+            sock.live = scapysrc  # type: ignore[attr-defined]
             scapysrc.dispatch_add(netinst.timeline)
 
     def do_stop(self, stopitem):
