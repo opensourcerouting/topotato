@@ -257,6 +257,11 @@ class LinuxNamespace:
         if "cwd" in kwargs:
             cwd = kwargs.pop("cwd")
             ret.extend(["--wd=%s" % cwd])
+
+        # LD_PRELOAD'ing nsenter is... not helpful.  Run "env" inside instead.
+        if kwargs.get("env", {}).get("LD_PRELOAD"):
+            ld_preload = kwargs["env"].pop("LD_PRELOAD")
+            ret.extend(["env", f"LD_PRELOAD={ld_preload}"])
         return ret
 
     def popen(self, cmdline: List[str], *args, **kwargs):

@@ -65,6 +65,11 @@ class FreeBSDJail:
             cwd = kwargs.pop("cwd")
             ret.extend(["-d", cwd])
         ret.append(str(self.jid))
+
+        # LD_PRELOAD'ing jexec is... not helpful.  Run "env" inside instead.
+        if kwargs.get("env", {}).get("LD_PRELOAD"):
+            ld_preload = kwargs["env"].pop("LD_PRELOAD")
+            ret.extend(["env", f"LD_PRELOAD={ld_preload}"])
         return ret
 
     def popen(self, cmdline, *args, **kwargs):
