@@ -1,0 +1,139 @@
+# topotato on FreeBSD
+
+TL;DR: use FreeBSD 15, run only in throwaway VM, run as root, `--slowdown=2`
+and make sure bridge module is loaded.
+
+
+## Setup requirements
+
+To run on FreeBSD, other than the installed package requirements (see end
+of this file), the following adjustments must be made to the FreeBSD
+installation:
+
+- DHCP must be disabled in the default network config, since jails also
+  apply this on start.  Use something like this in /etc/rc.conf:
+
+```
+ifconfig_DEFAULT=""  # this should probably have nothing
+ifconfig_vtnet0="SYNCDHCP accept_rtadv"
+```
+
+- enable ip_mroute if you want to try PIM tests.  /etc/loader.conf:
+
+```
+ip_mroute_load="YES"
+```
+
+- increase SOCK_SEQPACKET buffer sizes, /etc/sysctl.conf:
+
+```
+net.local.seqpacket.recvspace = 1048576
+net.local.seqpacket.maxseqpacket = 1048576
+```
+
+- load the bridge module: `ifconfig $(ifconfig bridge create) destroy`
+
+
+## Known issues
+
+### mountpoint leaks
+
+There is some (nondeterministic) leak of a reference to the jail's root file
+system, causing the mounts to become un-umountable ("Device busy").  There is
+no workaround for this, these mounts will be left after a topotato run.  You'll
+need to reboot the system to get rid of them :(
+
+
+### cleanup on failures
+
+Since there is no kernel-level containment for topotato runs, exceptions or
+errors in topotato itself may cause the cleanup code at the end of a network
+setup to be skipped.  This will then leave behind a bunch of jails, mounts and
+network interfaces.  Use the `freebsd-scrub.sh` script to clean these up.
+
+
+### `--slowdown` required
+
+FreeBSD is a bit slow in running things.  `--slowdown=2` seems to do the trick.
+
+
+### no carrier detect on epair
+
+Setting one end of an epair down is not visible from the other end at all,
+particularly not as a "carrier down" flag.  This will break any topotato test
+relying on link-down being visible to FRR.
+
+
+### no scapy
+
+topotato has no code to run scapy inside a jail yet.  Reports will have no
+packet captures, and AssertPacket and ScapySend just won't work.
+
+
+### lossy SOCK_SEQPACKET
+
+Unlike Linux, AF_UNIX SOCK_SEQPACKET (and SOCK_DGRAM) are lossy on FreeBSD if
+the buffer is full when the send call is made.  This is **not even reported
+as an error**.  (Read "BUFFERING" section in "man unix".)  This means that
+
+- some log messages from FRR may be lost from the HTML report
+- AssertLog may randomly fail if a log message is lost
+
+The sysctl listed above increases SOCK_SEQPACKET buffer space, but this is only
+a band-aid, not a reliable fix.
+
+
+### no pytest-xdist parallel run support
+
+Parallel runs with pytest-xdist will stomp over each other's jails.  Don't
+even try passing any "-n" xdist option.
+
+
+### no potatool
+
+topotato's potatool isn't supported yet.  Use `jls` and `jexec` to hop into
+virtual routers.
+
+
+## Package list to install
+
+```
+# frr
+
+autoconf
+automake
+bison
+c-ares
+git
+gmake
+json-c
+libtool
+libunwind
+libyang2
+pkgconf
+protobuf-c
+py311-pytest
+py311-sphinx
+texinfo
+rtrlib
+lua53
+
+# topotato
+
+py311-scapy
+py311-lxml
+py311-typing-extensions
+py311-attrs
+py311-exabgp4
+graphviz
+wireshark-nox11
+
+# convenience
+
+gdb
+py311-pip
+vim
+zsh
+sudo
+socat
+```
