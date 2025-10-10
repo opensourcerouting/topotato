@@ -40,7 +40,7 @@ import scapy.arch  # type: ignore[import-untyped]
 scapy.arch.read_nameservers = lambda: []
 
 # pylint: disable=wrong-import-position
-import scapy.all  # type: ignore[import-untyped]
+import scapy.config  # type: ignore[import-untyped]
 
 from .scapyext.netnssock import NetnsL2Socket
 from .utils import exec_find, EnvcheckResult

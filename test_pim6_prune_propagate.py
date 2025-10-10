@@ -8,8 +8,10 @@ Test against unexpected delays in PIMv6 prune propagation across routers.
 from topotato.v1 import *
 from topotato.multicast import MulticastReceiver
 from topotato.scapy import ScapySend
-from scapy.all import (
+from scapy.layers.inet6 import (
     IPv6,
+)
+from scapy.layers.inet import (
     UDP,
 )
 

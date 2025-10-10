@@ -10,7 +10,7 @@ PIM IPv4 neighbor up/down convergence test.
 from topotato.v1 import *
 from topotato.multicast import MulticastReceiver
 from topotato.scapy import ScapySend
-from scapy.all import (
+from scapy.layers.inet import (
     IP,
     UDP,
 )

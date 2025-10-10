@@ -26,7 +26,7 @@ _logger = logging.getLogger(__name__)
 
 try:
     # pylint: disable=no-name-in-module
-    from scapy.all import Ether  # type: ignore
+    from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
     from .scapyext import NetnsL2Socket
 
     scapy_exc = None

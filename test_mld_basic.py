@@ -8,12 +8,14 @@ IPv6 Multicast Listener Discovery tests.
 from topotato.v1 import *
 from topotato.multicast import *
 from topotato.scapy import ScapySend
-from scapy.all import (
+from scapy.layers.inet6 import (
     IPv6,
     ICMPv6MLReport2,
     ICMPv6MLDMultAddrRec,
     IPv6ExtHdrHopByHop,
     RouterAlert,
+)
+from scapy.layers.inet import (
     UDP,
 )
 
