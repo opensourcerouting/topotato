@@ -767,7 +767,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
 
         aws = list(aioloop.create_task(ll.drain()) for ll in livelogs)
         if aws:
-            _, pending = await asyncio.wait(aws, timeout=1.0)
+            _, pending = await asyncio.wait(aws, timeout=2.0)
             for t in pending:
                 t.cancel()
 
