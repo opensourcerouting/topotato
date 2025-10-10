@@ -565,6 +565,9 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
     async def start_run(self):
         await super().start_run()
 
+        delays = getattr(self._configs, "workaround_startup_delay", {})
+        await asyncio.sleep(delays.get(self.name, 0.0))
+
         self.rtrcfg = self._configs.configs
         self.frrconfpath = self.tempfile("frr.conf")
 
