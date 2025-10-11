@@ -150,6 +150,10 @@ class PrettySession:
         for prettyitem in self.prettyitems:
             prettyitem.finish()
 
+        htmlidx = os.path.join(self.outdir, "index.html")
+        _logger.debug("writing %s...", htmlidx)
+        _makeindex([htmlidx, self.outdir])
+
     @staticmethod
     @pytest.hookimpl()
     def pytest_addoption(parser):
@@ -662,8 +666,11 @@ def _makeindex(args):
             fileitems.append(load(source, out))
 
     fileitems = [i for i in fileitems if i is not None]
-    with open(out, "w", encoding="UTF-8") as fd:
+    with tempfile.NamedTemporaryFile(
+        suffix=".html", dir=os.path.dirname(out), mode="w", encoding="UTF-8"
+    ) as fd:
         fd.write(template.render({"fileitems": fileitems}))
+        os.rename(fd.name, out)
 
 
 if __name__ == "__main__":
