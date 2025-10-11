@@ -500,6 +500,26 @@ function eth_pretty(htmlparent, csscls, macaddr) {
 
 var pdmltree;
 
+function pdml_build_index(pdmltree) {
+	let index = {};
+
+	for (const packet of pdmltree.children[0].children) {
+		for (const proto of packet.children) {
+			if (proto.getAttribute("name") !== "geninfo")
+				continue;
+			for (const field of proto.children) {
+				if (field.getAttribute("name") !== "num")
+					continue;
+				index[parseInt(field.getAttribute("show"))] = packet;
+				break;
+			}
+			break;
+		}
+	}
+
+	return index;
+}
+
 function pdml_add_field(htmlparent, field) {
 	if (field.attributes["hide"])
 		return;
@@ -1481,13 +1501,10 @@ const protocols = {
 	},
 };
 
-function load_packet(timetable, obj, pdmltree) {
+function load_packet(timetable, obj, pdmltree, pdmlindex) {
 	var row, pdml;
 
-	pdml = pdmltree.evaluate(
-		"packet[proto[@name='geninfo']/field[@name='num'][@show='" + obj.data.frame_num + "']]",
-		pdmltree.children[0], null, XPathResult.ANY_UNORDERED_NODE_TYPE).singleNodeValue;
-
+	pdml = pdmlindex[obj.data.frame_num];
 	if (!pdml) {
 		console.error("Could not find frame number %s in PDML", obj.data.frame_num);
 		return;
@@ -1651,6 +1668,7 @@ function init() {
 
 	var parser = new DOMParser();
 	pdmltree = parser.parseFromString(jsdata.pdml, "application/xml");
+	let pdmlindex = pdml_build_index(pdmltree);
 
 	var timetable;
 	var ts_end = parseFloat("-Infinity");
@@ -1668,7 +1686,7 @@ function init() {
 		}
 
 		if (obj.data.type == "packet")
-			load_packet(timetable, obj, pdmltree);
+			load_packet(timetable, obj, pdmltree, pdmlindex);
 		else if (obj.data.type == "log")
 			load_log(timetable, obj, xrefs);
 		else if (obj.data.type == "vtysh")
