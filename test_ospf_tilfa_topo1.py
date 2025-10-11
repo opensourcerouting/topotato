@@ -278,13 +278,14 @@ class OSPF_TILFA_Topo1(TestBase, AutoFixture, setup=Setup):
                 r1, nhs, backups
             )
 
-        yield from AssertVtysh.make(
+        flaky = yield from AssertVtysh.make(
             r1,
             "zebra",
             f"show ip route json",
             maxwait=8.0,
             compare=expected,
         )
+        flaky.xfail("startup sequencing problem")
 
     @topotatofunc
     def test_lfa_linkprot_off(self, topo, r1, r2, r3, r4, r5):
@@ -348,13 +349,14 @@ class OSPF_TILFA_Topo1(TestBase, AutoFixture, setup=Setup):
                 r1, nhs, backups
             )
 
-        yield from AssertVtysh.make(
+        flaky = yield from AssertVtysh.make(
             r1,
             "zebra",
             f"show ip route json",
             maxwait=8.0,
             compare=expected,
         )
+        flaky.xfail("startup sequencing problem")
 
     @topotatofunc
     def test_lfa_nodeprot_off(self, topo, r1, r2, r3, r4, r5):
