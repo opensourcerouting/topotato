@@ -34,7 +34,7 @@ from typing import (
 import pytest
 import _pytest
 from _pytest import nodes
-from _pytest.outcomes import Failed, Skipped
+from _pytest.outcomes import Failed, Skipped, XFailed
 
 # from _pytest.mark.structures import Mark
 
@@ -147,6 +147,10 @@ class ItemGroup(List["TopotatoItem"]):
         for item in self:
             item.skipchecks.append(fn)
 
+    def xfail(self, reason: Optional[str] = None):
+        for item in self:
+            item.xfail.append(reason or "")
+
 
 class SkipMode(Enum):
     """
@@ -233,6 +237,7 @@ class TopotatoItem(nodes.Item):
     """
 
     posargs: ClassVar[List[str]] = []
+    xfail: List[str]
 
     def __init__(self, *, name: str, parent: nodes.Node, codeloc=None, **kw):
         nodeid = None
@@ -243,6 +248,7 @@ class TopotatoItem(nodes.Item):
         super().__init__(parent=parent, name=name, nodeid=nodeid, **kw)
         self.skipchecks = []
         self._codeloc = codeloc
+        self.xfail = []
 
         self.cls_node = cast(TopotatoClass, self.getparent(TopotatoClass))
         if self.cls_node is None:
@@ -369,7 +375,12 @@ class TopotatoItem(nodes.Item):
             for check in self.skipchecks:
                 check(self)
 
-            self.session.config.hook.pytest_topotato_run(item=self, testfunc=self)
+            try:
+                self.session.config.hook.pytest_topotato_run(item=self, testfunc=self)
+            except Failed as e:
+                if self.xfail:
+                    raise XFailed(", ".join(self.xfail)) from e
+                raise
 
     def reportinfo(self):  # -> Tuple[Union[py.path.local, str], int, str]:
         """

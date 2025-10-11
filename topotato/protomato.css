@@ -258,6 +258,11 @@ svg {
 	content: "█ ";
 	color:#0a0;
 }
+.node-tocentry.node-xfailed::before,
+#testindex .nodes .result-xfailed::before {
+	content: "█ ";
+	color:#e90;
+}
 
 .failinfo {
 	grid-column-start: 1;

@@ -34,6 +34,8 @@
 {%- endmacro %}
 {%- macro header(item) %}
   <dt class="node-tocentry
+    {{- " node-xfailed" if item.result.wasxfail else "" }}
+    {{- " node-skipped" if item.result.skipped else "" }}
     {{- " node-failed" if item.result.failed else "" }}
     {{- " node-passed" if item.result.passed else "" }}"><a href="#i{{ item.idx }}" onclick="return anchorclick(event);">{{ item.nodeid_rel }}</a></dt>
 {%- endmacro %}

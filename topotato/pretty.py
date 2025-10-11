@@ -422,6 +422,7 @@ class PrettyItem:
         ret = {
             "nodeid": self.nodeid_rel,
             "outcome": self.result.outcome,
+            "wasxfail": getattr(self.result, "wasxfail", None),
             "location": loc,
             "duration": self.result.duration,
         }
