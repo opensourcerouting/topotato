@@ -115,7 +115,10 @@ class BGPCommListDeleteTest(TestBase, AutoFixture, topo=topology, configs=Config
     def _bgp_comm_list_delete(self, topo, r1, r2):
 
         expected = {
-            "paths": [{"community": {"list": ["111:111", "222:222", "444:444"]}}]
+            "paths": [{"community": {"list": [
+                JSONCompareRejectExtraItems(),
+                "111:111", "222:222", "444:444"
+            ]}}]
         }
 
         yield from AssertVtysh.make(
