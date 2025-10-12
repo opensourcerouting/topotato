@@ -102,6 +102,14 @@ class TimedMixinSelfProtocol(Protocol):
 
     timeline: "Timeline"
 
+    def _async_timeout(self) -> None:
+        """
+        Raise appropriate exception when _async_timed ran into timeout
+
+        May also do nothing if running into the timeout is expected (e.g.
+        negative assertion)
+        """
+
     async def _async_timed(self) -> None:
         """
         Used by the provided :py:meth:`_async` function, not needed if that
@@ -188,11 +196,21 @@ class TimedMixin:
 
             yield i
 
+    @skiptrace
     async def _async(self):
         _, until = self._timing.evaluate()
         selfc = cast(TimedMixinSelfProtocol, self)
         # pylint: disable=protected-access
-        await asyncio.wait_for(selfc._async_timed(), max(0.001, until - time.time()))
+        try:
+            await asyncio.wait_for(
+                selfc._async_timed(), max(0.001, until - time.time())
+            )
+            return
+        except TimeoutError:
+            # drop exception chain
+            pass
+
+        selfc._async_timeout()
 
     def __call__(self):
         selfc = cast(TimedMixinSelfProtocol, self)
@@ -411,9 +429,16 @@ class AssertPacket(TimedMixin, TopotatoAssertion):
                 )
             self._argtypes.append(argtype)
 
+    def _async_timeout(self):
+        if self._expect_pkt:
+            raise TopotatoPacketFail(
+                "did not receive a matching packet for:\n%s"
+                % inspect.getsource(self._pkt)
+            )
+
     async def _async_timed(self):
         with self.timeline.observe(backfill=self.obs_start()) as obs:
-            async for element in obs:  # async_iter_timing(self._timing):
+            async for element in obs:
                 if not isinstance(element, TimedScapy):
                     continue
                 pkt = element.pkt
@@ -441,12 +466,6 @@ class AssertPacket(TimedMixin, TopotatoAssertion):
                             % inspect.getsource(self._pkt)
                         )
                     break
-            else:
-                if self._expect_pkt:
-                    raise TopotatoPacketFail(
-                        "did not receive a matching packet for:\n%s"
-                        % inspect.getsource(self._pkt)
-                    )
 
 
 class AssertLog(TimedMixin, TopotatoAssertion):
@@ -469,10 +488,17 @@ class AssertLog(TimedMixin, TopotatoAssertion):
         self._msg = msg
         self.matched = None
 
+    def _async_timeout(self):
+        if isinstance(self._msg, re.Pattern):
+            detail = cast(str, self._msg.pattern)
+        else:
+            detail = cast(str, self._msg)
+        raise TopotatoLogFail(detail)
+
     @skiptrace
     async def _async_timed(self):
         with self.timeline.observe(backfill=self.obs_start()) as obs:
-            async for msg in obs:  # async_iter_timing(self._timing):
+            async for msg in obs:
                 if not isinstance(msg, LogMessage):
                     continue
 
@@ -488,12 +514,6 @@ class AssertLog(TimedMixin, TopotatoAssertion):
                 self.matched = msg
                 msg.match_for.append(self)
                 break
-            else:
-                if isinstance(self._msg, re.Pattern):
-                    detail = cast(str, self._msg.pattern)
-                else:
-                    detail = cast(str, self._msg)
-                raise TopotatoLogFail(detail)
 
 
 class Delay(TimedMixin, TopotatoAssertion):
