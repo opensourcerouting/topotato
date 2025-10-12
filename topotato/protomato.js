@@ -879,7 +879,12 @@ function load_pylog(timetable, obj) {
 		prio = "warn";
 
 	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
-	create(row, "span", "pyinfo", `${obj.data.pathname}:${obj.data.lineno}`);
+	if (obj.data.pathname.startsWith("test_"))
+		create(row, "span", "pyinfo", `${obj.data.pathname}:${obj.data.lineno}`);
+	else if (obj.data.pathname.startsWith("topotato/"))
+		create(row, "span", "pyinfo", `${obj.data.name}:${obj.data.lineno}`);
+	else
+		create(row, "span", "pyinfo", `${obj.data.name}`);
 	create(row, "span", "pyprio", `${prio}`);
 	let textspan = create(row, "span", "msg");
 
