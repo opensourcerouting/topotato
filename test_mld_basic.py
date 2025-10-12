@@ -175,3 +175,20 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
             pkt = ip/hbh/ICMPv6MLReport2(records = [mfrec0]),
         )
         yield from AssertLog.make(dut, 'pim6d', f"[MLD default:dut-h1 {h1.iface_to('dut').ll6}] malformed MLDv2 report (invalid group fe80::1234)", maxwait=2.0)
+
+    @topotatofunc
+    def test_duplicate_record(self, topo, dut, h1, h2, src):
+        srcaddr = src.iface_to('lan').ip6[0].ip
+        h1lladdr = h1.iface_to('dut').ll6
+
+
+        rec = ICMPv6MLDMultAddrRec(rtype = 1, dst="ff05::1234", sources = [str(srcaddr)])
+
+        yield from ScapySend.make(
+            h1,
+            "h1-dut",
+            IPv6(hlim=1, src=h1lladdr, dst="ff02::16") /
+            ICMPv6MLReport2(records = [rec, rec])
+        )
+
+        logchecks = yield from AssertLog.make(dut, 'pim6d', f'[MLD default:dut-h1 ({srcaddr},ff05::1234)] NOINFO => JOIN', maxwait=2.0)
