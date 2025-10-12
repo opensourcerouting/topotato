@@ -34,6 +34,7 @@ class PyLogEvent(FrameworkEvent):
 
     typ = "pylog"
     pass_js = [
+        "name",
         "funcName",
         "levelname",
         "lineno",
@@ -48,7 +49,11 @@ class PyLogEvent(FrameworkEvent):
     def __init__(self, record: logging.LogRecord):
         super().__init__()
         self._ts = record.created
-        self._data["pathname"] = os.path.relpath(record.pathname, _basepath)
+        pathrel = os.path.relpath(record.pathname, _basepath)
+        if pathrel.startswith("../"):
+            self._data["pathname"] = record.pathname
+        else:
+            self._data["pathname"] = pathrel
         self._data["msg"] = record.getMessage()
 
         for key in self.pass_js:
