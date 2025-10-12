@@ -26,7 +26,7 @@ from .frr import (
 )
 from .utils import (
     JSONCompareIgnoreContent,
-    JSONCompareIgnoreExtraListitems,
+    JSONCompareRejectExtraItems,
     JSONCompareListKeyedDict,
 )
 from .network import (

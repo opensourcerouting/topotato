@@ -73,7 +73,6 @@ class PtMPBasic(TestBase, AutoFixture, setup=Setup):
     # intra_64 = connected-prefix include/exclude
     def lsdb_reference(self, routers, intra_64=set()):
         lsas = [
-            JSONCompareIgnoreExtraListitems(),
             JSONCompareListKeyedDict("advertisingRouter", "type", "linkStateId"),
         ]
         for rtr in routers:
@@ -125,7 +124,6 @@ class PtMPBasic(TestBase, AutoFixture, setup=Setup):
 
         return {
             "areaScopedLinkStateDb": [
-                JSONCompareIgnoreExtraListitems(),
                 JSONCompareListKeyedDict("areaId"),
                 {"areaId": "0.0.0.0", "lsa": lsas},
             ]

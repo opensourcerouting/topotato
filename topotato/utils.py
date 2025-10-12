@@ -201,7 +201,7 @@ class JSONCompareDirective(dict):
 
        expect = {
            "something": [
-               JSONCompareIgnoreExtraListitems(),
+               JSONCompareRejectExtraItems(),
                1,
                2,
            ],
@@ -216,9 +216,10 @@ class JSONCompareIgnoreContent(JSONCompareDirective):
     """
 
 
-class JSONCompareIgnoreExtraListitems(JSONCompareDirective):
+class JSONCompareRejectExtraItems(JSONCompareDirective):
     """
-    Ignore any additional list items for this list.
+    Fail if there are any items in a list that aren't matched by an expected
+    item.  (Default behavior is to ignore such items.)
     """
 
 
@@ -275,7 +276,7 @@ def _json_diff(d1, d2):
     )
 
 
-# pylint: disable=too-many-locals,too-many-branches
+# pylint: disable=too-many-locals,too-many-branches,too-many-statements
 def _json_list_cmp(list1, list2, parent, result: json_cmp_result) -> None:
     "Handles list type entries."
     if isinstance(list1, JSONCompareIgnoreContent) or isinstance(
@@ -309,7 +310,6 @@ def _json_list_cmp(list1, list2, parent, result: json_cmp_result) -> None:
 
     # Check list size
     if len(list2) > len(list1):
-        # and JSONCompareIgnoreExtraListitems not in flags[0]:
         result.add_error(
             "{} too few items ".format(parent)
             + "(have {}, expected {}:\n {})".format(
@@ -353,27 +353,37 @@ def _json_list_cmp(list1, list2, parent, result: json_cmp_result) -> None:
                         )
                     )
     else:
-        # unmatched = []
-        for expected in list2:
+        used_match = set()
+        best_match = set()
+        for eidx, expected in enumerate(list2):
             best_err = None
-            for value in list1:
+            best_idx = None
+            for vidx, value in enumerate(list1):
+                if vidx in used_match:
+                    continue
                 res = json_cmp({"json": value}, {"json": expected})
                 if res is None:
+                    used_match.add(vidx)
                     break
                 if best_err is None or len(str(res)) < len(str(best_err)):
                     best_err = res
+                    best_idx = vidx
             else:
+                best_match.add(best_idx)
+                msg = str(best_err).replace("\n", "\n  ")
                 result.add_error(
-                    "{} list value is different (\n  {})".format(
-                        parent, str(best_err).replace("\n", "\n  ")
-                    )
+                    f"{parent} no match for [{eidx}], best match [{best_idx}] is different:\n  {msg}"
                 )
 
-        # If there are unmatched items, error out.
-        # if unmatched:
-        #    result.add_error(
-        #        '{} list value is different (\n{})'.format(
-        #            parent, _json_diff(list1, list2)))
+        if JSONCompareRejectExtraItems in flags[1]:
+            no_warn = used_match | best_match
+            if len(no_warn) < len(list1):
+                msgs = []
+                for vidx, value in enumerate(list1):
+                    if vidx in no_warn:
+                        continue
+                    msgs.append(f"\n  [{vidx}] = {value!r}")
+                result.add_error(f"{parent} rejecting unmatched items:{''.join(msgs)}")
 
 
 def json_cmp(d1, d2):
