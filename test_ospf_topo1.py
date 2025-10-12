@@ -81,6 +81,7 @@ class Configs(FRRConfigs):
     !
     router ospf6
      ospf6 router-id {{ router.lo_ip4[0].ip }}
+     timers lsa min-arrival 0
      timers throttle spf 0 50 500
      redistribute connected
     #% endblock
@@ -412,7 +413,7 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             ''', maxwait = 45.0)
 
 
-        flaky = yield from AssertVtysh.make(r1, 'ospf6d', 'show ipv6 ospf6 route', r'''
+        yield from AssertVtysh.make(r1, 'ospf6d', 'show ipv6 ospf6 route', r'''
             *N E2 fd00::2/128                    fe80::fc02:ff:febc:300    r1-lan3 00:$$\d+:\d+$$
             *N IA fdbc:1::/64                    ::                        r1-lan1 00:$$\d+:\d+$$
             *N IA fdbc:2::/64                    fe80::fc02:ff:febc:300    r1-lan3 00:$$\d+:\d+$$
@@ -423,7 +424,7 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
 
         yield from AssertVtysh.make(r1, 'ospf6d', 'show ipv6 ospf6 database detail')
 
-        flaky += yield from AssertVtysh.make(r2, 'ospf6d', 'show ipv6 ospf6 route', r'''
+        yield from AssertVtysh.make(r2, 'ospf6d', 'show ipv6 ospf6 route', r'''
             *N E2 fd00::1/128                    fe80::fc01:ff:febc:300    r2-lan3 00:$$\d+:\d+$$
             *N IA fdbc:1::/64                    fe80::fc01:ff:febc:300    r2-lan3 00:$$\d+:\d+$$
              N E2 fdbc:1::/64                    fe80::fc01:ff:febc:300    r2-lan3 00:$$\d+:\d+$$
@@ -431,8 +432,6 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             *N IA fdbc:3::/64                    ::                        r2-lan3 00:$$\d+:\d+$$
              N E2 fdbc:3::/64                    fe80::fc01:ff:febc:300    r2-lan3 00:$$\d+:\d+$$
             ''', maxwait = 45.0)
-
-        flaky.xfail("unknown ospf6d bug")
 
         yield from AssertVtysh.make(r2, 'ospf6d', 'show ipv6 ospf6 database detail')
 
@@ -488,7 +487,7 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             }, local = True, maxwait=2.0)
 
         for rtr in [r1, r2]:
-            flaky = yield from AssertKernelRoutesV6.make(rtr.name, {
+            yield from AssertKernelRoutesV6.make(rtr.name, {
                 'fd00::1/128': JSONCompareIgnoreContent(),
                 'fd00::2/128': JSONCompareIgnoreContent(),
                 'fdbc:1::/64': JSONCompareIgnoreContent(),
@@ -499,8 +498,6 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                 'fdbc:4::/64': None,
                 'fdbc:5::/64': None,
             }, local = True, maxwait=2.0)
-
-            flaky.xfail("unidentified ospf6d bug")
 
         for rtr in [r3, r4]:
             yield from AssertKernelRoutesV6.make(rtr.name, {

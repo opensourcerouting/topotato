@@ -59,6 +59,7 @@ class Configs(RouterFRR):
     !
     router ospf6
      log-adjacency-changes
+     timers lsa min-arrival 0
      ospf6 router-id {{ router.lo_ip4[0].ip }}
     #% endblock
     """
