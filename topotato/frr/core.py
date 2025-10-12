@@ -855,7 +855,9 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
             if sys.platform == "linux":
                 # pylint: disable=no-member
                 peercred = sock.getsockopt(
-                    socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3I")
+                    socket.SOL_SOCKET,
+                    getattr(socket, "SO_PEERCRED", 17),
+                    struct.calcsize("3I"),
                 )
                 pid, _, _ = struct.unpack("3I", peercred)
             elif sys.platform.startswith("freebsd"):
