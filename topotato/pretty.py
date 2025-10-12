@@ -666,11 +666,14 @@ def _makeindex(args):
             fileitems.append(load(source, out))
 
     fileitems = [i for i in fileitems if i is not None]
-    with tempfile.NamedTemporaryFile(
-        suffix=".html", dir=os.path.dirname(out), mode="w", encoding="UTF-8"
-    ) as fd:
-        fd.write(template.render({"fileitems": fileitems}))
-        os.rename(fd.name, out)
+    try:
+        with tempfile.NamedTemporaryFile(
+            suffix=".html", dir=os.path.dirname(out), mode="w", encoding="UTF-8"
+        ) as fd:
+            fd.write(template.render({"fileitems": fileitems}))
+            os.rename(fd.name, out)
+    except FileNotFoundError:
+        pass
 
 
 if __name__ == "__main__":
