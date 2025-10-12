@@ -175,3 +175,30 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
             pkt = ip/hbh/ICMPv6MLReport2(records = [mfrec0]),
         )
         yield from AssertLog.make(dut, 'pim6d', f"[MLD default:dut-h1 {h1.iface_to('dut').ll6}] malformed MLDv2 report (invalid group fe80::1234)", maxwait=2.0)
+
+    @topotatofunc
+    def test_duplicate_record(self, topo, dut, h1, h2, src):
+        """
+        Check that duplicate records in MLD reports don't cause issues
+
+        Normal hosts wouldn't/shouldn't send reports with duplicate items, but
+        it should be benign to do so.  Verify that.
+        """
+        srcaddr = src.iface_to('lan').ip6[0].ip
+        h1lladdr = h1.iface_to('dut').ll6
+
+        rec = ICMPv6MLDMultAddrRec(rtype = 1, dst="ff05::3456", sources = [str(srcaddr)])
+
+        yield from ScapySend.make(
+            h1,
+            "h1-dut",
+            IPv6(hlim=1, src=h1lladdr, dst="ff02::16") /
+            ICMPv6MLReport2(records = [rec, rec])
+        )
+
+        logchecks = yield from AssertLog.make(dut, 'pim6d', f'[MLD default:dut-h1 ({srcaddr},ff05::3456)] NOINFO => JOIN', maxwait=2.0)
+        @logchecks.skip_on_exception
+        def need_debug_mld(testitem):
+            testitem.instance.dut.require_defun("debug_mld_cmd")
+
+        yield from AssertVtysh.make(dut, "pim6d", "debug show mld interface %s" % (dut.iface_to('h1').ifname))
