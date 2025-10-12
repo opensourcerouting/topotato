@@ -39,6 +39,11 @@ class Configs(RouterFRR):
     ospf6d = """
     #% extends "boilerplate.conf"
     #% block main
+    debug ospf6 lsa link
+    debug ospf6 lsa link originate
+    debug ospf6 lsa intra-prefix
+    debug ospf6 lsa intra-prefix originate
+    !
     #%   for iface in router.ifaces
     interface {{ iface.ifname }}
      description {{ iface.other.endpoint.name }}
