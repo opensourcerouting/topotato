@@ -5,10 +5,12 @@
 Test network for topotato.
 """
 
+import sys
 import logging
 import itertools
 import os
 import re
+import fnmatch
 import typing
 from typing import (
     cast,
@@ -23,6 +25,7 @@ from typing import (
 
 from .timeline import Timeline
 from .osdep import NetworkInstance
+from .exceptions import TopotatoNoOSSupport
 
 if typing.TYPE_CHECKING:
     from . import toponom
@@ -172,6 +175,23 @@ class TopotatoParams:
 
     def instantiate(self) -> NetworkInstance.RouterNS:
         raise NotImplementedError(f"cannot instantiate router {self.name!r}")
+
+    def require_os(self, platform_match: str, message: str) -> None:
+        """
+        Require (raise skip exception) we're on a given platform (or not)
+
+        :param platform_match: a "glob" (filename-like, e.g. `freebsd*`,
+            used with `fnmatch`) pattern matched against Python `sys.platform`.
+            Prefix with an exclamation mark to reverse the condition.
+        :param message: text for the exception.
+        """
+        invert = False
+        if platform_match.startswith("!"):
+            invert, platform_match = True, platform_match[1:]
+
+        match = fnmatch.fnmatch(sys.platform, platform_match)
+        if match == invert:
+            raise TopotatoNoOSSupport(message)
 
 
 class HostNS(TopotatoNetwork.RouterNS):
