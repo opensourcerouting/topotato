@@ -55,6 +55,12 @@ class Configs(FRRConfigs):
     #% endblock
     """
 
+    def requirements(self):
+        self.require_os(
+            "!freebsd*",
+            "unnumbered setups work differently on FreeBSD and may not support ECMP",
+        )
+
 
 class OSPF_Unnumbered_ECMP(TestBase, AutoFixture, topo=topology, configs=Configs):
     """

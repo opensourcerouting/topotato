@@ -81,6 +81,9 @@ class FRRConfigured(RouterFRR):
     #% endblock
     """
 
+    def requirements(self):
+        self.require_os("!freebsd*", "test requires MPLS support")
+
 
 class Setup(TopotatoNetwork, topo=topology):
     r1: FRRConfigured

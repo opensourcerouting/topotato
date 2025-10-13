@@ -93,6 +93,12 @@ class Configs(FRRConfigs):
     #% endblock
     """
 
+    def requirements(self):
+        self.require_os(
+            "!freebsd*",
+            "topotato scapy support is currently broken on FreeBSD",
+        )
+
 
 class PIMTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
     @topotatofunc

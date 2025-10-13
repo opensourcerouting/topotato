@@ -87,6 +87,12 @@ class Configs(FRRConfigs):
     #% endblock
     """
 
+    def requirements(self):
+        self.require_os(
+            "!freebsd*",
+            "test requires carrier state propagation, which is not available on FreeBSD's epair",
+        )
+
 
 class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
     @topotatofunc
