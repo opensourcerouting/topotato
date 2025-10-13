@@ -4,6 +4,18 @@ TL;DR: use FreeBSD 15, run only in throwaway VM, run as root, `--slowdown=2`
 and make sure bridge module is loaded.
 
 
+## FRR specific requirements
+
+FRR must currently be built with the following configure options:
+
+`--sysconfdir=/etc --localstatedir=/var --without-pam`
+
+It is also currently necessary to:
+
+* `mkdir /etc/frr`
+* `mkdir /var/lib`
+
+
 ## Setup requirements
 
 To run on FreeBSD, other than the installed package requirements (see end
