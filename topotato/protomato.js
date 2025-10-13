@@ -1291,7 +1291,7 @@ const protocols = {
 		if (proto.nextElementSibling)
 			return true;
 
-		let elem = create(row, "span", "pktcol l-4 p-tcp last", `TCP ${pdml_get_attr(proto, "tcp.srcport")} → ${pdml_get_attr(proto, "tcp.dstport")}`);
+		let elem = create(row, "span", "pktcol l-4 p-tcp last", `[${pdml_get_attr(proto, "tcp.stream")}] TCP ${pdml_get_attr(proto, "tcp.srcport")} → ${pdml_get_attr(proto, "tcp.dstport")}`);
 
 		let flags = pdml_get(proto, "tcp.flags");
 		let flag_arr = new Array();
@@ -1383,6 +1383,8 @@ const protocols = {
 	},
 	"bgp": function (obj, row, proto, protos) {
 		const rex = /^.*: (.*?) Message.*/;
+		let protoarr = Array.from(proto.parentElement.children);
+		let tcp = protoarr[protoarr.indexOf(proto) - 1];
 
 		var items = new Array;
 		var idx = 0;
@@ -1421,11 +1423,13 @@ const protocols = {
 			items.push(msgtype);
 			proto = proto.nextElementSibling;
 		}
-		create(row, "span", "pktcol l-4 p-bgp", "BGP");
+		create(row, "span", "pktcol l-4 p-bgp", `[${pdml_get_attr(tcp, "tcp.stream")}] BGP`);
 		create(row, "span", "pktcol l-5 p-bgp detail last", items.join(", "));
 		return false;
 	},
 	"bmp": function (obj, row, proto, protos) {
+		let protoarr = Array.from(proto.parentElement.children);
+		let tcp = protoarr[protoarr.indexOf(proto) - 1];
 		var items = new Array;
 		var idx = 0;
 
@@ -1437,7 +1441,7 @@ const protocols = {
 			items.push(slug);
 			proto = proto.nextElementSibling;
 		}
-		create(row, "span", "pktcol l-4 p-bmp", "BMP");
+		create(row, "span", "pktcol l-4 p-bmp", `[${pdml_get_attr(tcp, "tcp.stream")}] BMP`);
 		create(row, "span", "pktcol l-5 p-bmp detail last", items.join(", "));
 		return false;
 	},
