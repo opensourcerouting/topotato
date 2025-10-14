@@ -13,6 +13,7 @@ import pathlib
 import re
 import tempfile
 import logging
+import warnings
 import asyncio
 
 from typing import (
@@ -124,6 +125,10 @@ class FreeBSDJail:
         assert self.rootdir
         dest = self.rootdir + str(target)
 
+        warnings.warn("FreeBSD /var situation needs fixing")
+        return
+
+        # pylint: disable=unreachable
         subprocess.check_call(["mount", "-t", "nullfs", str(substitute), dest])
         self._umount.insert(0, dest)
 
