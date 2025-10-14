@@ -482,7 +482,7 @@ function eth_pretty(htmlparent, csscls, macaddr) {
 			elem.d_iface = m[2];
 			elem.onmouseenter = onmouseenter_eth;
 			elem.onmouseleave = onmouseleave_eth;
-			return;
+			return m[1];
 		}
 	} else if (macaddr in eth_wellknown)
 		name = eth_wellknown[macaddr];
@@ -1192,7 +1192,9 @@ const protocols = {
 	"eth": function (obj, row, proto, protos) {
 		var col = create(row, "span", "pktcol p-eth");
 
-		eth_pretty(col, "pktsub p-eth-src", pdml_get_attr(proto, "eth.src"));
+		srcname = eth_pretty(col, "pktsub p-eth-src", pdml_get_attr(proto, "eth.src"));
+		row.classList.add(`s-${srcname}`);
+
 		create(col, "span", "pktsub p-eth-arr", "→");
 		eth_pretty(col, "pktsub p-eth-dst", pdml_get_attr(proto, "eth.dst"));
 		return true;
