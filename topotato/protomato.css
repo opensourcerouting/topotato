@@ -663,6 +663,17 @@ svg {
 	border-color:#f80;
 }
 
+.p-malformed .l-4,
+.p-malformed .l-5 {
+	background-color:#ffbbee;
+	border-color:#f6a;
+}
+.p-malformed .last::after {
+	content: " malformed ⛔";
+	font-weight:bold;
+	color: #903;
+}
+
 .log {
 	height:auto;
 }

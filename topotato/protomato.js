@@ -1392,6 +1392,12 @@ const protocols = {
 		var idx = 0;
 
 		while (proto && idx++ < 6) {
+			if (proto.attributes.name.nodeValue == "_ws.malformed") {
+				row.classList.add("p-malformed");
+				proto = proto.nextElementSibling;
+				continue;
+			}
+
 			let msgtype = pdml_get_attr(proto, "bgp.type", "showname");
 			let msglen = pdml_get_value(proto, "bgp.length");
 
