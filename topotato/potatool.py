@@ -48,6 +48,7 @@ def typing_is_optional(hint):
     uargs = typing.get_args(hint)
     optional = type(None) in uargs
     if optional:
+        # pylint: disable=unidiomatic-typecheck
         uargs = tuple(i for i in uargs if i is not type(None))
     return Union[uargs], optional
 
