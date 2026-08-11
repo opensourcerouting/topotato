@@ -15,7 +15,6 @@ __topotests_replaces__ = {
 # pylint: disable=invalid-name, missing-class-docstring, missing-function-docstring, line-too-long, consider-using-f-string, wildcard-import, unused-wildcard-import, f-string-without-interpolation, too-few-public-methods, unused-argument, attribute-defined-outside-init
 from topotato.v1 import *
 
-
 not_blackhole_prefix = "172.16.255.255/32"
 blackhole_prefix = "172.16.255.254/32"
 
@@ -31,16 +30,14 @@ def topology(topo):
     topo.router("r1").lo_ip4.append(blackhole_prefix)
 
 
-class Configs(FRRConfigs):
-    zebra = """
-    #% extends "boilerplate.conf"
-    ## nothing needed
-    """
+class FRRConfigured(RouterFRR):
+    zebra = ""
 
     bgpd = """
+    #% extends "boilerplate.conf"
+    #% set blackhole_prefix = "172.16.255.254/32"
+    #% set asns = { "r1": 65001, "r2": 65002, "r3": 65003, "r4": 65002 }
     #% block main
-    #%   set blackhole_prefix = "172.16.255.254/32"
-    #%   set asns = { "r1": 65001, "r2": 65002, "r3": 65003, "r4": 65002 }
     router bgp {{ asns[router.name] }}
       timers bgp 3 9
       no bgp ebgp-requires-policy
@@ -48,7 +45,15 @@ class Configs(FRRConfigs):
       neighbor {{ iface.other.ip4[0].ip }} remote-as {{ asns[iface.other.endpoint.name] }}
       neighbor {{ iface.other.ip4[0].ip }} timers connect 1
     #%   endfor
-    #%   if router.name == 'r1'
+    #% endblock
+    """
+
+
+class FRRConfR1(FRRConfigured):
+    bgpd = """
+    #% extends "super"
+    #% block main
+    {{ super() }}
       address-family ipv4 unicast
         redistribute connected
         neighbor {{ router.iface_to('r2').other.ip4[0].ip }} route-map r2 out
@@ -60,12 +65,18 @@ class Configs(FRRConfigs):
       match ip address prefix-list blackhole-prefix
       set community blackhole no-export
     route-map r2 permit 20
-    #%   endif
     #% endblock
     """
 
 
-class BGPBlackholeCommunity(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfigured
+    r3: FRRConfigured
+    r4: FRRConfigured
+
+
+class BGPBlackholeCommunity(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def bgp_converge(self, topo, r1, r2, r3, r4):
         """
