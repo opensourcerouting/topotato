@@ -150,17 +150,55 @@ class LogMessage(TimedElement):
         self.uid = fields.uid.rstrip(b"\0").decode("ASCII")
         self._prio = fields.prio
 
-        argspec = rawmsg[fixhdr : fixhdr + fields.n_argpos * 8]
-        rawmsg = rawmsg[fields.hdrlen :]
         self.args = {}
-        for i in range(0, fields.n_argpos):
-            start, end = struct.unpack("II", argspec[i * 8 : (i + 1) * 8])
-            self.args[i] = (start, end)
+        self._compat_decode_args(rawmsg, fields, fixhdr)
 
         self.arghdrlen = fields.arghdrlen
-        self.rawtext = rawmsg[: fields.textlen]
+        self.rawtext = rawmsg[fields.hdrlen : fields.hdrlen + fields.textlen]
         self.text = self.rawtext.decode("UTF-8")
         self._ts = fields.ts_sec + fields.ts_nsec * 1e-9
+
+    def _compat_decode_args(self, rawmsg, fields, fixhdr):
+        """
+        Workaround for FRR 859a8e6e99cc :(
+
+        A `ts_subsec` field got added in that commit... without adding a flag
+        or any other compatibility indication :(.  The field is immediately
+        before n_argpos, e.g.:
+
+        ```
+             +---+---+---+---+-----
+        old: | A | R | G | N |  args...
+             +---+---+---+---+---+---+---+---+------
+        new: | S | - | - | - | A | R | G | N |  args...
+             +---+---+---+---+---+---+---+---+------
+              ^^^^^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^
+              fields.n_argpos argspec....
+        ```
+        """
+        ARG_SIZE = 8
+        argspec = rawmsg[fixhdr : fields.hdrlen]
+        new_n_argpos = struct.unpack("I", (argspec + bytes(4))[:4])[0]
+
+        new_expect = 4 + new_n_argpos * ARG_SIZE
+        # handle 8b alignment
+        new_valid = len(argspec) in [new_expect, (new_expect + 7) & ~7]
+        if new_valid:
+            argspec = argspec[4:]
+            n_argpos = new_n_argpos
+
+        max_argpos = len(argspec) // ARG_SIZE
+        if n_argpos > max_argpos:
+            _logger.warning(
+                "truncated argument indices (want %d, only got %d)",
+                n_argpos,
+                max_argpos,
+            )
+            n_argpos = max_argpos
+
+        for i in range(0, n_argpos):
+            start, end = struct.unpack("II", argspec[i * ARG_SIZE : (i + 1) * ARG_SIZE])
+            self.args[i] = (start, end)
 
     @property
     def ts(self) -> Tuple[float, int]:
