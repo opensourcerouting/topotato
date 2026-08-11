@@ -96,22 +96,21 @@ class Setup(TopotatoNetwork, topo=topology):
 class OSPF_TILFA_Topo1(TestBase, AutoFixture, setup=Setup):
     # show ip route json - shorthand: connected prefix
     @staticmethod
-    def _connected_entry(iface="lo", protos=None):
+    def _connected_entry(iface="lo"):
         ret = [
             JSONCompareListKeyedDict("protocol"),
         ]
-        for proto in protos or ["connected", "ospf"]:
-            ret.append(
-                {
-                    "protocol": proto,
-                    "nexthops": [
-                        {
-                            "directlyConnected": True,
-                            "interfaceName": iface,
-                        },
-                    ],
-                }
-            )
+        ret.append(
+            {
+                "protocol": "connected",
+                "nexthops": [
+                    {
+                        "directlyConnected": True,
+                        "interfaceName": iface,
+                    },
+                ],
+            }
+        )
         return ret
 
     # show ip route json - shorthand: ospf nexthop + route
