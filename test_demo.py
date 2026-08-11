@@ -31,9 +31,7 @@ def allproto_topo(topo):
     topo.router("r1").iface_to("ripng").ip6.append("fc00:0:0:1::1/64")
 
 
-class Configs(FRRConfigs):
-    routers = ["r1"]
-
+class FRRConfigured(RouterFRR):
     zebra = """
     #% extends "boilerplate.conf"
     #% block main
@@ -74,7 +72,18 @@ class Configs(FRRConfigs):
     """
 
 
-class AllStartupTest(TestBase, AutoFixture, topo=allproto_topo, configs=Configs):
+class Setup(TopotatoNetwork, topo=allproto_topo):
+    r1: FRRConfigured
+    noprot: Host
+    rip: Host
+    ripng: Host
+    ospfv2: Host
+    ospfv3: Host
+    isisv4: Host
+    isisv6: Host
+
+
+class AllStartupTest(TestBase, AutoFixture, setup=Setup):
     """
     docstring here
     """
@@ -84,8 +93,8 @@ class AllStartupTest(TestBase, AutoFixture, topo=allproto_topo, configs=Configs)
         """
         just check that all daemons are running
         """
-        for daemon in Configs.templates.keys():
-            if not hasattr(Configs, daemon):
+        for daemon in FRRConfigured.templates.keys():
+            if not hasattr(FRRConfigured, daemon):
                 continue
             yield from AssertVtysh.make(r1, daemon, command="show version")
 
