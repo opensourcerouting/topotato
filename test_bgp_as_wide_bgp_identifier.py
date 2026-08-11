@@ -33,25 +33,12 @@ def topology(topo):
     topo.router("r3").iface_to("s1").ip4.append("192.168.255.3/24")
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2", "r3"]
-
-    zebra = """
-    #% extends "boilerplate.conf"
-    #% block main
-    #%   for iface in router.ifaces
-    interface {{ iface.ifname }}
-     ip address {{ iface.ip4[0] }}
-    !
-    #%   endfor
-    ip forwarding
-    !
-    #% endblock
-    """
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
     bgpd = """
+    #% extends "boilerplate.conf"
     #% block main
-    #%   if router.name == 'r1'
     router bgp 65001
      bgp router-id 10.10.10.10
      no bgp ebgp-requires-policy
@@ -59,7 +46,16 @@ class Configs(FRRConfigs):
      neighbor 192.168.255.1 timers 3 10
      neighbor 192.168.255.1 timers connect 1
     !
-    #%   elif router.name == 'r2'
+    #% endblock
+    """
+
+
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65002
      bgp router-id 10.10.10.10
      no bgp ebgp-requires-policy
@@ -72,7 +68,16 @@ class Configs(FRRConfigs):
      neighbor 192.168.255.3 timers 3 10
      neighbor 192.168.255.3 timers connect 1
     !
-    #%   elif router.name == 'r3'
+    #% endblock
+    """
+
+
+class FRRConfR3(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65002
      bgp router-id 10.10.10.10
      no bgp ebgp-requires-policy
@@ -80,12 +85,17 @@ class Configs(FRRConfigs):
      neighbor 192.168.255.1 timers 3 10
      neighbor 192.168.255.1 timers connect 1
     !
-    #%   endif
     #% endblock
     """
 
 
-class TestBGPAsWideBGPIdentifier(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+    r3: FRRConfR3
+
+
+class TestBGPAsWideBGPIdentifier(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def bgp_converge(self, _, r1):
         expected = {"192.168.255.1": {"bgpState": "Established"}}

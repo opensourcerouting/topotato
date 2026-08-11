@@ -28,31 +28,12 @@ def topology(topo):
     topo.router("r1").lo_ip4.append("172.16.255.254/32")
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2"]
-
-    zebra = """
-    #% extends "boilerplate.conf"
-    #% block main
-    #% if router.name == 'r1'
-    interface lo
-     ip address {{ router.lo_ip4[0] }}
-    !
-    #% endif
-    #% for iface in router.ifaces
-    interface {{ iface.ifname }}
-     ip address {{ iface.ip4[0] }}
-    !
-    #% endfor
-    ip forwarding
-    !
-    #% endblock
-    """
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
     bgpd = """
     #% extends "boilerplate.conf"
     #% block main
-    #% if router.name == 'r1'
     router bgp 65000
      no bgp ebgp-requires-policy
      neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} remote-as 65001
@@ -63,7 +44,16 @@ class Configs(FRRConfigs):
     route-map r2-out permit 10
      set community 111:111 222:222 333:333 444:444
     !
-    #% elif router.name == 'r2'
+    #% endblock
+    """
+
+
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65001
      no bgp ebgp-requires-policy
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} remote-as 65000
@@ -76,12 +66,16 @@ class Configs(FRRConfigs):
     route-map r1-in permit 10
      set comm-list r1 delete
     !
-    #% endif
     #% endblock
     """
 
 
-class BGPCommListDeleteTest(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+
+
+class BGPCommListDeleteTest(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def _bgp_converge_bgpstate(self, topo, r1, r2):
 
@@ -115,10 +109,18 @@ class BGPCommListDeleteTest(TestBase, AutoFixture, topo=topology, configs=Config
     def _bgp_comm_list_delete(self, topo, r1, r2):
 
         expected = {
-            "paths": [{"community": {"list": [
-                JSONCompareRejectExtraItems(),
-                "111:111", "222:222", "444:444"
-            ]}}]
+            "paths": [
+                {
+                    "community": {
+                        "list": [
+                            JSONCompareRejectExtraItems(),
+                            "111:111",
+                            "222:222",
+                            "444:444",
+                        ]
+                    }
+                }
+            ]
         }
 
         yield from AssertVtysh.make(
