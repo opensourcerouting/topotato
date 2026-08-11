@@ -27,9 +27,7 @@ def topo1(topo):
     """
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2", "r3", "r4"]
-
+class FRRConfigured(RouterFRR):
     zebra = """
     #% extends "boilerplate.conf"
     #% block main
@@ -66,7 +64,16 @@ class Configs(FRRConfigs):
     """
 
 
-class PIM6PrunePropagate(TestBase, AutoFixture, topo=topo1, configs=Configs):
+class Setup(TopotatoNetwork, topo=topo1):
+    r1: FRRConfigured
+    r2: FRRConfigured
+    r3: FRRConfigured
+    r4: FRRConfigured
+    h1: Host
+    h4: Host
+
+
+class PIM6PrunePropagate(TestBase, AutoFixture, setup=Setup):
     """
     IPv6 PIM prune propagation test.
 

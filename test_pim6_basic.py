@@ -27,9 +27,7 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2"]
-
+class FRRConfigured(RouterFRR):
     zebra = """
     #% extends "boilerplate.conf"
     #% block main
@@ -40,18 +38,6 @@ class Configs(FRRConfigs):
     #% endblock
     """
 
-    staticd = """
-    #% extends "boilerplate.conf"
-    #% block main
-    #%   if router.name == 'r2'
-    ipv6 route {{ routers['r1'].lo_ip6[0].ip }}/128 {{ routers['r1'].iface_to('r2').ll6 }} {{ router.iface_to('r1').ifname }}
-    ipv6 route {{ topo.lans['lan'].ip6[0] }} {{ routers['r1'].iface_to('r2').ll6 }} {{ router.iface_to('r1').ifname }}
-    #%   elif router.name == 'r1'
-    ipv6 route {{ routers['r2'].lo_ip6[0].ip }}/128 {{ routers['r2'].iface_to('r1').ll6 }} {{ router.iface_to('r2').ifname }}
-    #%   endif
-    #% endblock
-    """
-
     pim6d = """
     #% extends "boilerplate.conf"
     #% block main
@@ -59,7 +45,7 @@ class Configs(FRRConfigs):
     debug mld
     #%   endif
     debug pimv6 trace
-    #%   if router.name in ['r1', 'r2']
+    !
     interface lo
      ipv6 pim
     ##
@@ -72,64 +58,109 @@ class Configs(FRRConfigs):
     #%     endfor
     !
     ipv6 pim rp {{ routers['r1'].lo_ip6[0].ip }} ff00::/8
-    #%   endif
     #% endblock
     """
 
 
-class PIM6Basic(TestBase, AutoFixture, topo=topology, configs=Configs):
+class FRRConfR1(FRRConfigured):
+    staticd = """
+    #% extends "boilerplate.conf"
+    #% block main
+    ipv6 route {{ routers['r2'].lo_ip6[0].ip }}/128 {{ routers['r2'].iface_to('r1').ll6 }} {{ router.iface_to('r2').ifname }}
+    #% endblock
+    """
+
+
+class FRRConfR2(FRRConfigured):
+    staticd = """
+    #% extends "boilerplate.conf"
+    #% block main
+    ipv6 route {{ routers['r1'].lo_ip6[0].ip }}/128 {{ routers['r1'].iface_to('r2').ll6 }} {{ router.iface_to('r1').ifname }}
+    ipv6 route {{ topo.lans['lan'].ip6[0] }} {{ routers['r1'].iface_to('r2').ll6 }} {{ router.iface_to('r1').ifname }}
+    #% endblock
+    """
+
+
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+    h1: Host
+    h2: Host
+
+
+class PIM6Basic(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def prepare(self, topo, h1, h2, r1, r2):
-        self.receiver = MulticastReceiver(h2, h2.iface_to('r2'))
+        self.receiver = MulticastReceiver(h2, h2.iface_to("r2"))
 
         for rt in [r1, r2]:
             yield from AssertVtysh.make(rt, "zebra", "show ipv6 route")
 
-        self.receiver = MulticastReceiver(h2, h2.iface_to('r2'))
+        self.receiver = MulticastReceiver(h2, h2.iface_to("r2"))
 
         yield from AssertVtysh.make(r1, "pim6d", "show ipv6 pim rp-info")
-        yield from AssertVtysh.make(r2, "pim6d", "show ipv6 pim rp-info", f"""
+        yield from AssertVtysh.make(
+            r2,
+            "pim6d",
+            "show ipv6 pim rp-info",
+            f"""
         RP address  group/prefix-list  OIF    I am RP  Source  Group-Type
         { r1.lo_ip6[0].ip }     ff00::/8           r2-r1  no       Static  ASM
 
-        """, maxwait=5.0)
+        """,
+            maxwait=5.0,
+        )
 
     @topotatofunc
     def test_ssm(self, topo, h1, h2, r1, r2):
         """
         Join a (S,G) on MLD and try forwarding a packet on it.
         """
-        srcaddr = h1.iface_to('lan').ip6[0].ip
+        srcaddr = h1.iface_to("lan").ip6[0].ip
 
-        yield from self.receiver.join('ff05::2345', srcaddr)
+        yield from self.receiver.join("ff05::2345", srcaddr)
 
-        logchecks = yield from AssertLog.make(r2, 'pim6d', '[MLD default:r2-h2 (%s,ff05::2345)] NOINFO => JOIN' % srcaddr, maxwait=3.0)
+        logchecks = yield from AssertLog.make(
+            r2,
+            "pim6d",
+            "[MLD default:r2-h2 (%s,ff05::2345)] NOINFO => JOIN" % srcaddr,
+            maxwait=3.0,
+        )
+
         @logchecks.skip_on_exception
         def need_debug_mld(testitem):
             testitem.instance.r2.require_defun("debug_mld_cmd")
 
-        yield from AssertLog.make(r1, 'pim6d', 'pim_forward_start: (S,G)=(%s,ff05::2345) oif=r1-r2' % srcaddr, maxwait=3.0)
+        yield from AssertLog.make(
+            r1,
+            "pim6d",
+            "pim_forward_start: (S,G)=(%s,ff05::2345) oif=r1-r2" % srcaddr,
+            maxwait=3.0,
+        )
 
         ip = IPv6(hlim=255, src=srcaddr, dst="ff05::2345")
         udp = UDP(sport=9999, dport=9999)
         yield from ScapySend.make(
             h1,
             "h1-lan",
-            pkt = ip/udp,
+            pkt=ip / udp,
         )
         yield from ScapySend.make(
             h1,
             "h1-lan",
-            pkt = ip/udp,
+            pkt=ip / udp,
         )
         yield from ScapySend.make(
             h1,
             "h1-lan",
-            pkt = ip/udp,
+            pkt=ip / udp,
         )
 
         def expect_pkt(ipv6: IPv6, udp: UDP):
-            return ipv6.src == str(srcaddr) and ipv6.dst == 'ff05::2345' \
+            return (
+                ipv6.src == str(srcaddr)
+                and ipv6.dst == "ff05::2345"
                 and udp.dport == 9999
+            )
 
         yield from AssertPacket.make("r2_h2", maxwait=4.0, pkt=expect_pkt)
