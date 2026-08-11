@@ -120,6 +120,12 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             R    10.255.0.4         IA [20] area: 0.0.0.0, ASBR
                                        via 10.103.0.3, r1-lan3
 
+            ============ OSPF reachable routers table =============
+            R    10.255.0.2            [10] area: 0.0.0.0, ASBR
+                                       via 10.103.0.2, r1-lan3
+            R    10.255.0.3            [10] area: 0.0.0.0, ABR, ASBR
+                                       via 10.103.0.3, r1-lan3
+
             ============ OSPF external routing table ===========
             N E2 10.255.0.2/32         [10/20] tag: 0
                                        via 10.103.0.2, r1-lan3
@@ -154,6 +160,12 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             R    10.255.0.4         IA [20] area: 0.0.0.0, ASBR
                                        via 10.103.0.3, r2-lan3
 
+            ============ OSPF reachable routers table =============
+            R    10.255.0.1            [10] area: 0.0.0.0, ASBR
+                                       via 10.103.0.1, r2-lan3
+            R    10.255.0.3            [10] area: 0.0.0.0, ABR, ASBR
+                                       via 10.103.0.3, r2-lan3
+
             ============ OSPF external routing table ===========
             N E2 10.255.0.1/32         [10/20] tag: 0
                                        via 10.103.0.1, r2-lan3
@@ -181,6 +193,14 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                                        via 10.7.4.3, r3-r4
 
             ============ OSPF router routing table =============
+            R    10.255.0.1            [10] area: 0.0.0.0, ASBR
+                                       via 10.103.0.1, r3-lan3
+            R    10.255.0.2            [10] area: 0.0.0.0, ASBR
+                                       via 10.103.0.2, r3-lan3
+            R    10.255.0.4            [10] area: 0.0.0.1, ASBR
+                                       via 10.7.4.3, r3-r4
+
+            ============ OSPF reachable routers table =============
             R    10.255.0.1            [10] area: 0.0.0.0, ASBR
                                        via 10.103.0.1, r3-lan3
             R    10.255.0.2            [10] area: 0.0.0.0, ASBR
@@ -219,6 +239,10 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                                        via 10.7.3.4, r4-r3
             R    10.255.0.2         IA [20] area: 0.0.0.1, ASBR
                                        via 10.7.3.4, r4-r3
+            R    10.255.0.3            [10] area: 0.0.0.1, ABR, ASBR
+                                       via 10.7.3.4, r4-r3
+
+            ============ OSPF reachable routers table =============
             R    10.255.0.3            [10] area: 0.0.0.1, ABR, ASBR
                                        via 10.7.3.4, r4-r3
 
@@ -351,6 +375,10 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             R    10.255.0.2            [10] area: 0.0.0.0, ASBR
                                        via 10.103.0.2, r1-lan3
 
+            ============ OSPF reachable routers table =============
+            R    10.255.0.2            [10] area: 0.0.0.0, ASBR
+                                       via 10.103.0.2, r1-lan3
+
             ============ OSPF external routing table ===========
             N E2 10.255.0.2/32         [10/20] tag: 0
                                        via 10.103.0.2, r1-lan3
@@ -368,6 +396,10 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                                        directly attached to r2-lan3
 
             ============ OSPF router routing table =============
+            R    10.255.0.1            [10] area: 0.0.0.0, ASBR
+                                       via 10.103.0.1, r2-lan3
+
+            ============ OSPF reachable routers table =============
             R    10.255.0.1            [10] area: 0.0.0.0, ASBR
                                        via 10.103.0.1, r2-lan3
 
@@ -391,6 +423,10 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
             R    10.255.0.4            [10] area: 0.0.0.1, ASBR
                                        via 10.7.4.3, r3-r4
 
+            ============ OSPF reachable routers table =============
+            R    10.255.0.4            [10] area: 0.0.0.1, ASBR
+                                       via 10.7.4.3, r3-r4
+
             ============ OSPF external routing table ===========
             N E2 10.255.0.4/32         [10/20] tag: 0
                                        via 10.7.4.3, r3-r4
@@ -408,6 +444,10 @@ class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
                                        directly attached to r4-lan6
 
             ============ OSPF router routing table =============
+            R    10.255.0.3            [10] area: 0.0.0.1, ABR, ASBR
+                                       via 10.7.3.4, r4-r3
+
+            ============ OSPF reachable routers table =============
             R    10.255.0.3            [10] area: 0.0.0.1, ABR, ASBR
                                        via 10.7.3.4, r4-r3
 
