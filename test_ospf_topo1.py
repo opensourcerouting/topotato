@@ -23,7 +23,7 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
+class FRRConfigured(RouterFRR):
     zebra = """
     #% extends "boilerplate.conf"
     """
@@ -94,7 +94,14 @@ class Configs(FRRConfigs):
         )
 
 
-class OSPFTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfigured
+    r2: FRRConfigured
+    r3: FRRConfigured
+    r4: FRRConfigured
+
+
+class OSPFTopo1Test(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def test_initial(self, topo, r1, r2, r3, r4):
         yield from AssertVtysh.make(r1, 'ospfd', 'show ip ospf route', r'''

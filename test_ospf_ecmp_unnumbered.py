@@ -19,7 +19,7 @@ def topology(topo):
     topo.lans["u2"].ip4.noauto = True
 
 
-class Configs(FRRConfigs):
+class FRRConfigured(RouterFRR):
     zebra = """
     #% extends "boilerplate.conf"
     #% block main
@@ -62,7 +62,12 @@ class Configs(FRRConfigs):
         )
 
 
-class OSPF_Unnumbered_ECMP(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfigured
+    r2: FRRConfigured
+
+
+class OSPF_Unnumbered_ECMP(TestBase, AutoFixture, setup=Setup):
     """
     OSPF(v2) ECMP + unnumbered combination test.
 
