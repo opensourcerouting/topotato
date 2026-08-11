@@ -111,13 +111,14 @@ class FRRParams(TopotatoParams):
 
         for daemon, template in self.templates.items():
             if name in (self.daemon_rtrs[daemon] or [name]):
-                self.configs[daemon] = template.render(
-                    daemon=daemon,
-                    router=router,
-                    routers=rtrmap,
-                    topo=topo,
-                    frr=TemplateUtils(router, daemon, self),
-                )
+                with template.environment.with_super(daemon, self.__class__.__mro__):
+                    self.configs[daemon] = template.render(
+                        daemon=daemon,
+                        router=router,
+                        routers=rtrmap,
+                        topo=topo,
+                        frr=TemplateUtils(router, daemon, self),
+                    )
 
         # TODO: rework mgmtd integration, particularly for supporting older
         # FRR versions

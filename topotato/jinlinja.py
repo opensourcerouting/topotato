@@ -8,6 +8,7 @@ Jinja2 python-inline template helpers
 # TODO: write self-tests for this!
 
 import sys
+import contextlib
 import inspect
 import ast
 from typing import (
@@ -80,9 +81,14 @@ class InlineEnv(jinja2.Environment):
     """
 
     _templates: Dict[str, Tuple[Optional[str], str]]
+    _super_templates: List[Tuple[str, Tuple[Type, ...]]]
+
+    class SuperTemplateNotFound(Exception):
+        pass
 
     def __init__(self, *args, **kwargs):
         self._templates = {}
+        self._super_templates = []
 
         kwargs.setdefault("line_comment_prefix", "#" + "#")
         kwargs.setdefault("line_statement_prefix", "#" + "%")
@@ -91,7 +97,33 @@ class InlineEnv(jinja2.Environment):
 
         super().__init__(*args, **kwargs)
 
+    @contextlib.contextmanager
+    def with_super(self, name: str, mro: Tuple[Type, ...]):
+        """
+        Context manager to temporarily register search path for `#extends "super"`
+
+        :param name: daemon / attribute name to look for in parent classes
+        :param mro: list of superclasses (method resultion order) to search.
+            First item (current class) is automatically skipped.
+
+        Takes care of removing the item from the search path after we're done.
+        """
+        self._super_templates.insert(0, (name, mro))
+        try:
+            yield
+        finally:
+            self._super_templates.pop(0)
+
     def _get_reg_template(self, name):
+        colonsp = name.split(":", maxsplit=1)
+        if colonsp[0] == "super":
+            daemon, mro = self._super_templates[0]
+            daemon = (colonsp + [daemon])[1]
+            for parent in mro[1:]:
+                if res := getattr(parent, daemon, None):
+                    return res, f"super({parent.__module__})", None
+            raise self.SuperTemplateNotFound(name)
+
         if name not in self._templates:
             raise FileNotFoundError(name)
 
