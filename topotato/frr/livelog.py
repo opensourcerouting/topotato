@@ -140,15 +140,18 @@ class LogMessage(TimedElement):
         self.router = router
         self.daemon = daemon
 
-        header, rawmsg = rawmsg[:72], rawmsg[72:]
+        spec = "".join(self._LogHdrFields.values())
+        fixhdr = struct.calcsize(spec)
+        header = rawmsg[:fixhdr]
 
-        hdata = struct.unpack("".join(self._LogHdrFields.values()), header)
+        hdata = struct.unpack(spec, header)
         self.header_fields = fields = self._LogHdr(*hdata)
 
         self.uid = fields.uid.rstrip(b"\0").decode("ASCII")
         self._prio = fields.prio
 
-        argspec, rawmsg = rawmsg[: fields.n_argpos * 8], rawmsg[fields.n_argpos * 8 :]
+        argspec = rawmsg[fixhdr : fixhdr + fields.n_argpos * 8]
+        rawmsg = rawmsg[fields.hdrlen :]
         self.args = {}
         for i in range(0, fields.n_argpos):
             start, end = struct.unpack("II", argspec[i * 8 : (i + 1) * 8])
