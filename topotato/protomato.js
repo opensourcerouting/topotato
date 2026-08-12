@@ -1218,7 +1218,7 @@ const protocols = {
 	"eth": function (obj, row, proto, protos) {
 		var col = create(row, "span", "pktcol p-eth");
 
-		srcname = eth_pretty(col, "pktsub p-eth-src", pdml_get_attr(proto, "eth.src"));
+		let srcname = eth_pretty(col, "pktsub p-eth-src", pdml_get_attr(proto, "eth.src"));
 		row.classList.add(`s-${srcname}`);
 
 		create(col, "span", "pktsub p-eth-arr", "→");
