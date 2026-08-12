@@ -109,7 +109,7 @@ class NetworkInstance(topobase.NetworkInstance):
                 result.error("%s is required to run on Linux systems", name)
 
         ip_ver = subprocess.check_output([cls._exec("ip"), "-V"]).decode("UTF-8")
-        ip_ver_m = re.search(r"iproute2-((?:ss)?[\d\.]+)", ip_ver)
+        ip_ver_m = re.search(r"iproute2-v?((?:ss)?[\d\.]+)", ip_ver)
         if ip_ver_m and ip_ver_m.group(1).startswith("ss"):
             ver = ip_ver_m.group(1)
             ssdate = int(ver[2:])
