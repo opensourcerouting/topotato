@@ -35,34 +35,12 @@ def topology(topo):
     topo.router("r4").iface_to("s2").ip4.append("192.168.2.4/24")
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2", "r3", "r4"]
-
-    zebra = """
-    #% extends "boilerplate.conf"
-    #% block main
-    #%   if router.name == 'r3'
-    interface lo
-     ip address {{ routers.r3.lo_ip4[0] }}
-    !
-    #%   elif router.name == 'r4'
-    interface lo
-     ip address {{ routers.r4.lo_ip4[0] }}
-    !
-    #%   endif
-    #%   for iface in router.ifaces
-    interface {{ iface.ifname }}
-     ip address {{ iface.ip4[0] }}
-    !
-    #%   endfor
-    ip forwarding
-    !
-    #% endblock
-    """
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
     bgpd = """
+    #% extends "boilerplate.conf"
     #% block main
-    #%   if router.name == 'r1'
     router bgp 65001
      timers bgp 3 10
      no bgp ebgp-requires-policy
@@ -71,7 +49,16 @@ class Configs(FRRConfigs):
      address-family ipv4 unicast
       neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} disable-addpath-rx
     !
-    #%   elif router.name == 'r2'
+    #% endblock
+    """
+
+
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65002
      timers bgp 3 10
      no bgp ebgp-requires-policy
@@ -84,7 +71,16 @@ class Configs(FRRConfigs):
      address-family ipv4 unicast
       neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} addpath-tx-all-paths
     !
-    #%   elif router.name == 'r3'
+    #% endblock
+    """
+
+
+class FRRConfR3(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65003
      timers bgp 3 10
      no bgp ebgp-requires-policy
@@ -93,7 +89,16 @@ class Configs(FRRConfigs):
      address-family ipv4 unicast
       redistribute connected
     !
-    #%   elif router.name == 'r4'
+    #% endblock
+    """
+
+
+class FRRConfR4(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65004
      timers bgp 3 10
      no bgp ebgp-requires-policy
@@ -102,12 +107,18 @@ class Configs(FRRConfigs):
      address-family ipv4 unicast
       redistribute connected
     !
-    #%   endif
     #% endblock
     """
 
 
-class BGPDisableAddpathRx(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+    r3: FRRConfR3
+    r4: FRRConfR4
+
+
+class BGPDisableAddpathRx(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def check_bgp_advertised_routes(self, _, r1, r2):
         expected = {

@@ -31,48 +31,43 @@ def topology(topo):
     topo.router("r2").lo_ip4.append("172.16.255.254/32")
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2"]
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
-    zebra = """
+    bgpd = """
     #% extends "boilerplate.conf"
     #% block main
-    #%  if router.name == 'r2'
-    interface lo
-     ip address {{ routers.r2.lo_ip4[0] }}
-    !
-    #%  endif
-    #%  for iface in router.ifaces
-    interface {{ iface.ifname }}
-     ip address {{ iface.ip4[0] }}
-    !
-    #%  endfor
-    ip forwarding
+    router bgp 65000
+     no bgp ebgp-requires-policy
+     neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} remote-as 65001
+     neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} timers 3 10
     !
     #% endblock
     """
 
+
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
     bgpd = """
+    #% extends "boilerplate.conf"
     #% block main
-    #%  if router.name == 'r2'
     router bgp 65001
      no bgp ebgp-requires-policy
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} remote-as 65000
      neighbor {{ routers.r1.ifaces[0].ip4[0].ip }} timers 3 10
      address-family ipv4
       redistribute connected
-    #%   elif router.name == 'r1'
-    router bgp 65000
-     no bgp ebgp-requires-policy
-     neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} remote-as 65001
-     neighbor {{ routers.r2.ifaces[0].ip4[0].ip }} timers 3 10
-    !
-    #%   endif
     #% endblock
     """
 
 
-class BGPDistanceChange(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+
+
+class BGPDistanceChange(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def bgp_converge(self, topo, r1, r2):
         expected = {
