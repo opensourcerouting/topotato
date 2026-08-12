@@ -19,8 +19,9 @@ from scapy.layers.inet import (
 )
 
 __topotests_replaces__ = {
-    'pim_basic/': 'f1f0bd0911c0834d9af9adfd9bf1a5f8f0bb62af',
+    "pim_basic/": "f1f0bd0911c0834d9af9adfd9bf1a5f8f0bb62af",
 }
+
 
 @topology_fixture()
 def topology(topo):
@@ -127,11 +128,11 @@ class PIMTopo1Test(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def test_state(self, topo, rp, r1, r2, r3):
         r2_addr = str(r2.iface_to("lan2").ip4[0].ip)
-        r3_addr = str(r3.iface_to('lan3').ip4[0].ip)
+        r3_addr = str(r3.iface_to("lan3").ip4[0].ip)
 
         # pim_basic/test_pim.py::test_pim_send_mcast_stream()
-        r2_pkt = IP(ttl=255, src=r2_addr, dst='229.1.1.1') / UDP(sport=9999, dport=9999)
-        r3_pkt = IP(ttl=255, src=r3_addr, dst='229.1.1.1') / UDP(sport=9999, dport=9999)
+        r2_pkt = IP(ttl=255, src=r2_addr, dst="229.1.1.1") / UDP(sport=9999, dport=9999)
+        r3_pkt = IP(ttl=255, src=r3_addr, dst="229.1.1.1") / UDP(sport=9999, dport=9999)
 
         for rtr, pkt, iface in [(r2, r2_pkt, "r2-lan2"), (r3, r3_pkt, "r3-lan3")]:
             yield from ScapySend.make(rtr, iface, pkt=pkt, repeat=3, interval=0.5)
@@ -171,11 +172,11 @@ class PIMTopo1Test(TestBase, AutoFixture, setup=Setup):
 
     @topotatofunc
     def test_join(self, topo, rp, r1, r2, r3):
-        r3_addr = str(r3.iface_to('lan3').ip4[0].ip)
+        r3_addr = str(r3.iface_to("lan3").ip4[0].ip)
 
         # pim_basic/test_pim.py::test_pim_igmp_report()
-        receiver = MulticastReceiver(r2, r2.iface_to('lan2'))
-        yield from receiver.join('229.1.1.2')
+        receiver = MulticastReceiver(r2, r2.iface_to("lan2"))
+        yield from receiver.join("229.1.1.2")
 
         js = {
             "229.1.1.2": {
@@ -191,12 +192,14 @@ class PIMTopo1Test(TestBase, AutoFixture, setup=Setup):
             r1, "pimd", "show ip pim upstream json", js, maxwait=20.0
         )
 
-        r3_pkt = IP(ttl=255, src=r3_addr, dst='229.1.1.2') / UDP(sport=9999, dport=9999)
+        r3_pkt = IP(ttl=255, src=r3_addr, dst="229.1.1.2") / UDP(sport=9999, dport=9999)
 
         for rtr, pkt, iface in [(r3, r3_pkt, "r3-lan3")]:
             yield from ScapySend.make(rtr, iface, pkt=pkt, repeat=3, interval=0.5)
 
         def expect_pkt(ip: IP, udp: UDP):
-            return ip.src == str(r3_addr) and ip.dst == '229.1.1.2' \
-                and udp.dport == 9999
+            return (
+                ip.src == str(r3_addr) and ip.dst == "229.1.1.2" and udp.dport == 9999
+            )
+
         yield from AssertPacket.make("lan2", maxwait=1.0, pkt=expect_pkt)

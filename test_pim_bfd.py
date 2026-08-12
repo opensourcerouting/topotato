@@ -98,7 +98,6 @@ class PIMBFDTest(TestBase, AutoFixture, setup=Setup):
             rtr, "bfdd", "enable\nshow bfd peers json", js, maxwait=deadline
         )
 
-
     @topotatofunc
     def test_init(self, topo, r1, r2, r3, r4):
         # PIM neighbors
@@ -138,7 +137,9 @@ class PIMBFDTest(TestBase, AutoFixture, setup=Setup):
                 "transmit-interval": 250,
             }
         ]
-        yield from AssertVtysh.make(r1, "bfdd", "enable\nshow bfd peers json", js, maxwait=6.0)
+        yield from AssertVtysh.make(
+            r1, "bfdd", "enable\nshow bfd peers json", js, maxwait=6.0
+        )
 
         js = [
             {
@@ -148,4 +149,6 @@ class PIMBFDTest(TestBase, AutoFixture, setup=Setup):
                 "remote-transmit-interval": 250,
             }
         ]
-        yield from AssertVtysh.make(r2, "bfdd", "enable\nshow bfd peers json", js, maxwait=6.0)
+        yield from AssertVtysh.make(
+            r2, "bfdd", "enable\nshow bfd peers json", js, maxwait=6.0
+        )

@@ -147,6 +147,7 @@ class PIM6PrunePropagate(TestBase, AutoFixture, setup=Setup):
             f"[MLD default:r4-lan4 ({srcaddr},ff35::2345)] NOINFO => JOIN",
             maxwait=2.0,
         )
+
         @logchecks.skip_on_exception
         def need_debug_mld(testitem):
             testitem.instance.r4.require_defun("debug_mld_cmd")
@@ -198,6 +199,7 @@ class PIM6PrunePropagate(TestBase, AutoFixture, setup=Setup):
             f"[MLD default:r4-lan4 ({self.srcaddr},ff35::2345)] JOIN_EXPIRING => NOINFO",
             maxwait=12.0,
         )
+
         @logchecks.skip_on_exception
         def need_debug_mld(testitem):
             testitem.instance.r4.require_defun("debug_mld_cmd")
@@ -210,8 +212,8 @@ class PIM6PrunePropagate(TestBase, AutoFixture, setup=Setup):
         # r2 & r3 go through NOINFO for a little while for prune handling
         yield from self.assert_join_state(r1, "r1-r2", "NOINFO", maxwait=1.0)
         # changed in FRRouting#14105
-        #yield from self.assert_join_state(r2, "r2-r3", "NOINFO", maxwait=1.0)
-        #yield from self.assert_join_state(r3, "r3-r4", "NOINFO", maxwait=1.0)
+        # yield from self.assert_join_state(r2, "r2-r3", "NOINFO", maxwait=1.0)
+        # yield from self.assert_join_state(r3, "r3-r4", "NOINFO", maxwait=1.0)
         # MLD state is gone
         yield from self.assert_join_state(r4, "r4-lan4", None, maxwait=1.0)
 

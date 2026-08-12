@@ -81,13 +81,17 @@ def iter_mld_records(report):
             yield record
             record = record.payload
 
+
 class MLDBasic(TestBase, AutoFixture, setup=Setup):
     @topotatofunc(include_startup=True)
     def prepare(self, topo, dut, h1, h2, src):
-        self.receiver = MulticastReceiver(h1, h1.iface_to('dut'))
+        self.receiver = MulticastReceiver(h1, h1.iface_to("dut"))
 
         # wait for query before continuing
-        logchecks = yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1] MLD query', maxwait=3.0)
+        logchecks = yield from AssertLog.make(
+            dut, "pim6d", "[MLD default:dut-h1] MLD query", maxwait=3.0
+        )
+
         @logchecks.skip_on_exception
         def need_debug_mld(testitem):
             testitem.instance.dut.require_defun("debug_mld_cmd")
@@ -95,38 +99,50 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
         # get out of initial reporting (prevents timing issues later)
         def expect_pkt(ipv6: IPv6, report: ICMPv6MLReport2):
             for record in iter_mld_records(report):
-                if record.rtype == 2: # IS_EX
+                if record.rtype == 2:  # IS_EX
                     return True
+
         yield from AssertPacket.make("h1_dut", maxwait=4.0, pkt=expect_pkt)
 
         yield from Delay.make(maxwait=5.0)
 
     @topotatofunc
     def test_asm(self, topo, dut, h1, h2, src):
-        srcaddr = src.iface_to('lan').ip6[0].ip
+        srcaddr = src.iface_to("lan").ip6[0].ip
 
-        yield from self.receiver.join('ff05::1234')
+        yield from self.receiver.join("ff05::1234")
 
-        logchecks = yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1 (*,ff05::1234)] NOINFO => JOIN', maxwait=2.0)
+        logchecks = yield from AssertLog.make(
+            dut,
+            "pim6d",
+            "[MLD default:dut-h1 (*,ff05::1234)] NOINFO => JOIN",
+            maxwait=2.0,
+        )
+
         @logchecks.skip_on_exception
         def need_debug_mld(testitem):
             testitem.instance.dut.require_defun("debug_mld_cmd")
 
-        yield from AssertVtysh.make(dut, "pim6d", "debug show mld interface %s" % (dut.iface_to('h1').ifname))
+        yield from AssertVtysh.make(
+            dut, "pim6d", "debug show mld interface %s" % (dut.iface_to("h1").ifname)
+        )
 
         ip = IPv6(hlim=255, src=srcaddr, dst="ff05::1234")
         udp = UDP(sport=9999, dport=9999)
         yield from ScapySend.make(
             src,
             "src-lan",
-            pkt = ip/udp,
-	    repeat = 2,
-	    interval = 0.33,
+            pkt=ip / udp,
+            repeat=2,
+            interval=0.33,
         )
 
         def expect_pkt(ipv6: IPv6, udp: UDP):
-            return ipv6.src == str(srcaddr) and ipv6.dst == 'ff05::1234' \
+            return (
+                ipv6.src == str(srcaddr)
+                and ipv6.dst == "ff05::1234"
                 and udp.dport == 9999
+            )
 
         yield from AssertPacket.make("h1_dut", maxwait=2.0, pkt=expect_pkt)
 
@@ -135,28 +151,39 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
         """
         Join a (S,G) on MLD and try forwarding a packet on it.
         """
-        srcaddr = src.iface_to('lan').ip6[0].ip
+        srcaddr = src.iface_to("lan").ip6[0].ip
 
-        yield from self.receiver.join('ff05::2345', srcaddr)
+        yield from self.receiver.join("ff05::2345", srcaddr)
 
-        logchecks = yield from AssertLog.make(dut, 'pim6d', '[MLD default:dut-h1 (%s,ff05::2345)] NOINFO => JOIN' % srcaddr, maxwait=3.0)
+        logchecks = yield from AssertLog.make(
+            dut,
+            "pim6d",
+            "[MLD default:dut-h1 (%s,ff05::2345)] NOINFO => JOIN" % srcaddr,
+            maxwait=3.0,
+        )
+
         @logchecks.skip_on_exception
         def need_debug_mld(testitem):
             testitem.instance.dut.require_defun("debug_mld_cmd")
 
-        yield from AssertVtysh.make(dut, "pim6d", "debug show mld interface %s" % (dut.iface_to('h1').ifname))
+        yield from AssertVtysh.make(
+            dut, "pim6d", "debug show mld interface %s" % (dut.iface_to("h1").ifname)
+        )
 
         ip = IPv6(hlim=255, src=srcaddr, dst="ff05::2345")
         udp = UDP(sport=9999, dport=9999)
         yield from ScapySend.make(
             src,
             "src-lan",
-            pkt = ip/udp,
+            pkt=ip / udp,
         )
 
         def expect_pkt(ipv6: IPv6, udp: UDP):
-            return ipv6.src == str(srcaddr) and ipv6.dst == 'ff05::2345' \
+            return (
+                ipv6.src == str(srcaddr)
+                and ipv6.dst == "ff05::2345"
                 and udp.dport == 9999
+            )
 
         yield from AssertPacket.make("h1_dut", maxwait=2.0, pkt=expect_pkt)
 
@@ -166,15 +193,20 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
         An unicast address is not a valid group address.
         """
         ip = IPv6(hlim=1, src=h1.iface_to("dut").ll6, dst="ff02::16")
-        hbh = IPv6ExtHdrHopByHop(options = RouterAlert())
+        hbh = IPv6ExtHdrHopByHop(options=RouterAlert())
         mfrec0 = ICMPv6MLDMultAddrRec(dst="fe80::1234")
 
         yield from ScapySend.make(
             h1,
             "h1-dut",
-            pkt = ip/hbh/ICMPv6MLReport2(records = [mfrec0]),
+            pkt=ip / hbh / ICMPv6MLReport2(records=[mfrec0]),
         )
-        yield from AssertLog.make(dut, 'pim6d', f"[MLD default:dut-h1 {h1.iface_to('dut').ll6}] malformed MLDv2 report (invalid group fe80::1234)", maxwait=2.0)
+        yield from AssertLog.make(
+            dut,
+            "pim6d",
+            f"[MLD default:dut-h1 {h1.iface_to('dut').ll6}] malformed MLDv2 report (invalid group fe80::1234)",
+            maxwait=2.0,
+        )
 
     @topotatofunc
     def test_duplicate_record(self, topo, dut, h1, h2, src):
@@ -184,21 +216,29 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
         Normal hosts wouldn't/shouldn't send reports with duplicate items, but
         it should be benign to do so.  Verify that.
         """
-        srcaddr = src.iface_to('lan').ip6[0].ip
-        h1lladdr = h1.iface_to('dut').ll6
+        srcaddr = src.iface_to("lan").ip6[0].ip
+        h1lladdr = h1.iface_to("dut").ll6
 
-        rec = ICMPv6MLDMultAddrRec(rtype = 1, dst="ff05::3456", sources = [str(srcaddr)])
+        rec = ICMPv6MLDMultAddrRec(rtype=1, dst="ff05::3456", sources=[str(srcaddr)])
 
         yield from ScapySend.make(
             h1,
             "h1-dut",
-            IPv6(hlim=1, src=h1lladdr, dst="ff02::16") /
-            ICMPv6MLReport2(records = [rec, rec])
+            IPv6(hlim=1, src=h1lladdr, dst="ff02::16")
+            / ICMPv6MLReport2(records=[rec, rec]),
         )
 
-        logchecks = yield from AssertLog.make(dut, 'pim6d', f'[MLD default:dut-h1 ({srcaddr},ff05::3456)] NOINFO => JOIN', maxwait=2.0)
+        logchecks = yield from AssertLog.make(
+            dut,
+            "pim6d",
+            f"[MLD default:dut-h1 ({srcaddr},ff05::3456)] NOINFO => JOIN",
+            maxwait=2.0,
+        )
+
         @logchecks.skip_on_exception
         def need_debug_mld(testitem):
             testitem.instance.dut.require_defun("debug_mld_cmd")
 
-        yield from AssertVtysh.make(dut, "pim6d", "debug show mld interface %s" % (dut.iface_to('h1').ifname))
+        yield from AssertVtysh.make(
+            dut, "pim6d", "debug show mld interface %s" % (dut.iface_to("h1").ifname)
+        )
