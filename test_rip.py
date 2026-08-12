@@ -48,21 +48,14 @@ class FRRConfigured(RouterFRR):
     #%   endfor
     """
 
+
+class FRRConfR1(FRRConfigured):
     ripd = """
     #% extends "boilerplate.conf"
     #% block main
     router rip
      version 2
      timers basic 5 180 5
-    #% endblock
-    """
-
-
-class FRRConfR1(FRRConfigured):
-    ripd = """
-    #% extends "super"
-    #% block main
-    {{ super() }}
     !
      network 193.1.1.0/26
      network r1-stub2
@@ -74,9 +67,11 @@ class FRRConfR1(FRRConfigured):
 
 class FRRConfR2(FRRConfigured):
     ripd = """
-    #% extends "super"
+    #% extends "boilerplate.conf"
     #% block main
-    {{ super() }}
+    router rip
+     version 2
+     timers basic 5 180 5
     !
      network 193.1.1.0/26
      network 193.1.2.0/24
@@ -86,9 +81,11 @@ class FRRConfR2(FRRConfigured):
 
 class FRRConfR3(FRRConfigured):
     ripd = """
-    #% extends "super"
+    #% extends "boilerplate.conf"
     #% block main
-    {{ super() }}
+    router rip
+     version 2
+     timers basic 5 180 5
     !
      redistribute connected
      redistribute static
