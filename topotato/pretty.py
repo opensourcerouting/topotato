@@ -34,6 +34,7 @@ from typing import (
 
 import pytest
 import docutils.core
+import docutils.writers
 import jinja2
 import markupsafe
 
@@ -50,6 +51,8 @@ if typing.TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 # _pretty_session = pytest.StashKey["PrettySession"]()
 
+_html4_writer = docutils.writers.get_writer_class("html4")()
+
 
 def _docrender(item):
     obj = item.obj
@@ -60,7 +63,7 @@ def _docrender(item):
         return ""
 
     docstr = deindent(obj.__doc__)
-    parts = docutils.core.publish_parts(docstr, writer="html4")
+    parts = docutils.core.publish_parts(docstr, writer=_html4_writer)
     return parts["fragment"]
 
 
