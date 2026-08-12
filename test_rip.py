@@ -39,8 +39,7 @@ def topology(topo):
     topo.lo_v4 = False
 
 
-class Configs(FRRConfigs):
-    zebra_routers = ["r1", "r2", "r3"]
+class FRRConfigured(RouterFRR):
     zebra = """
     #% extends "boilerplate.conf"
     #%   for iface in router.ifaces
@@ -49,33 +48,54 @@ class Configs(FRRConfigs):
     #%   endfor
     """
 
-    ripd_routers = ["r1", "r2", "r3"]
     ripd = """
     #% extends "boilerplate.conf"
     #% block main
     router rip
      version 2
      timers basic 5 180 5
-    ##
-    #%   if router.name == 'r1'
+    #% endblock
+    """
+
+
+class FRRConfR1(FRRConfigured):
+    ripd = """
+    #% extends "super"
+    #% block main
+    {{ super() }}
+    !
      network 193.1.1.0/26
      network r1-stub2
      network r1-stub3
      passive-interface r1-stub3
-    ##
-    #%   elif router.name == 'r2'
-     network 193.1.1.0/26
-     network 193.1.2.0/24
-    ##
-    #%   elif router.name == 'r3'
-     redistribute connected
-     redistribute static
-     network 193.1.2.0/24
-    #%   endif
     #% endblock
     """
 
-    staticd_routers = ["r3"]
+
+class FRRConfR2(FRRConfigured):
+    ripd = """
+    #% extends "super"
+    #% block main
+    {{ super() }}
+    !
+     network 193.1.1.0/26
+     network 193.1.2.0/24
+    #% endblock
+    """
+
+
+class FRRConfR3(FRRConfigured):
+    ripd = """
+    #% extends "super"
+    #% block main
+    {{ super() }}
+    !
+     redistribute connected
+     redistribute static
+     network 193.1.2.0/24
+    #% endblock
+    """
+
     staticd = """
     #% extends "boilerplate.conf"
     #% block main
@@ -84,13 +104,20 @@ class Configs(FRRConfigs):
     """
 
 
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+    r3: FRRConfR3
+    rtsta: Host
+
+
 def strip_header(text):
     if m := re.match(r"""^Codes:.+?\n\n""", text, re.MULTILINE | re.DOTALL):
-        return text[m.end():]
+        return text[m.end() :]
     return text
 
 
-class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
+class RIPBasic(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def test(self, topo, r1, r2, r3, rtsta):
         compare = r"""
@@ -177,7 +204,9 @@ class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
             C(i) 193.1.1.0/26       0.0.0.0               1 self              0
             R(n) 193.1.2.0/26       193.1.1.2             2 193.1.1.2         0 $$[0-9:]+$$
         """
-        yield from AssertVtysh.make(r1, "ripd", "show ip rip", compare, maxwait=10.0, filters=[strip_header])
+        yield from AssertVtysh.make(
+            r1, "ripd", "show ip rip", compare, maxwait=10.0, filters=[strip_header]
+        )
 
         compare = r"""
                  Network            Next Hop         Metric From            Tag Time
@@ -188,7 +217,9 @@ class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
             C(i) 193.1.1.0/26       0.0.0.0               1 self              0
             C(i) 193.1.2.0/26       0.0.0.0               1 self              0
         """
-        yield from AssertVtysh.make(r2, "ripd", "show ip rip", compare, maxwait=10.0, filters=[strip_header])
+        yield from AssertVtysh.make(
+            r2, "ripd", "show ip rip", compare, maxwait=10.0, filters=[strip_header]
+        )
 
         compare = r"""
                  Network            Next Hop         Metric From            Tag Time
@@ -199,4 +230,6 @@ class RIPBasic(TestBase, AutoFixture, topo=topology, configs=Configs):
             R(n) 193.1.1.0/26       193.1.2.2             2 193.1.2.2         0 $$[0-9:]+$$
             C(i) 193.1.2.0/26       0.0.0.0               1 self              0
         """
-        yield from AssertVtysh.make(r3, "ripd", "show ip rip", compare, maxwait=10.0, filters=[strip_header])
+        yield from AssertVtysh.make(
+            r3, "ripd", "show ip rip", compare, maxwait=10.0, filters=[strip_header]
+        )

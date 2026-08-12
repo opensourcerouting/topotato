@@ -29,13 +29,9 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
-    zebra = """
-    #% extends "boilerplate.conf"
-    ## nothing needed
-    """
+class FRRConfigured(RouterFRR):
+    zebra = ""
 
-    ripd_rtrs = ["r1", "r2", "r3", "r4", "r5"]
     ripd = """
     #% extends "boilerplate.conf"
     #% block main
@@ -54,7 +50,15 @@ class Configs(FRRConfigs):
         self.require_defun("rip_allow_ecmp_cmd", re.compile(r"MULTIPATH_NUM|\(1-256\)"))
 
 
-class RIPAllowECMP(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfigured
+    r2: FRRConfigured
+    r3: FRRConfigured
+    r4: FRRConfigured
+    r5: FRRConfigured
+
+
+class RIPAllowECMP(TestBase, AutoFixture, setup=Setup):
     def ecmp_nexthops(self, *routers):
         """
         Helper function that returns the list of nexthops for yang + zebra
