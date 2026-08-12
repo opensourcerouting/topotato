@@ -637,6 +637,8 @@ def _makeindex(args):
 
         summary: Dict[str, int] = {}
         for item in data["items"]:
+            if "outcome" not in item:
+                continue
             summary[item["outcome"]] = summary.get(item["outcome"], 0) + 1
 
         return {
