@@ -13,6 +13,10 @@ import os
 import time
 import logging
 import signal
+import fnmatch
+from typing import (
+    Optional,
+)
 
 import pytest
 
@@ -152,13 +156,25 @@ def pytest_runtest_makereport(item, call):
 def pytest_collection(session):
     _ = yield
 
-    def topologies():
+    def topologies(match_name: Optional[str] = None):
         for item in session.items:
             if not isinstance(item, TopotatoItem):
                 continue
             if item.name != "startup":
                 continue
-            yield item
+
+            nodeid = item.cls_node.nodeid
+            accept_names = [
+                nodeid,
+                nodeid.split("::", maxsplit=1)[0],
+                nodeid.rsplit("::", maxsplit=1)[-1],
+            ]
+            if (
+                match_name is None
+                or match_name in accept_names
+                or fnmatch.fnmatch(nodeid, match_name)
+            ):
+                yield item
 
     if session.config.getoption("--show-configs"):
         sys.stdout.write("\navailable configs:\n")
@@ -180,20 +196,25 @@ def pytest_collection(session):
         which = session.config.getoption("--show-config")
         path = which.split("/")
 
-        for item in topologies():
+        for item in topologies(path[0]):
             name = item.cls_node.nodeid
-            if name != path[0]:
-                continue
-
             setup = item._obj._setup(session, name)
 
             for rtr, rtrcls in item._obj._setup.__annotations__.items():
-                if len(path) > 1 and path[1] != rtr:
+                if (
+                    len(path) > 1
+                    and path[1] != rtr
+                    and not fnmatch.fnmatch(rtr, path[1])
+                ):
                     continue
 
                 rtrinst = rtrcls(setup, rtr)
                 for cfg, content in getattr(rtrinst, "configs", {}).items():
-                    if len(path) > 2 and path[2] != cfg:
+                    if (
+                        len(path) > 2
+                        and path[2] != cfg
+                        and not fnmatch.fnmatch(cfg, path[2])
+                    ):
                         continue
 
                     sys.stdout.write(
@@ -208,11 +229,7 @@ def pytest_collection(session):
     if session.config.getoption("--show-topology"):
         which = session.config.getoption("--show-topology")
 
-        for item in topologies():
-            name = item.cls_node.nodeid
-            if name != which:
-                continue
-
+        for item in topologies(which):
             net = item._obj._setup._network
 
             for rtrname, rtr in net.routers.items():
