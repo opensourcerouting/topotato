@@ -12,6 +12,7 @@ The place that breaks is when you want to erase the prompt / current input
 in order to process some events / write log messages, and then redisplay the
 prompt.
 """
+
 # pylint: disable=global-statement
 
 import sys

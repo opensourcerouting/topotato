@@ -4,6 +4,7 @@
 """
 Extensions for interactive topotato runs (pausing & potatool)
 """
+
 # pylint: disable=unused-argument,no-self-use
 
 import sys
@@ -291,8 +292,7 @@ class Interactive:
         out.write(
             "\033[37;40;1m%s\033[m\n" % (("━━━━━ topotato session ").ljust(72, "━"))
         )
-        out.write(
-            f"""this topotato session is named \033[30;107m { self.taskid } \033[m
+        out.write(f"""this topotato session is named \033[30;107m { self.taskid } \033[m
 
 to attach to a router in this session, use:
 \t\033[37;40;1mpotatool -s { self.taskid } -r \033[32;1mROUTER\033[37;1m shell\033[m
@@ -301,8 +301,7 @@ Dropping into python interactive shell.  Use \033[37;40;1mdir()\033[m to see sta
 available for inspection.  Press \033[37;40;1mCtrl+D\033[m to continue test run.
 To modify & run a test item, replace "yield from X.make(...)" with
 \033[37;40;1m_yield_from(X.make(...))\033[m.
-"""
-        )
+""")
 
     def show_aio_tasks(self, out, aioloop):
         tasks = sorted(

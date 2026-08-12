@@ -33,7 +33,6 @@ from typing import (
     Union,
 )
 
-
 _EndianType = Union[Literal["<"], Literal[">"], Literal["="]]
 
 

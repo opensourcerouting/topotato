@@ -4,6 +4,7 @@
 """
 Hooks defined and used by topotato.
 """
+
 # pylint: disable=unused-argument,unused-import
 
 from typing import Callable

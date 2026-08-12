@@ -4,6 +4,7 @@
 """
 Scapy netns-socket support.
 """
+
 # pylint: disable=protected-access
 
 import struct

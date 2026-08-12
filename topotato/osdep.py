@@ -4,6 +4,7 @@
 """
 topotato OS-dependent submodule imports/dispatching
 """
+
 # pylint: disable=unused-import
 
 import sys

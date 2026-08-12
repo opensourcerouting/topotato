@@ -6,6 +6,7 @@ Scapy PIM support.
 
 Only Bootstrap & Candidate RP messages right now (because I needed those...)
 """
+
 # pylint: disable=unused-argument
 
 import socket

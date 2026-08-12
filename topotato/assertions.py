@@ -4,6 +4,7 @@
 """
 Assertions (and Modifiers) to use in topotato tests:
 """
+
 # pylint: disable=too-many-ancestors
 
 import os

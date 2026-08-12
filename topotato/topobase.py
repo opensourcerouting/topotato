@@ -9,6 +9,7 @@ and virtual router wrappers.  The :py:mod:`topotato.osdep` module selects the
 appropriate implementation at runtime.  For type checking, only the methods
 and attributes defined here should be used outside OS-specific code.
 """
+
 # pylint: disable=unused-argument
 
 from abc import ABC, abstractmethod

@@ -4,6 +4,7 @@
 """
 Linux implementation of topotato instances, based on nswrap
 """
+
 # pylint: disable=duplicate-code
 
 import json
@@ -47,7 +48,6 @@ from .utils import exec_find, EnvcheckResult
 from .nswrap import LinuxNamespace
 from .toponom import LAN, LinkIface, Network
 from . import topobase
-
 
 _logger = logging.getLogger(__name__)
 

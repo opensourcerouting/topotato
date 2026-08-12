@@ -10,7 +10,6 @@ import functools
 from .parse import Topology
 from .toponom import Network
 
-
 # this is * imported for all tests
 __all__ = [
     "mkfixture",

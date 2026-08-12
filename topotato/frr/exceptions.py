@@ -4,6 +4,7 @@
 """
 Exceptions raised by topotato FRR integration.
 """
+
 # pylint: disable=duplicate-code
 
 import re

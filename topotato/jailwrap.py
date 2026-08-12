@@ -4,6 +4,7 @@
 """
 FreeBSD jail abstractions.
 """
+
 # pylint: disable=duplicate-code
 
 import os
@@ -21,7 +22,6 @@ from typing import (
 )
 
 from .utils import self_or_kwarg
-
 
 _logger = logging.getLogger(__name__)
 
