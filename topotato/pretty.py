@@ -60,7 +60,7 @@ def _docrender(item):
         return ""
 
     docstr = deindent(obj.__doc__)
-    parts = docutils.core.publish_parts(docstr, writer_name="html4")
+    parts = docutils.core.publish_parts(docstr, writer="html4")
     return parts["fragment"]
 
 
