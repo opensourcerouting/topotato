@@ -32,30 +32,29 @@ def topology(topo):
     topo.router("r2").iface_to("s1").ip4.append("192.168.1.2/24")
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2"]
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
-    zebra = """
+    bgpd = """
     #% extends "boilerplate.conf"
     #% block main
-    #%   if router.name == 'r2'
-    interface lo
-     ip address {{ routers.r2.lo_ip4[0] }}
+    router bgp 65001
+     no bgp ebgp-requires-policy
+     neighbor 192.168.1.2 remote-as external
     !
-    #%   endif
-    #%   for iface in router.ifaces
-    interface {{ iface.ifname }}
-     ip address {{ iface.ip4[0] }}
-    !
-    #%   endfor
-    ip forwarding
+    route-map r2 permit 10
+     set extcommunity none
     !
     #% endblock
     """
 
+
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
     bgpd = """
+    #% extends "boilerplate.conf"
     #% block main
-    #%   if router.name == 'r2'
     router bgp 65002
      no bgp ebgp-requires-policy
      neighbor 192.168.1.1 remote-as external
@@ -67,20 +66,16 @@ class Configs(FRRConfigs):
      set community 123:123
      set extcommunity bandwidth 200
     !
-    #%   elif router.name == 'r1'
-    router bgp 65001
-     no bgp ebgp-requires-policy
-     neighbor 192.168.1.2 remote-as external
-    !
-    route-map r2 permit 10
-     set extcommunity none
-    !
-    #%   endif
     #% endblock
     """
 
 
-class TestBGPExtCommunity(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+
+
+class TestBGPExtCommunity(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def bgp_converge(self, _, r1):
         expected = {

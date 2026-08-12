@@ -35,23 +35,12 @@ def topology(topo):
     topo.router("r3").iface_to("s1").ip4.append("192.168.255.3/24")
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2", "r3"]
-
-    zebra = """
-    #% extends "boilerplate.conf"
-    #% block main
-    #%   for iface in router.ifaces
-    interface {{ iface.ifname }}
-     ip address {{ iface.ip4[0] }}
-    !
-    #%   endfor
-    #% endblock
-    """
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
     bgpd = """
+    #% extends "boilerplate.conf"
     #% block main
-    #%   if router.name == 'r1'
     router bgp 65000
      no bgp ebgp-requires-policy
      neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} remote-as 65000
@@ -59,7 +48,16 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r3.iface_to('s1').ip4[0].ip }} remote-as 65000
      neighbor {{ routers.r3.iface_to('s1').ip4[0].ip }} timers 3 10
     !
-    #%   elif router.name == 'r2'
+    #% endblock
+    """
+
+
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65000
      no bgp ebgp-requires-policy
      no bgp network import-check
@@ -75,7 +73,16 @@ class Configs(FRRConfigs):
     route-map l2 permit 10
      set local-preference +10
     !
-    #%   elif router.name == 'r3'
+    #% endblock
+    """
+
+
+class FRRConfR3(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65000
      no bgp ebgp-requires-policy
      no bgp network import-check
@@ -91,14 +98,17 @@ class Configs(FRRConfigs):
     route-map l3 permit 10
      set local-preference -10
     !
-    #%   endif
     #% endblock
     """
 
 
-class TestBGPSetLocalPreferenceAddSubtract(
-    TestBase, AutoFixture, topo=topology, configs=Configs
-):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+    r3: FRRConfR3
+
+
+class TestBGPSetLocalPreferenceAddSubtract(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def bgp_converge(self, r1, r2, r3):
         expected = {

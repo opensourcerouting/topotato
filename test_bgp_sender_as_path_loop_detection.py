@@ -27,30 +27,12 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2", "r3"]
-
-    zebra = """
-    #% extends "boilerplate.conf"
-    #% block main
-    #%   if router.name == 'r1'
-    interface lo
-     ip address {{ routers.r1.lo_ip4[0] }}
-    !
-    #%   endif
-    #%   for iface in router.ifaces
-    interface {{ iface.ifname }}
-     ip address {{ iface.ip4[0] }}
-    !
-    #%   endfor
-    ip forwarding
-    !
-    #% endblock
-    """
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
     bgpd = """
+    #% extends "boilerplate.conf"
     #% block main
-    #%   if router.name == 'r1'
     router bgp 65001
      no bgp ebgp-requires-policy
      neighbor {{ routers.r2.iface_to('s1').ip4[0].ip }} remote-as 65002
@@ -62,7 +44,16 @@ class Configs(FRRConfigs):
     route-map prepend permit 10
      set as-path prepend 65003
     !
-    #%   elif router.name == 'r2'
+    #% endblock
+    """
+
+
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65002
      no bgp ebgp-requires-policy
      neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} remote-as 65001
@@ -73,20 +64,32 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r3.iface_to('s1').ip4[0].ip }} solo
      neighbor {{ routers.r3.iface_to('s1').ip4[0].ip }} sender-as-path-loop-detection
     !
-    #%   elif router.name == 'r3'
+    #% endblock
+    """
+
+
+class FRRConfR3(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65003
      no bgp ebgp-requires-policy
      neighbor {{ routers.r2.iface_to('s2').ip4[0].ip }} remote-as 65002
      neighbor {{ routers.r2.iface_to('s2').ip4[0].ip }} timers 3 10
     !
-    #%   endif
     #% endblock
     """
 
 
-class BGPSenderAspathLoopDetection(
-    TestBase, AutoFixture, topo=topology, configs=Configs
-):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+    r3: FRRConfR3
+
+
+class BGPSenderAspathLoopDetection(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def bgp_converge(self, _, r1, r2):
         expected = {
