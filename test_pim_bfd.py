@@ -21,10 +21,8 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
-    zebra = """
-    #% extends "boilerplate.conf"
-    """
+class FRRConfigured(RouterFRR):
+    zebra = ""
 
     bfdd = """
     #% extends "boilerplate.conf"
@@ -58,7 +56,14 @@ class Configs(FRRConfigs):
     """
 
 
-class PIMBFDTest(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfigured
+    r2: FRRConfigured
+    r3: FRRConfigured
+    r4: FRRConfigured
+
+
+class PIMBFDTest(TestBase, AutoFixture, setup=Setup):
     @staticmethod
     def expect_neighbor(rtr, ifname, peer, deadline):
         js = {

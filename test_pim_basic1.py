@@ -37,10 +37,8 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
-    zebra = """
-    #% extends "boilerplate.conf"
-    """
+class FRRConfigured(RouterFRR):
+    zebra = ""
 
     bgpd = """
     #% extends "boilerplate.conf"
@@ -59,36 +57,32 @@ class Configs(FRRConfigs):
      redistribute connected
     #% endblock
     """
-    bgpd_routers = ["rp", "r1"]
 
     pimd = """
     #% extends "boilerplate.conf"
     #% block main
-    ##
-    #%   if router.name in ['r1', 'rp']
     interface lo
      ip pim
     ##
-    #%     for iface in router.ifaces
+    #%   for iface in router.ifaces
     !
     interface {{ iface.ifname }}
     ## no IGMP on RP
-    #%       if router.name == 'r1'
+    #%     if router.name == 'r1'
      ip igmp
-    #%       endif
+    #%     endif
     ##
      ip pim
      ip pim hello 1 5
-    #%     endfor
+    #%   endfor
     ##
     ##
     !
     ip pim rp {{ routers["rp"].lo_ip4[0].ip }}
-    #%      if router.name == 'rp'
+    #%   if router.name == 'rp'
     ip pim register-accept-list ACCEPT
 
     ip prefix-list ACCEPT seq 5 permit 10.102.0.0/24 le 32
-    #%      endif
     #%   endif
     #% endblock
     """
@@ -100,7 +94,14 @@ class Configs(FRRConfigs):
         )
 
 
-class PIMTopo1Test(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    rp: FRRConfigured
+    r1: FRRConfigured
+    r2: Host
+    r3: Host
+
+
+class PIMTopo1Test(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def prepare(self, topo, rp, r1, r2, r3):
         # wait for BGP to come up

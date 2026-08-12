@@ -35,10 +35,8 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
-    zebra = """
-    #% extends "boilerplate.conf"
-    """
+class FRRConfigured(RouterFRR):
+    zebra = ""
 
     bfdd = """
     #% extends "boilerplate.conf"
@@ -88,7 +86,14 @@ def iter_lan_nbrs(rtr):
             yield (iface, otherrtr, lanif.other)
 
 
-class PIMTopo2Test(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfigured
+    r2: FRRConfigured
+    r3: FRRConfigured
+    r4: FRRConfigured
+
+
+class PIMTopo2Test(TestBase, AutoFixture, setup=Setup):
     """
     Sequence of checks exercising PIM and BFD neighbor establishing.
     """
