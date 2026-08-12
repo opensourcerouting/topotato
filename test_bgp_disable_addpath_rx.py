@@ -5,7 +5,6 @@
 Test if AddPath RX direction is not negotiated via AddPath capability.
 """
 
-
 __topotests_file__ = "bgp_disable_addpath_rx/test_disable_addpath_rx.py"
 __topotests_gitrev__ = "e82b531df94b9fd7bc456df8a1b7c58f2770eff9"
 

@@ -16,10 +16,7 @@ common subnet with this address.
   party" NEXT_HOP attribute.
 """
 
-
-__topotests_file__ = (
-    "bgp_ebgp_common_subnet_nexthop_unchanged/test_bgp-ebgp-common-subnet-nexthop-unchanged.py"
-)
+__topotests_file__ = "bgp_ebgp_common_subnet_nexthop_unchanged/test_bgp-ebgp-common-subnet-nexthop-unchanged.py"
 __topotests_gitrev__ = "a53c08bc131c02f4a20931d7aa9f974194ab16e7"
 
 # pylint: disable=invalid-name, missing-class-docstring, missing-function-docstring, line-too-long, consider-using-f-string, wildcard-import, unused-wildcard-import, f-string-without-interpolation, too-few-public-methods
@@ -118,4 +115,4 @@ class BGPEbgpCommonSubnetNexthopUnchanged(TestBase, AutoFixture, setup=Setup):
             f"show ip bgp {r1.lo_ip4[0]} json",
             maxwait=3.0,
             compare=expected,
-        )     
+        )

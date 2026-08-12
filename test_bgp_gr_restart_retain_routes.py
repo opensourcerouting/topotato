@@ -6,7 +6,7 @@ Test if routes are retained during BGP restarts.
 """
 
 __topotests_replaces__ = {
-	"bgp_gr_restart_retain_routes/": "6a62adabb3938b1f478d04500e2d918b43f6107d",
+    "bgp_gr_restart_retain_routes/": "6a62adabb3938b1f478d04500e2d918b43f6107d",
 }
 
 # pylint: disable=invalid-name, missing-class-docstring, missing-function-docstring, line-too-long, consider-using-f-string, wildcard-import, unused-wildcard-import, f-string-without-interpolation, too-few-public-methods, unused-argument
