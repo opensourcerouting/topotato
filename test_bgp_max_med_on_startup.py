@@ -26,25 +26,12 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2"]
-
-    zebra = """
-    #% extends "boilerplate.conf"
-    #% block main
-    #%   for iface in router.ifaces
-    interface {{ iface.ifname }}
-     ip address {{ iface.ip4[0] }}
-    !
-    #%   endfor
-    ip forwarding
-    !
-    #% endblock
-    """
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
     bgpd = """
+    #% extends "boilerplate.conf"
     #% block main
-    #%   if router.name == 'r1'
     router bgp 65001
      bgp max-med on-startup 5 777
      no bgp ebgp-requires-policy
@@ -53,18 +40,31 @@ class Configs(FRRConfigs):
      address-family ipv4 unicast
       redistribute connected
     !
-    #%   elif router.name == 'r2'
+    #% endblock
+    """
+
+
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65002
      no bgp ebgp-requires-policy
      neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} remote-as 65001
      neighbor {{ routers.r1.iface_to('s1').ip4[0].ip }} timers 3 10
     !
-    #%   endif
     #% endblock
-  """
+    """
 
 
-class BGPMaxMedOnStartup(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+
+
+class BGPMaxMedOnStartup(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def bgp_converge(self, _, r1, r2):
         expected = {str(r1.iface_to("s1").ip4[0].ip): {"bgpState": "Established"}}

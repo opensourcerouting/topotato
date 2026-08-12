@@ -23,17 +23,12 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2"]
-
-    zebra = """
-    #% extends "boilerplate.conf"
-    ## nothing needed
-    """
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
     bgpd = """
+    #% extends "boilerplate.conf"
     #% block main
-    #%   if router.name == 'r1'
     router bgp 65001
      no bgp ebgp-requires-policy
      bgp graceful-restart
@@ -44,7 +39,16 @@ class Configs(FRRConfigs):
      address-family ipv4
       redistribute connected
     !
-    #%   elif router.name == 'r2'
+    #% endblock
+    """
+
+
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65002
      no bgp ebgp-requires-policy
      bgp graceful-restart
@@ -53,12 +57,16 @@ class Configs(FRRConfigs):
      neighbor {{ routers.r1.iface_to('r2').ip4[0].ip }} timers 1 3
      neighbor {{ routers.r1.iface_to('r2').ip4[0].ip }} timers connect 1
     !
-    #%   endif
     #% endblock
     """
 
 
-class BGPGrRestartRetainRoutes(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+
+
+class BGPGrRestartRetainRoutes(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def bgp_converge(self, r1, r2):
         expected = {

@@ -29,37 +29,12 @@ def topology(topo):
     topo.router("r2").iface_to("s1").ip4.append("192.168.255.2/24")
 
 
-class Configs(FRRConfigs):
-    routers = ["r1", "r2"]
-
-    zebra = """
-    #% extends "boilerplate.conf"
-    #% block main
-    #%   if router.name == 'r1'
-    interface lo
-     ip address {{ routers.r1.lo_ip4[0] }}
-    !
-    #%   endif
-    #%   for iface in router.ifaces
-    interface {{ iface.ifname }}
-     ip address {{ iface.ip4[0] }}
-    !
-    #%   endfor
-    ip forwarding
-    !
-    #% endblock
-    """
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
     bgpd = """
+    #% extends "boilerplate.conf"
     #% block main
-    #%   if router.name == 'r2'
-    router bgp 65001
-     no bgp ebgp-requires-policy
-     neighbor 192.168.255.1 remote-as 65000
-     neighbor 192.168.255.1 timers 3 10
-     neighbor 192.168.255.1 passive
-    !
-    #%   elif router.name == 'r1'
     router bgp 65000
      bgp minimum-holdtime 20
      neighbor 192.168.255.2 remote-as 65001
@@ -67,12 +42,32 @@ class Configs(FRRConfigs):
      neighbor 192.168.255.2 timers connect 1
     ## this test will fail if r1 is passive!
     !
-    #%   endif
     #% endblock
     """
 
 
-class TestBGPMinimumHoldtime(TestBase, AutoFixture, topo=topology, configs=Configs):
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
+    router bgp 65001
+     no bgp ebgp-requires-policy
+     neighbor 192.168.255.1 remote-as 65000
+     neighbor 192.168.255.1 timers 3 10
+     neighbor 192.168.255.1 passive
+    !
+    #% endblock
+    """
+
+
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+
+
+class TestBGPMinimumHoldtime(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def bgp_neighbor_check_if_notification_sent(self, _, r1):
         expected = {

@@ -29,15 +29,12 @@ def topology(topo):
     """
 
 
-class Configs(FRRConfigs):
-    zebra = """
-    #% extends "boilerplate.conf"
-    ## nothing needed
-    """
+class FRRConfR1(RouterFRR):
+    zebra = ""
 
     bgpd = """
+    #% extends "boilerplate.conf"
     #% block main
-    #%   if router.name == 'r1'
     router bgp 65001
      no bgp ebgp-requires-policy
      neighbor {{ router.iface_to('r2').other.ip4[0].ip }} remote-as external
@@ -45,7 +42,16 @@ class Configs(FRRConfigs):
       redistribute connected
       neighbor {{ router.iface_to('r2').other.ip4[0].ip }} capability orf prefix-list both
     !
-    #%   elif router.name == 'r2'
+    #% endblock
+    """
+
+
+class FRRConfR2(RouterFRR):
+    zebra = ""
+
+    bgpd = """
+    #% extends "boilerplate.conf"
+    #% block main
     router bgp 65002
      no bgp ebgp-requires-policy
      neighbor {{ router.iface_to('r1').other.ip4[0].ip }} remote-as external
@@ -54,12 +60,16 @@ class Configs(FRRConfigs):
       neighbor {{ router.iface_to('r1').other.ip4[0].ip }} prefix-list r1 in
     !
     ip prefix-list r1 seq 5 permit {{ topo.lans["ini_permit"].ip4[0] }}
-    #%   endif
     #% endblock
     """
 
 
-class TestBGPORF(TestBase, AutoFixture, topo=topology, configs=Configs):
+class Setup(TopotatoNetwork, topo=topology):
+    r1: FRRConfR1
+    r2: FRRConfR2
+
+
+class TestBGPORF(TestBase, AutoFixture, setup=Setup):
     @topotatofunc
     def bgp_converge(self, topo, r1, r2):
         """
