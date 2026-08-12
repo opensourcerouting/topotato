@@ -22,7 +22,6 @@ from .fixtures import (
     AutoFixture,
 )
 from .frr import (
-    FRRConfigs,
     RouterFRR,
 )
 from .utils import (

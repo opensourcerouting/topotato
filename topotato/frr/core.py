@@ -5,6 +5,7 @@
 FRR handling - turns a toponom router into an FRR router
 """
 
+from abc import ABC, abstractmethod
 import importlib
 import json
 import logging
@@ -35,16 +36,8 @@ from typing import (
     Tuple,
     Union,
 )
-from typing_extensions import Protocol
 
 import pytest
-
-try:
-    from deprecated import deprecated
-except ImportError:
-
-    def deprecated(fn):  # type: ignore
-        return fn
 
 
 from ..utils import get_dir, EnvcheckResult
@@ -58,7 +51,10 @@ from ..exceptions import (
     TopotatoSkipped,
 )
 from ..pcapng import Context
-from ..network import TopotatoNetwork
+from ..network import (
+    TopotatoNetwork,
+    TopotatoParams,
+)
 from ..control import TargetSection
 from .exceptions import FRRStartupVtyshConfigFail
 
@@ -274,7 +270,7 @@ class FRRSetup:
         missing = set(self.daemons) - in_topotato
         for daemon in missing:
             _logger.warning(
-                "daemon %s missing from FRRConfigs.daemons, please add!", daemon
+                "daemon %s missing from FRRSetup.daemons, please add!", daemon
             )
 
         # this determines startup order
@@ -334,11 +330,12 @@ class FRRSetup:
                 self.xrefs = json.load(fd)
 
 
-class _FRRConfigProtocol(Protocol):
+class FRRParamsBase(TopotatoParams, ABC):
+    modules: ClassVar[Dict[str, List[str]]]
     daemons: Collection[str]
     configs: Dict[str, str]
-    modules: ClassVar[Dict[str, List[str]]]
 
+    @abstractmethod
     def want_daemon(self, daemon: str) -> bool: ...
 
 
@@ -459,7 +456,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
     Add a bunch of FRR daemons on top of an (OS-dependent) RouterNS
     """
 
-    _configs: _FRRConfigProtocol
+    _configs: FRRParamsBase
     instance: TopotatoNetwork
     frr: FRRSetup
     logfiles: Dict[str, str]
@@ -483,7 +480,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         instance: TopotatoNetwork,
         name: str,
         frr: FRRSetup,
-        configs: _FRRConfigProtocol,
+        configs: FRRParamsBase,
     ):
         super().__init__(instance=instance, name=name)
 
@@ -503,11 +500,6 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         self.rtrcfg = {}
         self.events = EventMux()
         self.events.dispatch_add(self.instance.timeline)
-
-    @property
-    @deprecated
-    def configs(self):
-        return self._configs
 
     def _getlogfd(self, daemon):
         if daemon not in self.livelogs:

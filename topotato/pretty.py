@@ -79,22 +79,6 @@ jenv = jinja2.Environment(
 jenv.filters["docrender"] = _docrender_markup
 
 
-# migrate to javascript
-# import urllib.parse
-# from .frr import FRRConfigs
-#            xref = FRRConfigs.xrefs['refs'].get(self._uid, [])
-#            loc_set = {(loc['file'], loc['line']) for loc in xref}
-#            if len(loc_set) == 1:
-#                filename, line = loc_set.pop()
-#                if self._prettysession.source_url:
-#                    path = urllib.parse.urljoin(self._prettysession.source_url, filename)
-#                else:
-#                    path = os.path.join(FRRConfigs.srcpath, filename)
-#                meta.append(html.a(self._uid, href="%s#L%d" % (path, line)))
-#            else:
-#                meta.append(fmt.uid(self._uid))
-
-
 class PrettyExtraFile:
     filename: Optional[str]
 

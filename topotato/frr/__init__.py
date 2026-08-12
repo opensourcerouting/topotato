@@ -15,4 +15,3 @@ from .params import (
 )
 
 RouterFRR = FRRParams
-FRRConfigs = FRRParams

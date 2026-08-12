@@ -646,31 +646,14 @@ class TestBase:
         return [TopotatoClass.from_hook(obj, collector, name=name)]
 
     @classmethod
-    def __init_subclass__(
-        cls, /, topo: Optional["Network"] = None, configs=None, setup=None, **kwargs
-    ):
+    def __init_subclass__(cls, /, setup: "Type[TopotatoNetwork]", **kwargs):
         super().__init_subclass__(**kwargs)
 
-        if any([topo, configs]):
-            if not all([topo, configs]):
-                raise RuntimeError(
-                    f"{cls.__name__}: topo= and configs= must be used together"
-                )
-            if setup:
-                raise RuntimeError(
-                    f"{cls.__name__}: topo= and configs= are exclusive against setup="
-                )
-
-            class AutoSetup(TopotatoNetwork, topo=topo, params=configs):
-                pass
-
-            cls._setup = AutoSetup  # type: ignore[type-abstract]
-        elif not setup:
+        if not setup:
             raise RuntimeError(
-                f"{cls.__name__}: either setup=, or topo= + configs= must be used"
+                f"{cls.__name__}: setup= argument on TestBase is mandatory"
             )
-        else:
-            cls._setup = setup
+        cls._setup = setup
 
 
 class TopotatoWrapped:

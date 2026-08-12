@@ -21,9 +21,9 @@ from typing import (
 
 from ..network import (
     TopotatoNetwork,
-    TopotatoParams,
 )
 from .core import (
+    FRRParamsBase,
     FRRSetup,
     FRRRouterNS,
     TargetFRRSection,
@@ -51,7 +51,7 @@ class FRRRequirementNotMet(TopotatoSkipped):
 
 
 # pylint: disable=too-many-ancestors
-class FRRParams(TopotatoParams):
+class FRRParams(FRRParamsBase):
     """
     Subclasses of this class collect FRR configs for one or more routers.
 

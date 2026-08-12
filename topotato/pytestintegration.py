@@ -163,16 +163,13 @@ def pytest_collection(session):
     if session.config.getoption("--show-configs"):
         sys.stdout.write("\navailable configs:\n")
 
-        # TODO: refactor for FRRNetworkInstance removal / FRRConfigs rework
         for item in topologies():
             name = item.cls_node.nodeid
+            setup = item._obj._setup(session, name)
 
-            cfgsetup = item._obj.instancefn.configs
-            cfgs = cfgsetup.cfgclass(cfgsetup.net, session.frr)
-            routers = cfgs.generate()
-
-            for rtr, configs in routers.items():
-                for cfg, content in configs.items():
+            for rtr, rtrcls in item._obj._setup.__annotations__.items():
+                rtrinst = rtrcls(setup, rtr)
+                for cfg, content in getattr(rtrinst, "configs", {}).items():
                     sys.stdout.write("    %s/%s/%s\n" % (name, rtr, cfg))
             sys.stdout.write("\n")
 
@@ -183,20 +180,19 @@ def pytest_collection(session):
         which = session.config.getoption("--show-config")
         path = which.split("/")
 
-        # TODO: refactor for FRRNetworkInstance removal / FRRConfigs rework
         for item in topologies():
             name = item.cls_node.nodeid
-            if path[0] != name:
+            if name != path[0]:
                 continue
 
-            cfgsetup = item._obj.instancefn.configs
-            cfgs = cfgsetup.cfgclass(cfgsetup.net, session.frr)
-            routers = cfgs.generate()
+            setup = item._obj._setup(session, name)
 
-            for rtr, configs in routers.items():
+            for rtr, rtrcls in item._obj._setup.__annotations__.items():
                 if len(path) > 1 and path[1] != rtr:
                     continue
-                for cfg, content in configs.items():
+
+                rtrinst = rtrcls(setup, rtr)
+                for cfg, content in getattr(rtrinst, "configs", {}).items():
                     if len(path) > 2 and path[2] != cfg:
                         continue
 
@@ -217,7 +213,7 @@ def pytest_collection(session):
             if name != which:
                 continue
 
-            net = item._obj.instancefn.net
+            net = item._obj._setup._network
 
             for rtrname, rtr in net.routers.items():
                 sys.stdout.write(
