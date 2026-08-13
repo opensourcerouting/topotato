@@ -182,7 +182,7 @@ class FRRParams(FRRParamsBase):
             contain the string.  This causes the test to be skipped, but can
             be caught (e.g. if there are multiple alternatives to check.)
         """
-        defun = (self.frr.xrefs or {}).get("cli", {}).get(cmd)
+        defun = self.frr.xrefs.get("cli", {}).get(cmd)
         if defun is None:
             raise FRRRequirementNotMet(f"missing DEFUN {cmd!r}")
         if contains is not None:

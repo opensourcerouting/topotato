@@ -60,9 +60,16 @@ from .exceptions import FRRStartupVtyshConfigFail
 
 if typing.TYPE_CHECKING:
     import asyncio.process  # type: ignore[import-not-found]
-    from typing import Self  # novermin
+    from typing import (  # novermin
+        Self,
+        TypedDict,
+    )
     from .. import toponom
     from ..types import ISession
+
+    class XrefsDict(TypedDict):
+        refs: Dict[str, List[Any]]
+        cli: Dict[str, Any]
 
 
 _logger = logging.getLogger(__name__)
@@ -152,7 +159,7 @@ class FRRSetup:
     """
     UID/GID that FRR was configured at build time to run under.
     """
-    xrefs: Optional[Dict[Any, Any]] = None
+    _xrefs: "Optional[XrefsDict]" = None
     """
     xrefs (Log message / CLI / ...) for this FRR build.
     """
@@ -327,7 +334,11 @@ class FRRSetup:
         xrefpath = os.path.join(self.frrpath, "frr.xref")
         if os.path.exists(xrefpath):
             with open(xrefpath, "r", encoding="utf-8") as fd:
-                self.xrefs = json.load(fd)
+                self._xrefs = json.load(fd)
+
+    @property
+    def xrefs(self) -> "XrefsDict":
+        return self._xrefs or {"refs": {}, "cli": {}}
 
 
 class FRRParamsBase(TopotatoParams, ABC):
@@ -529,7 +540,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
         # TODO: merge interactive_state / report_state?
         return self.rtrcfg
 
-    def xrefs(self):
+    def xrefs(self) -> "XrefsDict":
         return self.frr.xrefs
 
     async def start(self):

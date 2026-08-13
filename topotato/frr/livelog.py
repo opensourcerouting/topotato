@@ -21,6 +21,7 @@ from ..pcapng import JournalExport, Context
 if typing.TYPE_CHECKING:
     from asyncio import Future
     from . import FRRRouterNS
+    from .core import XrefsDict
 
 
 _logger = logging.getLogger(__name__)
@@ -428,7 +429,7 @@ class LiveLog(EventMux[Union[LogMessage, LogClosed, LogReadCancelled]], EventOri
         """
         Output subset of xrefs data for javascript to look up on.
         """
-        all_xrefs = self._router.xrefs()
+        all_xrefs: "XrefsDict" = self._router.xrefs()
         xrefs = {
             uid: data
             for uid, data in all_xrefs["refs"].items()
