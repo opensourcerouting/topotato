@@ -38,3 +38,12 @@ repos:
         require_serial: true
         pass_filenames: false
         files: ^selftests/.*\.py$
+
+    -   id: pyrefly
+        name: pyrefly
+        entry: pyrefly check topotato selftests
+        language: system
+        types:
+        -   python
+        pass_filenames: false
+        files: ^(topotato|selftests)/.*\.py$
