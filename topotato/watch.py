@@ -27,8 +27,8 @@ from typing import (
 )
 
 try:
-    from pyinotify import WatchManager, IN_CREATE, IN_MOVED_TO, IN_DELETE  # type: ignore
-    from pyinotify import Event as InoEvent  # type: ignore
+    from pyinotify import WatchManager, IN_CREATE, IN_MOVED_TO, IN_DELETE
+    from pyinotify import Event as InoEvent
 except ImportError:
 
     class WatchManager:  # type: ignore

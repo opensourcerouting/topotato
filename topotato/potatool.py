@@ -33,7 +33,7 @@ from typing import (
     Optional,
 )
 
-import pyinotify  # type: ignore
+import pyinotify
 
 from .watch import WatchedSession
 from .interactive import Interactive
