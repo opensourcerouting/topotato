@@ -347,7 +347,7 @@ class Router(NOMLinked):
                     yield (self_iface, lanport.other, nbr)
             elif not isinstance(ep, Router):
                 raise TypeError(
-                    f"topology consistency error, expected router for {nbr!r}"
+                    f"topology consistency error, expected router for {ep!r}"
                 )
             elif not rtr_filter(ep):
                 continue

@@ -186,6 +186,8 @@ class LogMessage(TimedElement):
         if new_valid:
             argspec = argspec[4:]
             n_argpos = new_n_argpos
+        else:
+            n_argpos = fields.n_argpos
 
         max_argpos = len(argspec) // ARG_SIZE
         if n_argpos > max_argpos:

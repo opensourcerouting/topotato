@@ -322,15 +322,15 @@ class LinuxNamespace:
 
 
 # pylint: disable=duplicate-code
-def test():
+async def test():
     ns = LinuxNamespace(name="test")
-    ns.start()
+    await ns.start()
     ns.check_call(["ip", "addr", "list"])
     with ns:
         subprocess.check_call(["ip", "addr", "list"])
     ns.check_call(["/bin/sh", "-c", "sleep 3"])
     time.sleep(3)
-    ns.end()
+    await ns.end()
     print("ended")
     time.sleep(3)
 
@@ -340,4 +340,4 @@ if __name__ == "__main__":
         LinuxNamespace.inner()
         sys.exit(0)
 
-    test()
+    asyncio.run(test())
