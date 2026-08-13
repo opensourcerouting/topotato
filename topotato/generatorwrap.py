@@ -11,14 +11,22 @@ import inspect
 import warnings
 from types import TracebackType
 from typing import (
+    cast,
     Callable,
     Generator,
-    Generic,
     List,
     Optional,
     TypeVar,
     Type,
 )
+
+try:
+    from typing import ParamSpec  # novermin
+except ImportError:
+    # python < 3.10
+    # pylint: disable=unused-argument
+    def ParamSpec(name, *, bound=None, covariant=False, contravariant=False):  # type: ignore
+        return ...
 
 
 class GeneratorChecksWarning(UserWarning):
@@ -80,10 +88,14 @@ class GeneratorChecks:
             raise GeneratorsUnused(self._active)
 
 
-TG = TypeVar("TG", bound=Generator)
+P = ParamSpec("P")
+TY = TypeVar("TY")
+TS = TypeVar("TS")
+TR = TypeVar("TR")
 
 
-class GeneratorWrapper(Generic[TG]):
+# pylint: disable=protected-access
+class GeneratorWrapper(Generator[TY, TS, TR]):
     """
     Decorator / wrapper for generators to raise exception if it never ran.
 
@@ -106,7 +118,7 @@ class GeneratorWrapper(Generic[TG]):
                 print (i)
     """
 
-    _wraps: TG
+    _wraps: Generator[TY, TS, TR]
     """
     Original generator object to forward __iter__ to.
     """
@@ -116,7 +128,7 @@ class GeneratorWrapper(Generic[TG]):
     """
     _gchk: Optional[GeneratorChecks]
 
-    def __init__(self, wraps: TG, loc: List[str]):
+    def __init__(self, wraps: Generator[TY, TS, TR], loc: List[str]):
         self._wraps = wraps
         self._loc = loc
 
@@ -136,8 +148,22 @@ class GeneratorWrapper(Generic[TG]):
             self._gchk = None
         return self._wraps.__iter__()
 
+    def send(self, value: TS) -> TY:
+        if self._gchk:
+            self._gchk._active.remove(self)
+            self._gchk = None
+        return self._wraps.send(value)
+
+    def throw(self, typ, val=None, tb=None) -> TY:
+        if self._gchk:
+            self._gchk._active.remove(self)
+            self._gchk = None
+        return self._wraps.throw(typ, val, tb)
+
     @classmethod
-    def apply(cls, function: Callable[..., TG]) -> Callable[..., TG]:
+    def apply(
+        cls, function: Callable[P, Generator[TY, TS, TR]]
+    ) -> Callable[P, Generator[TY, TS, TR]]:
         """
         Decorator to be used on generator functions.
         """
@@ -149,13 +175,13 @@ class GeneratorWrapper(Generic[TG]):
             raise RuntimeError("@GeneratorWrapper.apply must be used on a generator")
 
         @functools.wraps(function)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs) -> Generator[TY, TS, TR]:
             f = inspect.currentframe()
             if f is None:
                 loc = ["???"]
             else:
                 loc = traceback.format_stack(f.f_back)
             del f
-            return cls(function(*args, **kwargs), loc)
+            return cast(Generator[TY, TS, TR], cls(function(*args, **kwargs), loc))
 
         return wrapper
