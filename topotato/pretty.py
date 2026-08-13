@@ -611,7 +611,7 @@ class PrettyScapy(PrettyTopotato, matches=ScapySend):
 
 
 def _makeindex(args):
-    def load(inpath, outpath):
+    def load(inpath: pathlib.Path, outpath: pathlib.Path) -> Optional[Dict[str, Any]]:
         with open(inpath, "r", encoding="UTF-8") as fd:
             html = fd.read()
         try:

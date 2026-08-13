@@ -18,7 +18,9 @@ from typing import (
     Any,
     Dict,
     List,
+    Literal,
     Optional,
+    Union,
 )
 
 from .jailwrap import FreeBSDJail
@@ -67,7 +69,9 @@ class NetworkInstance(topobase.NetworkInstance):
         async def end_prep(self):
             pass
 
-        def routes(self, af=4, local=False):
+        def routes(
+            self, af: Union[None, Literal[4], Literal[6]] = 4, local=False
+        ) -> Dict[str, Any]:
             """
             get a json representation of all IPvX kernel routes
 

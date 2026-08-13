@@ -49,7 +49,7 @@ class FreeBSDJail:
         self.basedir = None
         self.rootdir = None
 
-    async def start(self):
+    async def start(self) -> None:
         # FIXME: use async subprocess
 
         mounts = subprocess.check_output(["mount"], encoding="ASCII").splitlines()

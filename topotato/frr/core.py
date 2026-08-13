@@ -795,11 +795,13 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
             **kwargs,
         )
 
-    def vtysh_exec(self, cmds, timeout=5.0):
-        cmds = [c.strip() for c in cmds.splitlines() if c.strip() != ""]
+    def vtysh_exec(
+        self, cmds: str, timeout: float = 5.0
+    ) -> Tuple[None, List[TimedVtysh], int]:
+        cmd_split = [c.strip() for c in cmds.splitlines() if c.strip() != ""]
 
         args: List[str] = []
-        for cmd in cmds:
+        for cmd in cmd_split:
             args.extend(("-c", cmd))
 
         proc = self._vtysh(args)

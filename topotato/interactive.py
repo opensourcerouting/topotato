@@ -405,7 +405,7 @@ To modify & run a test item, replace "yield from X.make(...)" with
 
         context["_yield_from"] = _yield_from
 
-        def _run_async():
+        def _run_async() -> None:
             if _aioloop is None:
                 sys.stdout.write("Cannot run - not suspended in asyncio event loop.\n")
                 return
