@@ -263,8 +263,6 @@ class NetworkInstance(topobase.NetworkInstance):
             )
 
     network: Network
-    switch_ns: Optional[SwitchyNS]
-    routers: Dict[str, RouterNS]
     bridges: List[str]
     pcapfile: Optional[str]
 

@@ -25,13 +25,16 @@ from typing import (
     cast,
     Any,
     Callable,
+    ClassVar,
     ContextManager,
     Dict,
+    Generic,
     List,
     Literal,
     Mapping,
     Optional,
     Tuple,
+    TypeVar,
     Union,
 )
 from typing_extensions import Protocol
@@ -41,6 +44,7 @@ from .utils import self_or_kwarg
 if typing.TYPE_CHECKING:
     from typing import (  # novermin
         Self,
+        Type,
         TypeAlias,
     )
     import subprocess
@@ -49,6 +53,10 @@ if typing.TYPE_CHECKING:
     from . import toponom
     from .timeline import Timeline
 
+
+TNetworkInstance = TypeVar("TNetworkInstance", bound="NetworkInstance")
+TSwitchyNS = TypeVar("TSwitchyNS", bound="SwitchyNS")
+TRouterNS = TypeVar("TRouterNS", bound="RouterNS")
 
 _logger = logging.getLogger(__name__)
 
@@ -130,7 +138,7 @@ class AtexitExceptionIgnoredWarning(UserWarning):
     """
 
 
-class BaseNS:
+class BaseNS(Generic[TNetworkInstance]):
     """
     Common interface to a virtual host/router.
 
@@ -143,10 +151,10 @@ class BaseNS:
        Tighter integration with :py:class:`Timeline`?
     """
 
-    instance: "NetworkInstance"
+    instance: TNetworkInstance
     _atexit: List[Callable[[], None]]
 
-    def __init__(self, *, instance: "NetworkInstance", **kw) -> None:
+    def __init__(self, *, instance: TNetworkInstance, **kw) -> None:
         self.instance = instance
         self_or_kwarg(self, kw, "name")
 
@@ -260,7 +268,7 @@ class BaseNS:
         )
 
 
-class SwitchyNS(BaseNS):
+class SwitchyNS(BaseNS[TNetworkInstance]):
     """
     Virtual switch at the center of an emulated network.
 
@@ -268,7 +276,7 @@ class SwitchyNS(BaseNS):
     """
 
 
-class RouterNS(BaseNS):
+class RouterNS(BaseNS[TNetworkInstance]):
     """
     Virtual router or host of some type in this network instance.
     """
@@ -331,7 +339,7 @@ class CallableNS(Protocol):
     def atexit(self, fn: Callable[[], None]) -> None: ...
 
 
-class CallableEnvMixin(ABC):
+class CallableEnvMixin(ABC, Generic[TNetworkInstance]):
     """
     Mixin to apply env= from router/instance on subprocess creation.
     """
@@ -340,7 +348,7 @@ class CallableEnvMixin(ABC):
     """
     OS environment variables for processes created on this virtual router
     """
-    instance: "NetworkInstance"
+    instance: TNetworkInstance
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -378,14 +386,14 @@ class _HasDotname(Protocol):
     def dotname(self) -> str: ...
 
 
-class NetworkInstance(ABC):
+class NetworkInstance(ABC, Generic[TSwitchyNS, TRouterNS]):
     """
     A possibly-running virtual network for a test.
     """
 
     network: "toponom.Network"
-    switch_ns: Optional[SwitchyNS]
-    routers: Mapping[str, RouterNS]
+    switch_ns: Optional[TSwitchyNS]
+    routers: Mapping[str, TRouterNS]
 
     ifnames: Dict[str, _HasDotname]
     """
@@ -400,12 +408,12 @@ class NetworkInstance(ABC):
     Will be some platform specific subclass (e.g. scapy.arch.linux.L2Socket)
     """
 
-    RouterNS: "TypeAlias" = RouterNS
+    RouterNS: "ClassVar[TypeAlias]" = RouterNS
     """
     To be overridden by concrete implementations, the virtual router type
     generally assumed by this instance.
     """
-    SwitchyNS: "TypeAlias" = SwitchyNS
+    SwitchyNS: "ClassVar[TypeAlias]" = SwitchyNS
     """
     To be overridden by concrete implementations.
     """
@@ -431,7 +439,7 @@ class NetworkInstance(ABC):
         self.scapys = {}
         self.aioloop = asyncio.events.new_event_loop()
 
-    def make(self, name: str) -> RouterNS:
+    def make(self, name: str) -> TRouterNS:
         """
         Overrideable method to instantiate a virtual router in this instance.
 
@@ -454,7 +462,9 @@ class NetworkInstance(ABC):
         asyncio.events.set_event_loop(self.aioloop)
 
         # pylint: disable=abstract-class-instantiated
-        self.switch_ns = self.SwitchyNS(instance=self, name="switch-ns")
+        self.switch_ns = cast(
+            TSwitchyNS, self.SwitchyNS(instance=self, name="switch-ns")
+        )
 
         # self.routers is immutable, assign as a whole
         routers = {}

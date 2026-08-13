@@ -131,12 +131,13 @@ class NetworkInstance(topobase.NetworkInstance):
                 cls._exec("ip"),
             )
 
-    class BaseNS(topobase.CallableEnvMixin, LinuxNamespace, topobase.BaseNS):
+    class BaseNS(
+        topobase.CallableEnvMixin, LinuxNamespace, topobase.BaseNS["NetworkInstance"]
+    ):
         """
         a netns with some extra functions for topotato
         """
 
-        instance: "NetworkInstance"
         tempdir: str
 
         # broken json output from "ip -j route list"
@@ -222,7 +223,7 @@ class NetworkInstance(topobase.NetworkInstance):
                 stderr=sys.stdout,
             )
 
-    class SwitchyNS(BaseNS, topobase.SwitchyNS):
+    class SwitchyNS(BaseNS, topobase.SwitchyNS["NetworkInstance"]):
         """
         namespace used for switching between the various routers
 
@@ -370,8 +371,6 @@ class NetworkInstance(topobase.NetworkInstance):
             )
 
     network: Network
-    switch_ns: Optional[SwitchyNS]
-    routers: Dict[str, RouterNS]
     bridges: List[str]
 
     # TODO: none of the coverage stuff belongs in here.  but it works, and
