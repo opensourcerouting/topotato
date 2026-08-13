@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# SPDX-License-Identifier: GPL-2.0-or-later
 #
 # FRR documentation build configuration file, created by
 # sphinx-quickstart on Tue Jan 31 16:00:52 2017.
