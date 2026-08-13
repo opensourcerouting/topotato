@@ -16,6 +16,7 @@ import tempfile
 import logging
 import warnings
 import asyncio
+import asyncio.subprocess
 
 from typing import (
     List,
@@ -178,7 +179,9 @@ class FreeBSDJail:
         # pylint: disable=consider-using-with
         return subprocess.Popen(self.prefix(kwargs) + cmdline, *args, **kwargs)
 
-    async def popen_async(self, cmdline: List[str], *args, **kwargs):
+    async def popen_async(
+        self, cmdline: List[str], *args, **kwargs
+    ) -> "asyncio.subprocess.Process":
         # pylint: disable=consider-using-with
         return await asyncio.create_subprocess_exec(
             *(self.prefix(kwargs) + cmdline), *args, **kwargs

@@ -191,7 +191,7 @@ class NetworkInstance(topobase.NetworkInstance):
                     ret.setdefault(dst, []).append(route)
 
             def ip_r_call(extra=None):
-                text = self.check_output(
+                text: bytes = self.check_output(
                     [self._exec("ip"), "-%d" % af, "-j", "route", "list"]
                     + (extra or [])
                 )

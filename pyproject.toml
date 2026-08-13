@@ -26,3 +26,6 @@ ignore = [
 	"E402", # import not at top of file
 	"E741", # ambiguous variable name
 ]
+
+[tool.pyrefly.errors]
+implicit-import = false

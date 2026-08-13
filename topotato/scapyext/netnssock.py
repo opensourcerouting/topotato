@@ -88,7 +88,7 @@ class _SourceMACFixup:
 
     def i2h(self, pkt, x):
         # i2h is inherited, hence Field below rather than MACField.  hacky. :/
-        selfc = cast(scapy.fields.Field, self)
+        selfc = cast(scapy.layers.l2.MACField, self)
         return scapy.layers.l2.MACField.i2h(selfc, pkt, x)
 
     scapy.layers.l2.SourceMACField.i2h = i2h  # type: ignore

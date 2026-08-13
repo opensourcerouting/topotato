@@ -50,7 +50,7 @@ def typing_is_optional(hint):
     if optional:
         # pylint: disable=unidiomatic-typecheck
         uargs = tuple(i for i in uargs if i is not type(None))
-    return Union[uargs], optional
+    return Union[uargs], optional  # pyrefly: ignore[not-a-type]
 
 
 class CLIError(Exception):

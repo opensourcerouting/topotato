@@ -14,6 +14,7 @@ import errno
 import subprocess
 import signal
 import asyncio
+import asyncio.subprocess
 
 from typing import (
     ClassVar,
@@ -139,7 +140,7 @@ class LinuxNamespace:
     )
 
     taskdir: ClassVar[str] = "/tmp/topotato"
-    process: Optional["asyncio.process.Process"]
+    process: Optional["asyncio.subprocess.Process"]
 
     def __init__(self, **kw):
         self_or_kwarg(self, kw, "name")
@@ -268,7 +269,9 @@ class LinuxNamespace:
         # pylint: disable=consider-using-with
         return subprocess.Popen(self.prefix(kwargs) + cmdline, *args, **kwargs)
 
-    async def popen_async(self, cmdline: List[str], *args, **kwargs):
+    async def popen_async(
+        self, cmdline: List[str], *args, **kwargs
+    ) -> "asyncio.subprocess.Process":
         # pylint: disable=consider-using-with
         return await asyncio.create_subprocess_exec(
             *(self.prefix(kwargs) + cmdline), *args, **kwargs

@@ -33,8 +33,8 @@ try:
 
 except ImportError as e:
     _logger.error("scapy not available: %r", e)
-    Ether = None  # type: ignore
-    NetnsL2Socket = None  # type: ignore
+    Ether = type("Ether", (), {})  # type: ignore
+    NetnsL2Socket = type("NetnsL2Socket", (), {})  # type: ignore
     scapy_exc = e
 
 __all__ = ["ScapySend"]

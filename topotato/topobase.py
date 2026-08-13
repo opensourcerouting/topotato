@@ -48,7 +48,7 @@ if typing.TYPE_CHECKING:
         TypeAlias,
     )
     import subprocess
-    import asyncio.process  # type: ignore[import-not-found]
+    import asyncio.subprocess
     from scapy.supersocket import SuperSocket
     from . import toponom
     from .timeline import Timeline
@@ -324,17 +324,15 @@ class CallableNS(Protocol):
     Implementing this protocol is a requirement for all uses currently.
     """
 
-    def check_call(self, cmdline: List[str], *args, **kwargs) -> None: ...
+    def check_call(self, cmdline: List[str], *args, **kwargs) -> int: ...
 
-    def check_output(
-        self, cmdline: List[str], *args, **kwargs
-    ) -> Tuple[bytes, bytes]: ...
+    def check_output(self, cmdline: List[str], *args, **kwargs) -> bytes: ...
 
     def popen(self, cmdline: List[str], *args, **kwargs) -> "subprocess.Popen": ...
 
     async def popen_async(
         self, cmdline: List[str], *args, **kwargs
-    ) -> "asyncio.process.Process": ...
+    ) -> "asyncio.subprocess.Process": ...
 
     def atexit(self, fn: Callable[[], None]) -> None: ...
 
@@ -365,7 +363,9 @@ class CallableEnvMixin(ABC, Generic[TNetworkInstance]):
         _super: CallableNS = cast(CallableNS, super())
         return _super.popen(cmdline, *args, **kwargs)
 
-    async def popen_async(self, cmdline: List[str], *args, **kwargs):
+    async def popen_async(
+        self, cmdline: List[str], *args, **kwargs
+    ) -> "asyncio.subprocess.Process":
         self._modify_env(kwargs)
         _super: CallableNS = cast(CallableNS, super())
         return await _super.popen_async(cmdline, *args, **kwargs)

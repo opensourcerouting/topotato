@@ -20,10 +20,12 @@ import subprocess
 import sys
 import time
 import asyncio
+import asyncio.subprocess
 import typing
 from typing import (
     cast,
     Any,
+    Awaitable,
     Callable,
     ClassVar,
     Collection,
@@ -59,7 +61,6 @@ from ..control import TargetSection
 from .exceptions import FRRStartupVtyshConfigFail
 
 if typing.TYPE_CHECKING:
-    import asyncio.process  # type: ignore[import-not-found]
     from typing import (  # novermin
         Self,
         TypedDict,
@@ -197,7 +198,7 @@ class FRRSetup:
     @classmethod
     @pytest.hookimpl()
     def pytest_topotato_envcheck(cls, session: "ISession", result: EnvcheckResult):
-        frrpath = get_dir(session, "--frr-builddir", "frr_builddir")
+        frrpath: str = cast(str, get_dir(session, "--frr-builddir", "frr_builddir"))
 
         session.frr = cast("Self", cls(frrpath, result))
         cls.setups[None] = session.frr
@@ -483,7 +484,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
     # hack to fix CallableNS foo...  really needs some improvement
     check_call: Callable[..., None]
     popen: Callable[..., "subprocess.Popen"]
-    popen_async: Callable[..., "asyncio.process.Process"]
+    popen_async: Callable[..., "Awaitable[asyncio.subprocess.Process]"]
     fs_bind: Callable[..., None]
 
     def __init__(
@@ -616,8 +617,10 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
             stderr=asyncio.subprocess.PIPE,
         )
 
-        out, err = await vtysh.communicate()
-        out, err = out.decode("UTF-8"), err.decode("UTF-8")
+        outb, errb = await vtysh.communicate()
+        out, err = outb.decode("UTF-8"), errb.decode("UTF-8")
+
+        assert vtysh.returncode is not None
 
         for line in out.splitlines():
             _logger.debug("%s config load (%r) stdout: %r", self.name, daemon, line)
@@ -630,7 +633,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
             )
         if vtysh.returncode != 0:
             # terminated by signal
-            raise subprocess.CalledProcessError(vtysh.returncode, vtysh.args, out, err)
+            raise subprocess.CalledProcessError(vtysh.returncode, args, out, err)
 
     def adjust_cmdline(self, daemon: str, args: List[str]):
         pass
@@ -683,6 +686,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
 
         # want record-priority & timestamp precision...
 
+        pid = None
         # have to retry this due to mgmtd/frr issue #16362
         for retry in range(30, -1, -1):
             try:
@@ -706,6 +710,7 @@ class FRRRouterNS(TopotatoNetwork.RouterNS):
                     daemon=daemon, router=self.name, cmdline=shlex.join(cmdline)
                 ) from e
 
+        assert pid is not None
         self.pids[daemon] = pid
 
         if not defer_config:

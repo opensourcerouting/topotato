@@ -59,7 +59,7 @@ class Topology:
             )
 
         @classmethod
-        def make(cls, lno, m) -> "Topology.Token":
+        def make(cls, lno, m) -> "Optional[Topology.Token]":
             return cls(lno, m)
 
     # tokens/regexes for the various inputs
@@ -89,7 +89,7 @@ class Topology:
         rx = re.compile(r"\s+")
 
         @classmethod
-        def make(cls, lno, m):
+        def make(cls, lno, m) -> "Optional[Topology.Token]":
             return None
 
     tokens = [
@@ -121,7 +121,7 @@ class Topology:
             token.used = self
 
         @abc.abstractmethod
-        def detail(self):
+        def detail(self) -> str:
             pass
 
         def __repr__(self):
@@ -168,7 +168,7 @@ class Topology:
                 self.y2 = token.lno + 1
             self.tokens.append(token)
 
-        def detail(self):
+        def detail(self) -> str:
             return ' "%s"' % (self.name,)
 
     class Router(BoxMerge):
@@ -200,7 +200,7 @@ class Topology:
             super().__init__(token)
             self.routers = []
 
-        def detail(self):
+        def detail(self) -> str:
             return " [%s]" % (
                 " <-> ".join(
                     [
@@ -222,6 +222,9 @@ class Topology:
 
         Interface names are optional.
         """
+
+        right: "Optional[Topology.Token]"
+        left: "Optional[Topology.Token]"
 
         def __init__(self, token):
             super().__init__(token)
@@ -266,6 +269,9 @@ class Topology:
                |
            (ifname)
         """
+
+        top: "Optional[Topology.Token]"
+        bot: "Optional[Topology.Token]"
 
         def __init__(self, token):
             super().__init__(token)

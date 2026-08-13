@@ -181,9 +181,10 @@ class TimedMixin:
         if fn.include_startup:
             self._timing.full_history = True
 
-    def relative_start(self):
+    def relative_start(self) -> float:
         fn = cast(TopotatoItem, self).getparent(TopotatoFunction)
         assert fn is not None
+        assert fn.started_ts is not None
         return fn.started_ts
 
     def obs_start(self) -> float:
@@ -244,6 +245,7 @@ class AssertKernelRoutes(TimedMixin, TopotatoAssertion):
     async def _async(self):
         router = self.instance.routers[self._rtr]
 
+        diff = None
         async for _ in self._run_tick():
             routes = router.routes(self.af, self._local)
             diff = json_cmp(routes, self._routes)
@@ -299,7 +301,7 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
     _filters: List[Callable[[str], str]]
 
     default_delay = 0.1
-    default_filters = [
+    default_filters: ClassVar[List[Callable[[str], str]]] = [
         lambda t: deindent(t, trim=True),
     ]
 
@@ -343,7 +345,7 @@ class AssertVtysh(TimedMixin, TopotatoAssertion):
 
     async def _async(self) -> None:
         router = cast("FRRRouterNS", self.instance.routers[self._rtr.name])
-        result: Optional["TopotatoFail"]
+        result: Optional["TopotatoFail"] = None
 
         async for _ in self._run_tick():
             _, out, rc = await router.vtysh_polled(self._daemon, self._command)
@@ -509,6 +511,7 @@ class AssertLog(TimedMixin, TopotatoAssertion):
                     if not m:
                         continue
                 else:
+                    assert isinstance(self._msg, str)
                     if text.find(self._msg) == -1:
                         continue
 

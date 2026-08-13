@@ -148,6 +148,7 @@ class TopotatoNetwork(NetworkInstance):
             topo = getattr(topo, "__wrapped__", topo)
             topo = getattr(topo, "topo", topo)
 
+        assert topo
         cls._network = topo.net
         if params is not None:
             cls._defaultparams = params

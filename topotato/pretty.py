@@ -104,10 +104,11 @@ class PrettyExtraFile:
 
 
 class PrettySession:
+    outdir: str
     exec_dot: ClassVar[Optional[str]]
     prettyitems: List["PrettyItem"]
 
-    def __init__(self, session, outdir=None, source_url=None):
+    def __init__(self, session, outdir: str, source_url=None):
         self.session = session
         self.outdir = outdir
         self.source_url = source_url
@@ -176,6 +177,7 @@ class PrettySession:
             return
 
         outdir = get_dir(session, "--reportato-dir", "reportato_dir")
+        assert isinstance(outdir, str)
         source_url = session.config.getoption("--source-url")
 
         # session.stash[_pretty_session] = cls(session, outdir, source_url)
@@ -221,7 +223,7 @@ class PrettyInstance(list):
         basename = self._filename_sub.sub("_", nodeid)
         basepath = os.path.join(self.prettysession.outdir, basename)
 
-        data = {
+        data: Dict[str, Any] = {
             "ts_start": getattr(topotatocls, "started_ts", None),
             "funcs": [],
             "items": [],
@@ -275,6 +277,7 @@ class PrettyInstance(list):
             _logger.error("SVG data: %r", self[0].toposvg)
             toposvg = ""
 
+        assert isinstance(items[-1], PrettyShutdown)
         data["timed"] = items[-1]._jsdata
         if items[-1]._pdml:
             data["pdml"] = items[-1]._pdml

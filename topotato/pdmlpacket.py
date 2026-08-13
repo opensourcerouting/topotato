@@ -7,13 +7,15 @@ Ease of access wrappers around PDML-formatted packet dumps
 
 import xml.etree.ElementTree as etree
 
-from typing import Tuple, Optional, Union, List, Any, TYPE_CHECKING
-
-try:
-    from typing import OrderedDict
-except ImportError:
-    # python 3.6
-    from typing import Dict as OrderedDict  # type: ignore
+from typing import (
+    Any,
+    List,
+    Optional,
+    OrderedDict,
+    TYPE_CHECKING,
+    Tuple,
+    Union,
+)
 
 if TYPE_CHECKING:
     from .base import TopotatoItem

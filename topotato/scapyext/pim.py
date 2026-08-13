@@ -135,7 +135,7 @@ class PIMEncodedPrefixField(_PIMEncodedAddrField):
             text += ",0x%02x" % flags
         return text
 
-    def sub_i2m(self, pkt, x):
+    def sub_i2m(self, pkt, x):  # pyrefly: ignore
         flags = 0
         while "," in x:
             x, flag = x.rsplit(",", 1)

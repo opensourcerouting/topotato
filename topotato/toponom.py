@@ -218,13 +218,15 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
                     i.link.parallel_num,
                 )
 
-    def ifaces_to(self, other: str) -> List["LinkIface"]:
+    def ifaces_to(self, other: Union[str, "NOMLinked"]) -> List["LinkIface"]:
         """
         get all the interfaces of this node that go to "other"
         """
-        return [i for i in self.ifaces if i.other.endpoint.name == other]
+        return [
+            i for i in self.ifaces if other in [i.other.endpoint, i.other.endpoint.name]
+        ]
 
-    def iface_to(self, other: str) -> "LinkIface":
+    def iface_to(self, other: Union[str, "NOMLinked"]) -> "LinkIface":
         """
         get the *one* interfaces of this node that goes to "other"
 
@@ -240,16 +242,22 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
             )
         return ifaces[0]
 
-    def iface_peer(self, other: str, via=Optional["LAN"]) -> "LinkIface":
+    def iface_peer(
+        self, other: Union[str, "Router"], via=Optional["LAN"]
+    ) -> "LinkIface":
         """
         get another node's interface connected to us, optionally via LAN
 
         LAN must be specified if it's not a direct p2p link
         """
-        ortr = self.network.routers[other]
+        if isinstance(other, str):
+            ortr = self.network.routers[other]
+        else:
+            ortr = other
 
         if via is None:
             return ortr.iface_to(self.name)
+        assert isinstance(via, LAN)
         return ortr.iface_to(via)
 
     def flip(self, a: str, b: str) -> "Router":
@@ -269,7 +277,7 @@ class NOMLinked(NOMNode, metaclass=abc.ABCMeta):
                 yield from iface.ip6
 
     @abc.abstractmethod
-    def __repr__(self):
+    def __repr__(self) -> str:
         pass
 
     @abc.abstractmethod
@@ -703,7 +711,9 @@ class Network:
             self.lans[name] = LAN(self, name)
         return self.lans[name]
 
-    def link_all(self, routers: Tuple[Router, Router]) -> List[Link]:
+    def link_all(
+        self, routers: Tuple[Union[Router, LAN], Union[Router, LAN]]
+    ) -> List[Link]:
         """
         Retrieve the list of links between two routers
         """

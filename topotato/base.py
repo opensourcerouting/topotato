@@ -382,7 +382,7 @@ class TopotatoItem(nodes.Item):
                     raise XFailed(", ".join(self.xfail)) from e
                 raise
 
-    def reportinfo(self):  # -> Tuple[Union[py.path.local, str], int, str]:
+    def reportinfo(self) -> Tuple[Union[os.PathLike, str], Union[int, float, None], str]:  # type: ignore[override]
         """
         Specialize pytest's location information for this test.
 
@@ -550,7 +550,7 @@ class InstanceStartup(TopotatoItem):
     def __init__(self, **kwargs):
         super().__init__(name="startup", **kwargs)
 
-    def reportinfo(self):
+    def reportinfo(self) -> Tuple[Union[os.PathLike, str], Union[int, float, None], str]:  # type: ignore[override]
         fspath, _, _ = self.cls_node.reportinfo()
         return fspath, float("-inf"), "startup"
 
@@ -589,7 +589,7 @@ class InstanceShutdown(TopotatoItem):
     def __init__(self, **kwargs):
         super().__init__(name="shutdown", **kwargs)
 
-    def reportinfo(self):
+    def reportinfo(self) -> Tuple[Union[os.PathLike, str], Union[int, float, None], str]:  # type: ignore[override]
         fspath, _, _ = self.cls_node.reportinfo()
         return fspath, float("inf"), "shutdown"
 
@@ -792,7 +792,7 @@ class TopotatoFunction(nodes.Collector, _pytest.python.PyobjMixin):
         assert tcls is not None
 
         # obj contains unbound methods; get bound instead
-        method = getattr(tcls.newinstance(), self.name)
+        method = cast(TopotatoWrapped, getattr(tcls.newinstance(), self.name))
         assert callable(method)
 
         topo = tcls.obj._setup._network
