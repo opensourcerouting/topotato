@@ -7,11 +7,17 @@ basic tests for topotato.utils LockedFile/AtomicPublishFile
 
 import os
 import time
+from typing import (
+    Optional,
+)
 
 from topotato.utils import LockedFile, AtomicPublishFile
 
 
+# contextlib.chdir was added in Python 3.11, but we need to run on 3.8
 class ChdirCtx:
+    _orig: Optional[str]
+
     def __init__(self, dirname):
         self.dirname = dirname
         self._orig = None
@@ -21,6 +27,7 @@ class ChdirCtx:
         os.chdir(self.dirname)
 
     def __exit__(self, exc_type, exc_value, tb):
+        assert self._orig
         os.chdir(self._orig)
 
 

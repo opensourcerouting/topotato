@@ -28,3 +28,13 @@ repos:
         require_serial: true
         pass_filenames: false
         files: ^topotato/.*\.py$
+
+    -   id: mypy
+        name: mypy_selftests
+        entry: mypy selftests/
+        language: system
+        types:
+        -   python
+        require_serial: true
+        pass_filenames: false
+        files: ^selftests/.*\.py$
