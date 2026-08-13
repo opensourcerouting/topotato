@@ -181,10 +181,10 @@ class LogMessage(TimedElement):
         argspec = rawmsg[fixhdr : fields.hdrlen]
         new_n_argpos = struct.unpack("I", (argspec + bytes(4))[:4])[0]
 
-        new_expect = 4 + new_n_argpos * ARG_SIZE
-        # handle 8b alignment
-        new_valid = len(argspec) in [new_expect, (new_expect + 7) & ~7]
-        if new_valid:
+        if len(argspec) == 8 + new_n_argpos * ARG_SIZE:
+            argspec = argspec[8:]
+            n_argpos = new_n_argpos
+        elif len(argspec) == 4 + new_n_argpos * ARG_SIZE:
             argspec = argspec[4:]
             n_argpos = new_n_argpos
         else:
