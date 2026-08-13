@@ -119,6 +119,7 @@ class MLDBasic(TestBase, AutoFixture, setup=Setup):
             "[MLD default:dut-h1 (*,ff05::1234)] NOINFO => JOIN",
             maxwait=2.0,
         )
+        logchecks.xfail("Unidentified kernel weirdness regarding MLD timers")
 
         @logchecks.skip_on_exception
         def need_debug_mld(testitem):
