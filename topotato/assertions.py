@@ -25,16 +25,12 @@ from typing import (
     Callable,
     ClassVar,
     List,
+    Literal,
     Optional,
     Protocol,
     Type,
     Union,
 )
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
 
 from scapy.packet import Packet  # type: ignore
 

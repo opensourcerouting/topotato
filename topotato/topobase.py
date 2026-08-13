@@ -33,11 +33,11 @@ from typing import (
     Literal,
     Mapping,
     Optional,
+    Protocol,
     Tuple,
     TypeVar,
     Union,
 )
-from typing_extensions import Protocol
 
 from .utils import self_or_kwarg
 

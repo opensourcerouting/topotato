@@ -17,6 +17,7 @@ from typing import (
     Dict,
     Generator,
     List,
+    Literal,
     Mapping,
     Optional,
     Tuple,
@@ -24,11 +25,6 @@ from typing import (
     Union,
     cast,
 )
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
 
 from .parse import Topology
 

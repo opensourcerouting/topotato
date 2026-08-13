@@ -22,12 +22,14 @@ try:
 except ImportError:
     packaging = None  # type: ignore
 
-from typing import Union, Dict, List, Any, Optional
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Union,
+)
 
 import pytest
 
