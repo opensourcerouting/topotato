@@ -5,6 +5,8 @@
 basic tests for topotato.generatorwrap
 """
 
+# pylint: disable=protected-access,redefined-outer-name
+
 import pytest
 from topotato.generatorwrap import (
     GeneratorChecks,

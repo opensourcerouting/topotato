@@ -48,7 +48,7 @@ def test_fdinfo_sockaddr():
 
 
 def test_fdinfo_dev():
-    with open("/dev/null", "r") as fd:
+    with open("/dev/null", "rb") as fd:
         assert fdinfo(fd.fileno()).startswith("chardev")
 
 
@@ -56,7 +56,7 @@ def test_fdinfo_ns():
     if sys.platform != "linux":
         pytest.skip("Linux only test")
 
-    with open("/proc/self/ns/mnt", "r") as fd:
+    with open("/proc/self/ns/mnt", "rb") as fd:
         i = fdinfo(fd.fileno())
     assert i.startswith("nsfd")
     assert "mnt" in i

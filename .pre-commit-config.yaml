@@ -13,11 +13,11 @@ repos:
 
     -   id: pylint
         name: pylint
-        entry: pylint --persistent=n --score=n --disable=fixme
+        entry: pylint --persistent=n --score=n --disable=fixme --source-roots=.
         language: system
         types:
         -   python
-        files: ^topotato/.*\.py$
+        files: ^(topotato|selftests)/.*\.py$
 
     -   id: mypy
         name: mypy
