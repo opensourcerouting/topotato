@@ -29,9 +29,11 @@ from typing import (
 )
 from types import TracebackType
 
+from .sockutil import sockext
 from .pcapng import Context, Block, Sink
 
 if typing.TYPE_CHECKING:
+    import socket
     from typing import Awaitable, Self  # novermin
     from .base import TopotatoItem
 
@@ -265,6 +267,46 @@ class EventOrigin:
         pass
 
 
+class EventOriginSocket(EventOrigin):
+    _task: asyncio.Task
+    _rdfd: sockext
+
+    def __init__(
+        self,
+        rdfd: "socket.socket",
+    ):
+        super().__init__()
+
+        self._rdfd = sockext(rdfd)
+        self._rdfd.setblocking(False)
+
+    async def _run(self) -> bool:
+        raise NotImplementedError
+
+    async def _run_loop(self) -> None:
+        try:
+            while await self._run():
+                pass
+
+        except asyncio.CancelledError:
+            self._rdfd.close()
+            self._rdfd = None  # type: ignore[assignment]
+            raise
+
+    def _start(self, timeline: "Timeline") -> None:
+        timeline.origin_add(self)
+        self._task = timeline.create_task_exh(self._run_loop(), name=repr(self))
+
+    def close(self) -> None:
+        if self._rdfd is not None:
+            self._rdfd.close()
+            self._rdfd = None  # type: ignore[assignment]
+
+    async def terminate(self) -> None:
+        self._task.cancel()
+        await self._task
+
+
 class Timeline(EventMux[TimedElement]):
     """
     Sorted list of TimedElement|s
@@ -300,3 +342,18 @@ class Timeline(EventMux[TimedElement]):
 
     def origin_add(self, origin: EventOrigin):
         self.origins.append(origin)
+
+    async def _exc_log_wrap(self, coro):
+        try:
+            return await coro
+        # pylint: disable=try-except-raise
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _logger.exception("exception in task!")
+            raise
+
+    def create_task_exh(self, coro, *, name=None, context=None) -> asyncio.Task:
+        return self.aioloop.create_task(
+            self._exc_log_wrap(coro), name=name, context=context
+        )
