@@ -416,6 +416,7 @@ svg {
 
 .logarg {
 	text-decoration:underline dashed #777;
+	cursor: help;
 }
 
 .logmsg.prio-crit  { --item-bg: #fbc; }
@@ -617,6 +618,11 @@ svg {
 	color:#e44;
 }
 
+.clicmd.cli-has-out,
+.pkt {
+	cursor: pointer;
+}
+
 .filtered {
 	display:none;
 }
@@ -665,7 +671,8 @@ div.mark > .tstamp {
 	margin-left:-5px;
 }
 div.mark > *,
-div.mark > .tstamp {
+div.mark > .tstamp,
+div.mark.pkt-pdml-open > .last {
 	background-image:linear-gradient(to top,
 		color-mix(in hsl, var(--item-mark-bg) 45%, var(--item-bg)),
 		color-mix(in hsl, var(--item-mark-bg) 20%, var(--item-bg)),
@@ -763,6 +770,7 @@ div > .tstamp {
 	color:#a20;
 }
 .retransmit .p-tcp {
+	--item-bg: #fed;
 	background-color:#fed;
 }
 .retransmit .p-tcp::before {
@@ -776,24 +784,28 @@ div > .tstamp {
 .p-pim,
 .p-ldp,
 .p-bgp {
+	--item-bg: #ffeeaa;
 	background-color:#ffeeaa;
 	border-color:#fa0;
 }
 .p-bmp {
+	--item-bg: #eaee99;
 	background-color:#eaee99;
 	border-color:#5b0;
 }
 .p-bfd {
+	--item-bg: #eedddd;
 	background-color:#eedddd;
 	border-color:#a88;
 }
 .p-icmp-err {
-	background-color:#ffddaa;
+	--item-bg: #ffddaa;
 	border-color:#f80;
 }
 
 .p-malformed .l-4,
 .p-malformed .l-5 {
+	--item-bg: #ffbbee;
 	background-color:#ffbbee;
 	border-color:#f6a;
 }
@@ -802,6 +814,57 @@ div > .tstamp {
 	font-weight:bold;
 	color: #903;
 }
+
+.pkt-pdml-open .last {
+	background-image:linear-gradient(to left,
+		color-mix(in lch, #bfb 100%, var(--item-bg)),
+		color-mix(in lch, #bbf  66%, var(--item-bg)),
+		color-mix(in lch, #fbb  33%, var(--item-bg)),
+		color-mix(in lch, #000   0%, var(--item-bg)),
+		var(--item-bg)
+	);
+}.pkt-pdml-open .last::after {
+	content:"→";
+	color: #000;
+	font-size:14pt;
+	font-weight:bold;
+	font-style:normal;
+
+	display:inline-block;
+	position: relative;
+	float: right;
+	z-index: 10;
+	width: 0;
+	height: 0;
+	animation-name: slide;
+	animation-duration: 0.75s;
+	animation-iteration-count: 1;
+	animation-timing-function: linear;
+
+	transform: translateX(0) translateY(-5pt) scale(150%);*/
+}
+@keyframes slide {
+	0% {
+		transform: translateX(calc(-30vw)) translateY(0pt) scale(100%);
+		color: #ccc;
+	}
+	20% {
+		color: #000;
+	}
+	50% {
+		transform: translateX(calc(-12vw)) translateY(-35pt) scale(500%);
+		color: #444;
+	}
+	90% {
+		transform: translateX(calc(-0.5vw)) translateY(-5pt) scale(150%);
+		color: #ccc;
+	}
+	100% {
+		transform: translateX(0) translateY(-5pt) scale(150%);
+		color: #000;
+	}
+}
+
 
 .log {
 	height:auto;

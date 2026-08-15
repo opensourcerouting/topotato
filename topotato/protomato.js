@@ -803,11 +803,17 @@ function pdml_add_proto(htmlparent, proto) {
 }
 
 var pdml_decode;
+var pkt_open = null;
 
 function onclick_pkt(evt) {
 	const pkt = container_class(evt.target, "pkt");
 	const infopane = document.getElementById("infopane");
 	const packet = pkt.obj.pdml;
+
+	if (pkt_open !== null)
+		pkt_open.classList.remove("pkt-pdml-open");
+	pkt.classList.add("pkt-pdml-open");
+	pkt_open = pkt;
 
 	let htmlpacket = document.createElement("dl");
 	htmlpacket.classList.add("pdml-root");
@@ -818,6 +824,8 @@ function onclick_pkt(evt) {
 	back_nav.onclick = function () {
 		pdml_decode.replaceChildren();
 		infopane.children[0].style.display = "";
+		pkt_open.classList.remove("pkt-pdml-open");
+		pkt_open = null;
 	};
 	htmlpacket.appendChild(back_nav);
 
