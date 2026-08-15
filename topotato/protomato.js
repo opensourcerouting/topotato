@@ -37,6 +37,8 @@ function raw_expand(obj, ev) {
 	ev.stopPropagation();
 }
 
+var idx2row = new Object();
+
 /* hover infrastructure */
 
 /* before new hover is shown: */
@@ -668,6 +670,10 @@ function create(parent_, tagname, clsname, text = undefined) {
 	return element;
 }
 
+function create_tstamp(row, obj) {
+	return create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
+}
+
 const mono_xrefs = new Set(["VDSXN-XE88Y", "SH01T-57BR4", "TCYNJ-TRV01", "TRN9Y-VYTR4",
 	"N142K-P0ZB3", "KHCZ2-6BBZZ"]);
 const xwarn_xrefs = new Set(["NNACN-54BDA", "GQGFH-DSTSR", "RHJDG-5FNSK", "RQT05-4D0H5", "VDWX6-W8CNF", "X3G8F-PM93W", "N5M5Y-J5BPG"]);
@@ -780,7 +786,7 @@ function load_log(timetable, obj, xrefs) {
 		all_routers_logs[obj.data.router] = new Array();
 	all_routers_logs[obj.data.router].push(row);
 
-	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
+	create_tstamp(row, obj);
 	create(row, "span", "rtrname", obj.data.router);
 	create(row, "span", "dmnname", obj.data.daemon);
 
@@ -852,6 +858,7 @@ function load_log(timetable, obj, xrefs) {
 		i++;
 	}
 	logtext.append(obj.data.text.substr(prev_e));
+	return row;
 }
 
 function onclick_rtrfilter() {
@@ -891,7 +898,7 @@ function load_pylog(timetable, obj) {
 	if (prio == "warning")
 		prio = "warn";
 
-	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
+	create_tstamp(row, obj);
 	if (obj.data.pathname.startsWith("test_"))
 		create(row, "span", "pyinfo", `${obj.data.pathname}:${obj.data.lineno}`);
 	else if (obj.data.pathname.startsWith("topotato/"))
@@ -902,6 +909,7 @@ function load_pylog(timetable, obj) {
 	let textspan = create(row, "span", "msg");
 
 	textspan.append(`${obj.data.msg}`);
+	return row;
 }
 
 function load_syslog(timetable, obj) {
@@ -912,7 +920,7 @@ function load_syslog(timetable, obj) {
 	row.classList.add("mono");
 	row.obj = obj;
 
-	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
+	create_tstamp(row, obj);
 	create(row, "span", "rtrname", obj.data.router);
 	create(row, "span", "dmnname", "×");
 
@@ -927,7 +935,7 @@ function load_other(timetable, obj, xrefs) {
 	let row = create(timetable, "div", "event");
 	row.obj = obj;
 
-	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
+	create_tstamp(row, obj);
 	create(row, "span", "rtrname", obj.data.router || "");
 	create(row, "span", "dmnname", obj.data.daemon || "");
 	let textspan = create(row, "span", "eventtext");
@@ -939,6 +947,7 @@ function load_other(timetable, obj, xrefs) {
 		row.classList.add("event-unknown");
 		textspan.append(`unknown event: ${obj.data.type}`);
 	}
+	return row;
 }
 
 const whitespace_re = /^([ \t]+)/;
@@ -1070,7 +1079,7 @@ function load_vtysh(timetable, obj) {
 	row = create(timetable, "div", "clicmd");
 	row.obj = obj;
 
-	create(row, "span", "tstamp", (obj.ts - ts_start).toFixed(3));
+	create_tstamp(row, obj);
 	create(row, "span", "rtrname", obj.data.router);
 	create(row, "span", "dmnname", obj.data.daemon);
 	let cmdspan = create(row, "span", "clicmdtext");
@@ -1111,6 +1120,7 @@ function load_vtysh(timetable, obj) {
 				row.classList.add("cli-same");
 		}
 	}
+	return row;
 }
 
 function load_protocols(obj, row, protodefs, protos) {
@@ -1594,10 +1604,12 @@ function load_packet(timetable, obj, pdmltree, pdmlindex) {
 	row.obj = obj;
 	row.onclick = onclick_pkt;
 
-	create(row, "span", "pktcol tstamp", (obj.ts - ts_start).toFixed(3));
+	var ts = create_tstamp(row, obj);
+	ts.classList.add("pktcol");
 	create(row, "span", "pktcol ifname", obj.data.iface);
 
 	load_protocols(obj, row, protocols, Array.from(pdml.children));
+	return row;
 }
 
 function pullup(arr, item) {
@@ -1790,8 +1802,9 @@ async function real_init() {
 	var item_idx = -1;
 	xrefs = ("xrefs" in jsdata) ? jsdata["xrefs"] : new Object();
 
-	for (const idx in jsdata.timed) {
-		var obj = jsdata.timed[idx];
+	for (const idxs in jsdata.timed) {
+		var obj = jsdata.timed[idxs];
+		let idx = parseInt(idxs);
 		obj.idx = idx;
 
 		while (obj.ts > ts_end && item_idx < jsdata.items.length) {
@@ -1800,18 +1813,22 @@ async function real_init() {
 			timetable = document.getElementById("i" + item_idx + "d").getElementsByClassName("timetable")[0];
 		}
 
+		var row;
+
 		if (obj.data.type == "packet")
-			load_packet(timetable, obj, pdmltree, pdmlindex);
+			row = load_packet(timetable, obj, pdmltree, pdmlindex);
 		else if (obj.data.type == "log")
-			load_log(timetable, obj, xrefs);
+			row = load_log(timetable, obj, xrefs);
 		else if (obj.data.type == "syslog")
-			load_syslog(timetable, obj);
+			row = load_syslog(timetable, obj);
 		else if (obj.data.type == "vtysh")
-			load_vtysh(timetable, obj);
+			row = load_vtysh(timetable, obj);
 		else if (obj.data.type == "pylog")
-			load_pylog(timetable, obj);
+			row = load_pylog(timetable, obj);
 		else
-			load_other(timetable, obj);
+			row = load_other(timetable, obj);
+
+		idx2row[idx] = row;
 	}
 
 	let f_logrtrs = create(topbar, "div", "fblock");
