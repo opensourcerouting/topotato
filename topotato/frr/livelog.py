@@ -15,7 +15,13 @@ from collections import namedtuple
 import typing
 from typing import Dict, Generator, Optional, Set, Tuple, Union
 
-from ..timeline import EventMux, EventOrigin, Timeline, TimedElement, FrameworkEvent
+from ..timeline import (
+    EventMux,
+    EventOriginSocket,
+    Timeline,
+    TimedElement,
+    FrameworkEvent,
+)
 from ..pcapng import JournalExport, Context
 
 if typing.TYPE_CHECKING:
@@ -48,6 +54,7 @@ class LogMessage(TimedElement):
     rarely if ever.
     """
 
+    # pylint: disable=duplicate-code
     _prios = {
         syslog.LOG_EMERG: "emerg",
         syslog.LOG_ALERT: "alert",
@@ -307,7 +314,9 @@ class LogReadCancelled(FrameworkEvent):
         self._data["daemon"] = daemon
 
 
-class LiveLog(EventMux[Union[LogMessage, LogClosed, LogReadCancelled]], EventOrigin):
+class LiveLog(
+    EventOriginSocket, EventMux[Union[LogMessage, LogClosed, LogReadCancelled]]
+):
     """
     Receiver for log messages from an FRR daemon.
 
@@ -327,14 +336,13 @@ class LiveLog(EventMux[Union[LogMessage, LogClosed, LogReadCancelled]], EventOri
     _task: asyncio.Task
 
     def __init__(self, router: "FRRRouterNS", daemon: str, timeline: Timeline):
-        super().__init__()
-
         self._router = router
         self._daemon = daemon
         self.xrefs_seen = set()
 
         rdfd, wrfd = socket.socketpair(socket.AF_UNIX, socket.SOCK_SEQPACKET)
-        rdfd.setblocking(False)
+
+        super().__init__(rdfd)
 
         bufdflt = rdfd.getsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF)
         bufsz = 8388608
@@ -354,11 +362,9 @@ class LiveLog(EventMux[Union[LogMessage, LogClosed, LogReadCancelled]], EventOri
             except OSError:
                 bufsz = int(bufsz / 1.5)
 
-        self._rdfd = rdfd
         self._wrfd = wrfd
 
-        timeline.origin_add(self)
-        self._task = timeline.aioloop.create_task(self._taskfn(), name=repr(self))
+        self._start(timeline)
 
     def __repr__(self):
         return f"<{self.__class__.__name__} for {self._daemon}@{self._router.name}>"
@@ -383,13 +389,10 @@ class LiveLog(EventMux[Union[LogMessage, LogClosed, LogReadCancelled]], EventOri
             self._wrfd = None  # type: ignore[assignment]
 
     def close(self):
-        # breakpoint()
         assert self._wrfd is None
-        if self._rdfd is not None:
-            self._rdfd.close()
-            self._rdfd = None  # type: ignore[assignment]
+        super().close()
 
-    async def _taskfn(self) -> None:
+    async def _run_loop(self) -> None:
         aioloop = asyncio.get_running_loop()
         try:
             while True:
@@ -419,10 +422,6 @@ class LiveLog(EventMux[Union[LogMessage, LogClosed, LogReadCancelled]], EventOri
             raise
 
     async def drain(self) -> None:
-        await self._task
-
-    async def terminate(self) -> None:
-        self._task.cancel()
         await self._task
 
     def serialize(self, context: Context):
