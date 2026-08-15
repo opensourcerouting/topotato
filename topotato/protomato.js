@@ -291,6 +291,28 @@ const anchor_funcs = {
 };
 
 function anchor_apply(opts) {
+	let main = document.getElementById("main");
+
+	let rescroll = null;
+	let rescroll_top = null;
+	let prevscroll_x = main.scrollLeft;
+	let prevscroll_y = main.scrollTop;
+
+	let cur_mid = document.elementFromPoint(50, window.innerHeight * 0.33);
+	while (cur_mid && cur_mid.tagName != "DIV")
+		cur_mid = cur_mid.parentElement;
+	if (cur_mid && cur_mid.tagName == "DIV") {
+		rescroll = document.createElement("div");
+		rescroll.style.position = "relative";
+		rescroll.style.height = "0";
+		cur_mid.parentElement.insertBefore(rescroll, cur_mid);
+		rescroll_top = cur_mid.offsetTop;
+		if (rescroll_top == 0) {
+			rescroll.parentElement.removeChild(rescroll);
+			rescroll = null;
+		}
+	}
+
 	for (const [key, val] of Object.entries(opts)) {
 		console.log("apply", key, val, anchor_current[key]);
 		if ((key in anchor_current) && (anchor_current[key] === val))
@@ -298,6 +320,11 @@ function anchor_apply(opts) {
 
 		anchor_funcs[key](key, val);
 		anchor_current[key] = val;
+	}
+
+	if (rescroll !== null) {
+		main.scrollTo(prevscroll_x, prevscroll_y + rescroll.offsetTop - rescroll_top);
+		rescroll.parentElement.removeChild(rescroll);
 	}
 }
 
