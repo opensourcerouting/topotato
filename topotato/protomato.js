@@ -180,7 +180,79 @@ const log_rules_setup =  [
 	{ prefix: "d:", field: "daemon", ref: obj => obj.data.daemon },
 	{ prefix: "p:", field: "prio", ref: obj => obj.data.prio }
 ];
-var log_rules;
+var log_rules, log_rules_single;
+
+function log_ui_remove_rule(item) {
+	let opts = {...anchor_current};
+	let cur_log = opts["log"].split("/");
+	cur_log = cur_log.filter((i) => i != item);
+	opts["log"] = cur_log.join("/");
+	anchor_export(opts);
+}
+
+function log_ui_show_rule(field, data, container) {
+	let do_show = new Set(data["show"]);
+	let do_hide = new Set(data["hide"]);
+
+	for (let child of Array.from(container.children)) {
+		if (!child.classList.contains("fitems"))
+			continue;
+		let id = child.data_ui_rule_id;
+		if (child.classList.contains("f-log-hide")) {
+			if (do_hide.has(id))
+				do_hide.delete(id);
+			else
+				container.removeChild(child);
+		}
+		if (child.classList.contains("f-log-show")) {
+			if (do_show.has(id))
+				do_show.delete(id);
+			else
+				container.removeChild(child);
+		}
+	}
+	for (let item of do_hide) {
+		container.appendChild(document.createTextNode(" "));
+
+		let elem = create(container, "a", "fitems f-log-hide", item);
+		elem.data_ui_rule_id = item;
+		elem.onclick = function() {
+			log_ui_remove_rule(`-${data["prefix"]}${item}`);
+		};
+	}
+	for (let item of do_show) {
+		container.appendChild(document.createTextNode(" "));
+
+		let elem = create(container, "a", "fitems f-log-show", item);
+		elem.data_ui_rule_id = item;
+		elem.onclick = function() {
+			log_ui_remove_rule(`+${data["prefix"]}${item}`);
+		};
+	}
+}
+
+function log_ui_show_rules(prefix) {
+	let filters = document.getElementById("filters");
+
+	for (let field of Object.keys(log_rules_single)) {
+		let data = log_rules_single[field];
+
+		let cur_ui = document.getElementById(`logrule-${field}`);
+		if (data["show"].size + data["hide"].size == 0) {
+			if (cur_ui)
+				cur_ui.parentElement.removeChild(cur_ui);
+			continue;
+		}
+
+		if (!cur_ui) {
+			cur_ui = create(filters, "div", "fblock");
+			cur_ui.id = `logrule-${field}`;
+			create(cur_ui, "div", "ftitle", field);
+		}
+		console.log("rule set", field, cur_ui, data);
+		log_ui_show_rule(field, data, cur_ui);
+	}
+}
 
 function log_empty_rule() {
 	let ret = new Object();
@@ -213,6 +285,15 @@ function log_show(key, sel) {
 	}
 
 	log_rules = new Array();
+	log_rules_single = {};
+	for (const setup of log_rules_setup) {
+		log_rules_single[setup.field] = {
+			"prefix": setup.prefix,
+			"show": new Set(),
+			"hide": new Set()
+		};
+	}
+
 	for (const rule of items) {
 		let lr = log_empty_rule();
 
@@ -224,10 +305,15 @@ function log_show(key, sel) {
 			continue;
 		}
 
-		for (const detail of rule.substr(1).split(".")) {
+		let subs = rule.substr(1).split(".");
+		for (const detail of subs) {
 			for (const setup of log_rules_setup) {
 				if (!detail.startsWith(setup.prefix))
 					continue;
+				if (subs.length == 1) {
+					let key = lr.sense ? "show" : "hide";
+					log_rules_single[setup.field][key].add(detail.substr(setup.prefix.length));
+				}
 				lr[setup.field].push(detail.substr(setup.prefix.length));
 				break;
 			}
@@ -235,6 +321,8 @@ function log_show(key, sel) {
 
 		log_rules.push(lr);
 	}
+
+	log_ui_show_rules();
 
 	for (let target of Array.from(document.getElementsByClassName("logmsg"))) {
 		var enable = false;
@@ -708,13 +796,17 @@ const xwarn_xrefs = new Set(["NNACN-54BDA", "GQGFH-DSTSR", "RHJDG-5FNSK", "RQT05
 
 /* global coverage_loc:readonly */
 
-function uidspan_hover_hide_uid() {
+function uidspan_hover_hide_uid(event) {
+	event.stopPropagation();
+
 	let hide_uid = hover_child.obj.data.uid;
 	hover_clear();
 
 	let opts = {...anchor_current};
 	let cur_log = opts["log"].split("/");
-	cur_log.push(`-u:${hide_uid}`);
+	let item = `-u:${hide_uid}`;
+	if (!cur_log.includes(item))
+		cur_log.push(item);
 	opts["log"] = cur_log.join("/");
 
 	anchor_export(opts);

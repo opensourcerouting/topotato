@@ -138,6 +138,21 @@ svg {
 .fitems {
 	display:inline-block;
 }
+.f-log-hide,
+.f-log-show {
+	font-family: var(--font-mono-narrow);
+	padding:1px 2pt;
+}
+.f-log-hide {
+	color:#a32;
+	background-color:#fb9;
+	border:1px solid #c65;
+}
+.f-log-show {
+	color:#372;
+	background-color:#bf9;
+	border:1px solid #594;
+}
 
 .e_raw {
 	/* position:absolute; */
