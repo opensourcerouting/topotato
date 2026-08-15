@@ -217,6 +217,7 @@ class BaseNS(Generic[TNetworkInstance]):
                     while tb.tb_next:
                         tb = tb.tb_next
 
+                    # pylint: disable=no-member
                     filename = tb.tb_frame.f_code.co_filename
                     lineno = tb.tb_frame.f_lineno
                     module_globals = tb.tb_frame.f_globals
