@@ -582,6 +582,12 @@ svg {
 	color:#e44;
 }
 
+.filtered {
+	display:none;
+}
+.assert-match.mark {
+	display:grid;
+}
 .tstamp {
 	grid-column-start: 1;
 	font-family: var(--font-plain-narrow);

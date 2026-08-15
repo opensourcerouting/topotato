@@ -259,9 +259,10 @@ function log_show(key, sel) {
 			if (match)
 				enable = rule.sense;
 		}
-		if (target.classList.contains("assert-match"))
-			enable = true;
-		target.style.display = enable ? "grid" : "none";
+		if (enable)
+			target.classList.remove("filtered");
+		else
+			target.classList.add("filtered");
 	}
 }
 
